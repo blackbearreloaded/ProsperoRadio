@@ -153,15 +153,28 @@ private:
     }
 }
 
+void Trace(const char* message) {
+    std::fputs(message, stdout);
+    std::fputc('\n', stdout);
+    std::fflush(stdout);
+}
+
 bool RunSmoke() {
-    if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    Trace("radio: SDL_Init");
+    const int init_result = SDL_Init(SDL_INIT_VIDEO);
+    if (init_result != 0) {
+        Trace("radio: SDL_Init failed");
         return false;
     }
+    Trace("radio: SDL_Init complete");
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99702", SDL_WINDOWPOS_UNDEFINED,
+    Trace("radio: SDL_CreateWindow");
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99703", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
+    Trace(window ? "radio: SDL_CreateWindow complete" : "radio: SDL_CreateWindow failed");
     SDL_Renderer* renderer = window ? SDL_CreateRenderer(window, -1,
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC) : nullptr;
+    Trace(renderer ? "radio: SDL_CreateRenderer complete" : "radio: SDL_CreateRenderer failed");
     if (!window || !renderer) {
         if (renderer) SDL_DestroyRenderer(renderer);
         if (window) SDL_DestroyWindow(window);
@@ -178,14 +191,21 @@ bool RunSmoke() {
     Rml::SetFontEngineInterface(&smoke_font_engine);
     Rml::SetRenderInterface(&render_interface);
 
+    Trace("radio: Rml::Initialise");
     bool running = Rml::Initialise();
+    Trace(running ? "radio: Rml::Initialise complete" : "radio: Rml::Initialise failed");
     Rml::Context* context = running ? Rml::CreateContext("radio-browser",
         {1920, 1080}, &render_interface) : nullptr;
+    Trace(context ? "radio: Rml::CreateContext complete" : "radio: Rml::CreateContext failed");
     Rml::ElementDocument* document = context ? context->LoadDocument("ui/main.rml") : nullptr;
+    Trace(document ? "radio: LoadDocument complete" : "radio: LoadDocument failed");
     if (document) {
         document->Show();
     } else {
         running = false;
+    }
+    if (running) {
+        Trace("radio: UI ready");
     }
 
     while (running) {
@@ -217,7 +237,10 @@ bool RunSmoke() {
 } // namespace
 
 int main() {
+    Trace("radio: main");
     sceSystemServiceHideSplashScreen();
+    Trace("radio: splash hidden");
     RunSmoke();
+    Trace("radio: smoke ended");
     KeepProcessAlive();
 }
