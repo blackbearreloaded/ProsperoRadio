@@ -1,8 +1,8 @@
 {
-  "titleName": "PS5 Radio Browser PPSA99709",
-  "titleId": "PPSA99709",
-  "conceptId": "99709",
-  "contentId": "UP9000-PPSA99709_00-RADIOAPP00000001",
+  "titleName": "PS5 Radio Browser PPSA99710",
+  "titleId": "PPSA99710",
+  "conceptId": "99710",
+  "contentId": "UP9000-PPSA99710_00-RADIOAPP00000001",
   "moduleSdkVersion": "0x02000009",
   "companionSdkVersion": "0x08050001",
   "fselfMagic": "0x1D3D154F",
@@ -13,14 +13,20 @@
   "compileDefinitions": [
     "SDL_MAIN_HANDLED",
     "SDL_STATIC_LIB",
-    "USING_GENERATED_CONFIG_H"
+    "USING_GENERATED_CONFIG_H",
+    "RMLUI_STATIC_LIB"
   ],
   "includePaths": [
     "vendor/ps5/sdl/include",
-    "vendor/ps5/sdl/include/SDL2"
+    "vendor/ps5/sdl/include/SDL2",
+    "vendor/ps5/rmlui/include"
   ],
   "staticArchives": [
-    "vendor/ps5/sdl/lib/libSDL2.a"
+    "vendor/ps5/sdl/lib/libSDL2.a",
+    "vendor/ps5/rmlui/lib/librmlui.a",
+    "vendor/ps5/sdk/lib/libunwind.a",
+    "vendor/ps5/sdk/lib/libcxx.a",
+    "vendor/ps5/sdk/lib/libcxxabi.a"
   ],
   "stubLibraries": [
     "vendor/ps5/sdk/stubs/libSceLibcInternal.so",
