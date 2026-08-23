@@ -961,3 +961,35 @@ isolated crash regression.
   textured-copy sampler does not preserve a nominal 1:1 atlas rectangle. The
   next experiment will composite the retained atlas texels directly into the
   software framebuffer, bypassing texture-coordinate sampling entirely.
+
+## PPSA99764 - retained-atlas surface blit
+
+- Commit: `e950588`
+- Goal: bypass SDL texture-coordinate sampling for LVGL font atlases by keeping
+  their decoded pixels and copying 1:1 source rectangles with SDL's unscaled
+  CPU surface blitter.
+- Changes:
+  - wraps each RmlUi texture handle with its SDL texture, dimensions, and the
+    retained straight-alpha source pixels;
+  - creates a CPU surface for paths identified as LVGL bitmap atlases;
+  - flushes pending renderer work, applies the active RmlUi clip, and uses
+    `SDL_BlitSurface` for validated 1:1 font quads;
+  - leaves generated textures, icons, and non-axis-aligned geometry on their
+    existing renderer paths.
+- Outcome: entered `eboot`, wrote the native frame, remained stable, closed
+  cleanly, and released its runtime layers and Chiaki before the PS5 lock was
+  released.
+- Evidence:
+  - `PPSA99764-native/PPSA99764-ui.bmp`, SHA-256
+    `2480B99FD2E61EE3F109C8DED2DF80EF581863E1EF84934DD1C109F8D633DBDC`;
+  - `PPSA99764-20260823-181246-result.json`, lifecycle result `entered-eboot`;
+  - eboot SHA-256
+    `B564C043F327F97131AB9F5D1C4BA56B6E2C817DB360BAD40D695281BDB3C02E`.
+- FFPFSC: 15,794,176 bytes, SHA-256
+  `735D2EA8C5E4B6D09916C043D3C871A57D82F7365042E9803A6185C8116149A2`.
+- Result: compared with PPSA99763, only 872 pixels change and no channel changes
+  by more than two values. Those differences are confined to white artwork
+  labels and are consistent with blend rounding. The 32-pixel `K` support map
+  remains unchanged, with 18 extra and 8 missing pixels against the LVGL atlas.
+  The next diagnostic will force all loaded TGA textures through this path and
+  record the actual source/destination rectangles to `/download0`.
