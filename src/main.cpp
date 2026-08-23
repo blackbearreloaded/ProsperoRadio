@@ -8,6 +8,8 @@
 #include <RmlUi/Core/RenderInterfaceCompatibility.h>
 #include <RmlUi/Core/SystemInterface.h>
 
+#include "bitmap_font_engine.h"
+
 #include <cstdio>
 #include <cstddef>
 #include <cstring>
@@ -413,7 +415,19 @@ private:
 };
 
 bool LoadFonts() {
-    return Rml::LoadFontFace("ui/fonts/Montserrat-Medium.ttf");
+    static constexpr const char* kBitmapFonts[] = {
+        "ui/fonts/lvgl-bitmap/Montserrat-20.fnt",
+        "ui/fonts/lvgl-bitmap/Montserrat-24.fnt",
+        "ui/fonts/lvgl-bitmap/Montserrat-28.fnt",
+        "ui/fonts/lvgl-bitmap/Montserrat-32.fnt",
+        "ui/fonts/lvgl-bitmap/Montserrat-36.fnt",
+        "ui/fonts/lvgl-bitmap/Montserrat-40.fnt",
+        "ui/fonts/lvgl-bitmap/Montserrat-48.fnt",
+    };
+    for (const char* font : kBitmapFonts) {
+        if (!Rml::LoadFontFace(font)) return false;
+    }
+    return true;
 }
 
 [[noreturn]] void KeepProcessAlive() {
@@ -438,7 +452,7 @@ bool RunSmoke() {
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99760", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99761", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
@@ -449,10 +463,12 @@ bool RunSmoke() {
     AppSystemInterface system_interface;
     AppFileInterface file_interface;
     SdlRenderInterface render_interface(renderer);
+    BitmapFontEngine font_engine;
     Rml::RenderInterface* adapted_render_interface = render_interface.GetAdaptedInterface();
     Rml::SetSystemInterface(&system_interface);
     Rml::SetFileInterface(&file_interface);
     Rml::SetRenderInterface(adapted_render_interface);
+    Rml::SetFontEngineInterface(&font_engine);
 
     bool running = Rml::Initialise();
     if (running) running = LoadFonts();
@@ -478,7 +494,7 @@ bool RunSmoke() {
         SDL_RenderFlush(renderer);
         SDL_UpdateWindowSurface(window);
         if (!screenshot_saved) {
-            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99760-ui.bmp") == 0;
+            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99761-ui.bmp") == 0;
         }
         sceKernelUsleep(16667);
     }
