@@ -391,3 +391,14 @@ isolated crash regression.
   - retains `SDL_RenderGeometry` as the fallback for all other geometry;
   - uses nearest sampling and writes `/download0/PPSA99744-ui.bmp` for native
     1920x1080 comparison.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki
+  before releasing the shared PS5 lock.
+- Evidence: `PPSA99744-native/PPSA99744-ui.bmp`, SHA-256
+  `C553199B849314471245D700A406E004D1043C8EEFEFE6863B9BC7952C637BCE`.
+- FFPFSC: 13,434,880 bytes, SHA-256
+  `6748D8D02DF7CE0EAF3B28A037A7905FCA69494E0253D7538670E2CBEA146CD8`.
+- Result: exact blitting changes glyph-edge pixels and removes the triangle
+  path as a source of nondeterminism. The enlarged comparison still preserves
+  Roboto's objectionable lowercase `r` shoulder, proving that remaining shape
+  is in the hinted glyph rather than its quad rasterization.
