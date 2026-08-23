@@ -365,3 +365,13 @@ isolated crash regression.
   - keeps the byte-equivalent Roboto font loading, RmlUi markup, RCSS, and SDL
     rendering paths verified in PPSA99742;
   - removes the one-time `/download0` BMP capture.
+- Outcome: entered `eboot`, remained stable through observation, closed
+  cleanly, and released its runtime layers. Chiaki exited before the shared PS5
+  lock was released.
+- Evidence: `PPSA99743-20260823-142235-result.json` and klog; lifecycle
+  classification is `entered-eboot`.
+- FFPFSC: 13,434,880 bytes, SHA-256
+  `AED5BD1E8BB00CA79553D1AC5A64543BF81FA561D213C732EC888FE6D29DE22C`.
+- Result: production polished-UI milestone complete. Its rendering path is
+  equivalent to the lossless PPSA99742 frame, with no diagnostic filesystem
+  activity in the frame loop.
