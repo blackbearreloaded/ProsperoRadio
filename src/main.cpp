@@ -9,9 +9,12 @@
 #include <RmlUi/Core/SystemInterface.h>
 
 #include <cstdio>
+#include <cstdint>
 #include <cstdlib>
 #include <vector>
 
+extern "C" int sceKernelUsleep(uint32_t microseconds);
+extern "C" int sceSystemServiceHideSplashScreen(void);
 extern "C" void* __dso_handle = nullptr;
 extern "C" char __eh_frame_hdr_start[1] = {};
 extern "C" char __eh_frame_hdr_end[1] = {};
@@ -144,12 +147,18 @@ private:
     SDL_Rect scissor_{};
 };
 
+[[noreturn]] void KeepProcessAlive() {
+    for (;;) {
+        sceKernelUsleep(1000000);
+    }
+}
+
 bool RunSmoke() {
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         return false;
     }
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99701", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99702", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Renderer* renderer = window ? SDL_CreateRenderer(window, -1,
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC) : nullptr;
@@ -208,5 +217,7 @@ bool RunSmoke() {
 } // namespace
 
 int main() {
-    return RunSmoke() ? 0 : 1;
+    sceSystemServiceHideSplashScreen();
+    RunSmoke();
+    KeepProcessAlive();
 }
