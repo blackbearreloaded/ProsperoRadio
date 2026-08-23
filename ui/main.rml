@@ -1,0 +1,175 @@
+<rml>
+    <head>
+        <title>Radio Browser</title>
+        <link type="text/rcss" href="styles/app.rcss" />
+    </head>
+    <body>
+        <div id="app-shell" class="app-shell">
+            <header class="topbar">
+                <div class="brand">
+                    <div class="brand-mark" aria-hidden="true">◉</div>
+                    <div>
+                        <div class="brand-name">RADIO BROWSER</div>
+                        <div class="brand-subtitle">LIVE STATIONS</div>
+                    </div>
+                </div>
+                <div class="topbar-title">Browse</div>
+                <div class="topbar-actions">
+                    <button class="icon-button" aria-label="Search">⌕</button>
+                    <button class="icon-button" aria-label="Settings">⚙</button>
+                </div>
+            </header>
+
+            <main class="main">
+                <!-- Preview default: browse. The bridge can toggle is-active on these panels. -->
+                <section id="state-boot" class="state-panel" data-state="boot">
+                    <div class="boot-mark" aria-hidden="true">◉</div>
+                    <h1>Radio Browser</h1>
+                    <p class="muted">Tune in to stations from around the world.</p>
+                    <div class="loading-line" aria-label="Loading"></div>
+                    <p class="loading-label">Starting up…</p>
+                </section>
+
+                <section id="state-browse" class="state-panel is-active" data-state="browse">
+                    <div class="screen-header">
+                        <div>
+                            <p class="eyebrow">RADIO BROWSER</p>
+                            <h1>Find your signal</h1>
+                            <p class="muted">Explore popular stations or browse by sound and place.</p>
+                        </div>
+                        <div class="header-actions">
+                            <button class="button secondary">Refresh</button>
+                            <button class="button primary">Search stations</button>
+                        </div>
+                    </div>
+
+                    <nav class="filter-row" aria-label="Station filters">
+                        <button class="filter active">Popular</button>
+                        <button class="filter">Favorites</button>
+                        <button class="filter">Genres</button>
+                        <button class="filter">Countries</button>
+                    </nav>
+
+                    <div class="content-layout">
+                        <div class="station-area">
+                            <div class="section-heading">
+                                <h2>Popular near you</h2>
+                                <span class="result-count">24 stations</span>
+                            </div>
+                            <div class="station-grid">
+                                <button class="station-card selected">
+                                    <span class="station-art art-blue">FM</span>
+                                    <span class="station-copy">
+                                        <span class="station-name">KEXP 90.3 FM</span>
+                                        <span class="station-meta">Seattle · Indie / Alternative</span>
+                                        <span class="station-status"><span class="status-dot online"></span>128 kbps · MP3</span>
+                                    </span>
+                                    <span class="favorite">★</span>
+                                </button>
+                                <button class="station-card">
+                                    <span class="station-art art-orange">JAZZ</span>
+                                    <span class="station-copy">
+                                        <span class="station-name">Jazz24</span>
+                                        <span class="station-meta">Seattle · Jazz</span>
+                                        <span class="station-status"><span class="status-dot online"></span>128 kbps · MP3</span>
+                                    </span>
+                                    <span class="favorite">☆</span>
+                                </button>
+                                <button class="station-card">
+                                    <span class="station-art art-green">BBC</span>
+                                    <span class="station-copy">
+                                        <span class="station-name">BBC Radio 6 Music</span>
+                                        <span class="station-meta">United Kingdom · Eclectic</span>
+                                        <span class="station-status"><span class="status-dot online"></span>320 kbps · AAC</span>
+                                    </span>
+                                    <span class="favorite">☆</span>
+                                </button>
+                                <button class="station-card">
+                                    <span class="station-art art-purple">NTS</span>
+                                    <span class="station-copy">
+                                        <span class="station-name">NTS Radio</span>
+                                        <span class="station-meta">London · Electronic</span>
+                                        <span class="station-status"><span class="status-dot online"></span>128 kbps · MP3</span>
+                                    </span>
+                                    <span class="favorite">☆</span>
+                                </button>
+                                <button class="station-card">
+                                    <span class="station-art art-red">KCRW</span>
+                                    <span class="station-copy">
+                                        <span class="station-name">KCRW Eclectic24</span>
+                                        <span class="station-meta">Santa Monica · Eclectic</span>
+                                        <span class="station-status"><span class="status-dot online"></span>128 kbps · AAC</span>
+                                    </span>
+                                    <span class="favorite">☆</span>
+                                </button>
+                                <button class="station-card">
+                                    <span class="station-art art-gold">DR</span>
+                                    <span class="station-copy">
+                                        <span class="station-name">DR P8 Jazz</span>
+                                        <span class="station-meta">Denmark · Jazz</span>
+                                        <span class="station-status"><span class="status-dot online"></span>192 kbps · MP3</span>
+                                    </span>
+                                    <span class="favorite">☆</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <aside class="now-playing" aria-label="Selected station">
+                            <p class="eyebrow">SELECTED STATION</p>
+                            <div class="player-art art-blue">FM</div>
+                            <h2>KEXP 90.3 FM</h2>
+                            <p class="muted">Seattle · Indie / Alternative</p>
+                            <div class="player-rule"></div>
+                            <p class="playing-label"><span class="status-dot online"></span> Ready to play</p>
+                            <button class="play-button" aria-label="Play station">▶</button>
+                            <div class="player-actions">
+                                <button class="button secondary">☆ Favorite</button>
+                                <button class="button secondary">Station info</button>
+                            </div>
+                        </aside>
+                    </div>
+                </section>
+
+                <section id="state-empty" class="state-panel" data-state="empty">
+                    <div class="empty-state">
+                        <div class="empty-mark" aria-hidden="true">⌁</div>
+                        <p class="eyebrow">NO STATIONS YET</p>
+                        <h1>Your favorites will live here</h1>
+                        <p class="muted">Browse stations and press the star to save the ones you want close at hand.</p>
+                        <button class="button primary">Browse popular stations</button>
+                    </div>
+                </section>
+
+                <section id="state-error" class="state-panel" data-state="error">
+                    <div class="error-state">
+                        <div class="error-mark" aria-hidden="true">!</div>
+                        <p class="eyebrow">CAN’T LOAD STATIONS</p>
+                        <h1>Radio Browser is unavailable</h1>
+                        <p class="muted">Check your network connection, then try again. Your favorites are still available on this PS5.</p>
+                        <div class="error-actions">
+                            <button class="button primary">Try again</button>
+                            <button class="button secondary">View favorites</button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+
+            <footer class="bottom-bar">
+                <div class="controller-hint"><span class="key">✕</span> Select</div>
+                <div class="controller-hint"><span class="key">○</span> Back</div>
+                <div class="controller-hint"><span class="key">□</span> Favorite</div>
+                <div class="controller-hint"><span class="key">OPTIONS</span> Menu</div>
+                <div class="connection-status"><span class="status-dot online"></span> Connected</div>
+            </footer>
+
+            <div class="player-strip">
+                <div class="strip-art art-blue">FM</div>
+                <div class="strip-copy"><strong>KEXP 90.3 FM</strong><span>Seattle · Indie / Alternative</span></div>
+                <span class="strip-live"><span class="status-dot online"></span> LIVE</span>
+                <button class="strip-button" aria-label="Previous station">◀</button>
+                <button class="strip-button strip-play" aria-label="Play station">▶</button>
+                <button class="strip-button" aria-label="Next station">▶</button>
+            </div>
+        </div>
+    </body>
+</rml>

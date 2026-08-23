@@ -1,0 +1,125 @@
+:root {
+    --bg: #071016;
+    --surface: #0d1b24;
+    --surface-raised: #142934;
+    --surface-selected: #1c3b48;
+    --border: #31505d;
+    --text: #f2f7f8;
+    --muted: #a7bbc0;
+    --accent: #70e1dc;
+    --accent-strong: #1e8f94;
+    --success: #69d997;
+    --warning: #f3c969;
+    --danger: #ff7c7c;
+    --focus: #ffffff;
+    --safe-x: 64px;
+    --safe-y: 34px;
+}
+
+* { box-sizing: border-box; }
+body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    min-width: 960px;
+    min-height: 540px;
+    overflow: hidden;
+    background: #071016;
+    color: #f2f7f8;
+    font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+    font-size: 21px;
+    line-height: 1.25;
+}
+button { font: inherit; nav: auto; }
+button:focus, .station-card:focus, .filter:focus, .play-button:focus, .icon-button:focus, .strip-button:focus {
+    outline: 4px solid #ffffff;
+    outline-offset: 4px;
+    box-shadow: 0 0 0 7px rgba(112, 225, 220, .35);
+}
+button:hover { border-color: #70e1dc; }
+
+.app-shell { width: 100%; height: 100%; display: flex; flex-direction: column; background: radial-gradient(circle at 75% 0%, #12313b 0, #071016 40%); }
+.topbar { height: 96px; padding: 0 64px; display: flex; align-items: center; gap: 28px; border-bottom: 1px solid #31505d; background: rgba(7, 16, 22, .96); }
+.brand { display: flex; align-items: center; gap: 14px; min-width: 300px; }
+.brand-mark, .boot-mark { color: #70e1dc; font-size: 44px; line-height: 1; }
+.brand-name { font-size: 25px; font-weight: 800; letter-spacing: 1.5px; }
+.brand-subtitle { margin-top: 3px; color: #a7bbc0; font-size: 12px; letter-spacing: 2px; }
+.topbar-title { flex: 1; color: #a7bbc0; font-size: 27px; }
+.topbar-actions { display: flex; gap: 12px; }
+.icon-button, .strip-button { min-width: 54px; min-height: 54px; padding: 8px 14px; border: 2px solid #31505d; border-radius: 8px; background: #0d1b24; color: #f2f7f8; cursor: pointer; }
+.main { position: relative; flex: 1; min-height: 0; }
+.state-panel { position: absolute; inset: 0; display: none; padding: 34px 64px 140px; overflow: auto; }
+.state-panel.is-active { display: block; }
+.screen-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+h1, h2, p { margin-top: 0; }
+h1 { margin-bottom: 8px; font-size: 43px; line-height: 1.05; }
+h2 { margin-bottom: 8px; font-size: 27px; }
+.muted { color: #a7bbc0; }
+.eyebrow { margin-bottom: 8px; color: #70e1dc; font-size: 14px; font-weight: 800; letter-spacing: 1.8px; }
+.header-actions, .error-actions, .player-actions { display: flex; gap: 12px; }
+.button { min-height: 58px; padding: 12px 22px; border: 2px solid #31505d; border-radius: 8px; background: #142934; color: #f2f7f8; cursor: pointer; font-weight: 700; }
+.button.primary { border-color: #70e1dc; background: #1e8f94; }
+.button.secondary { background: transparent; }
+.filter-row { display: flex; gap: 10px; margin-bottom: 25px; }
+.filter { min-height: 50px; padding: 8px 20px; border: 2px solid transparent; border-radius: 7px; background: transparent; color: #a7bbc0; cursor: pointer; font-weight: 700; }
+.filter.active { border-color: #70e1dc; background: #1c3b48; color: #f2f7f8; }
+.content-layout { display: flex; align-items: start; gap: 28px; }
+.station-area { flex: 1; min-width: 0; }
+.section-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
+.result-count { color: #a7bbc0; font-size: 16px; }
+.station-grid { display: flex; flex-wrap: wrap; gap: 14px; }
+.station-card { position: relative; display: flex; flex: 1 1 45%; align-items: center; gap: 16px; min-width: 320px; min-height: 126px; padding: 16px; border: 2px solid #31505d; border-radius: 10px; background: #0d1b24; color: #f2f7f8; text-align: left; cursor: pointer; }
+.station-card.selected { border-color: #70e1dc; background: #1c3b48; }
+.station-art, .player-art, .strip-art { display: flex; align-items: center; justify-content: center; flex: none; background: #25617a; color: #fff; font-weight: 900; letter-spacing: 1px; }
+.station-art { width: 76px; height: 76px; font-size: 20px; }
+.station-copy { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
+.station-name { overflow: hidden; font-size: 22px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.station-meta, .station-status { color: #a7bbc0; font-size: 16px; }
+.station-status { display: flex; align-items: center; gap: 7px; }
+.favorite { position: absolute; top: 13px; right: 14px; color: #70e1dc; font-size: 24px; }
+.status-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #a7bbc0; }
+.status-dot.online { background: #69d997; }
+.now-playing { width: 285px; flex: none; padding: 22px; border: 2px solid #70e1dc; background: rgba(20, 41, 52, .92); }
+.player-art { width: 100%; height: 150px; margin-bottom: 20px; font-size: 44px; }
+.now-playing h2 { font-size: 27px; }
+.player-rule { height: 1px; margin: 22px 0 16px; background: #31505d; }
+.playing-label { display: flex; align-items: center; gap: 8px; color: #69d997; font-size: 16px; font-weight: 700; }
+.play-button { display: block; width: 76px; height: 76px; margin: 18px auto 22px; border: 0; border-radius: 50%; background: #70e1dc; color: #061016; cursor: pointer; font-size: 30px; }
+.player-actions { flex-direction: column; }
+.player-actions .button { min-height: 48px; font-size: 16px; }
+.bottom-bar { position: absolute; right: 0; bottom: 0; left: 0; display: flex; align-items: center; gap: 22px; height: 66px; padding: 0 64px; border-top: 1px solid #31505d; background: rgba(7, 16, 22, .98); color: #a7bbc0; font-size: 15px; }
+.controller-hint { display: flex; align-items: center; gap: 7px; }
+.key { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; padding: 0 6px; border: 1px solid #a7bbc0; border-radius: 6px; color: #f2f7f8; font-size: 13px; font-weight: 800; }
+.connection-status { display: flex; align-items: center; gap: 8px; margin-left: auto; color: #69d997; }
+.player-strip { position: absolute; right: 48px; bottom: 82px; left: 48px; z-index: 2; display: flex; align-items: center; gap: 14px; min-height: 76px; padding: 10px 16px; border: 2px solid #70e1dc; background: #102530; box-shadow: 0 12px 28px rgba(0, 0, 0, .35); }
+.strip-art { width: 52px; height: 52px; font-size: 15px; }
+.strip-copy { display: flex; flex-direction: column; flex: 1; gap: 2px; }
+.strip-copy span { color: #a7bbc0; font-size: 15px; }
+.strip-live { display: flex; align-items: center; gap: 7px; margin-right: 10px; color: #69d997; font-size: 14px; font-weight: 800; }
+.strip-button { min-width: 44px; min-height: 44px; padding: 4px; border-radius: 50%; }
+.strip-play { background: #70e1dc; color: #061016; border-color: #70e1dc; }
+
+.state-panel[data-state="boot"], .state-panel[data-state="empty"], .state-panel[data-state="error"] { align-items: center; justify-content: center; text-align: center; }
+.state-panel[data-state="boot"].is-active, .state-panel[data-state="empty"].is-active, .state-panel[data-state="error"].is-active { display: flex; }
+.state-panel[data-state="boot"] h1 { margin-top: 18px; }
+.boot-mark { font-size: 80px; }
+.loading-line { width: 360px; height: 8px; margin: 34px auto 12px; overflow: hidden; background: #31505d; }
+.loading-line::after { display: block; width: 42%; height: 100%; background: #70e1dc; content: ""; }
+.loading-label { color: #a7bbc0; font-size: 16px; }
+.empty-state, .error-state { max-width: 660px; padding: 50px; border: 2px dashed #31505d; background: rgba(13, 27, 36, .76); }
+.empty-mark, .error-mark { margin-bottom: 20px; color: #70e1dc; font-size: 68px; font-weight: 900; }
+.error-state { border-color: #ff7c7c; }
+.error-mark { color: #ff7c7c; }
+.empty-state h1, .error-state h1 { font-size: 36px; }
+.empty-state .button, .error-state .button { margin-top: 14px; }
+.error-actions { justify-content: center; }
+.art-orange { background: #a45335; }
+.art-green { background: #36735e; }
+.art-purple { background: #684b8d; }
+.art-red { background: #963f4d; }
+.art-gold { background: #8d7133; }
+
+/* The C++ bridge can set reduce-motion when animation support is undesirable. */
+.reduce-motion *, .reduce-motion *::after, .reduce-motion *::before { animation: none !important; transition: none !important; }
+
+

@@ -1,0 +1,42 @@
+{
+  "titleName": "PS5 Radio Browser",
+  "titleId": "PPSA99468",
+  "conceptId": "99468",
+  "contentId": "UP9000-PPSA99468_00-RADIOAPP00000001",
+  "moduleSdkVersion": "0x02000009",
+  "companionSdkVersion": "0x08050001",
+  "fselfMagic": "0x1D3D154F",
+  "downloadDataSize": 256,
+  "sources": [
+    "src/main.cpp"
+  ],
+  "compileDefinitions": [
+    "SDL_MAIN_HANDLED",
+    "SDL_STATIC_LIB",
+    "USING_GENERATED_CONFIG_H",
+    "RMLUI_STATIC_LIB"
+  ],
+  "includePaths": [
+    "vendor/ps5/sdl/include",
+    "vendor/ps5/sdl/include/SDL2",
+    "vendor/ps5/rmlui/include"
+  ],
+  "staticArchives": [
+    "vendor/ps5/sdl/lib/libSDL2.a",
+    "vendor/ps5/rmlui/lib/librmlui.a",
+    "vendor/ps5/sdk/lib/libunwind.a",
+    "vendor/ps5/sdk/lib/libcxx.a",
+    "vendor/ps5/sdk/lib/libcxxabi.a"
+  ],
+  "stubLibraries": [
+    "vendor/ps5/sdk/stubs/libSceLibcInternal.so",
+    "vendor/ps5/sdk/stubs/libkernel.so"
+  ],
+  "runtimeModules": [
+    {
+      "source": "runtime/libc.prx",
+      "name": "libc.prx",
+      "sha256": "CD961EE6ED3D08117459B0FE70D86FE322672EBE0103678EE7C3F15AF7E00504"
+    }
+  ]
+}
