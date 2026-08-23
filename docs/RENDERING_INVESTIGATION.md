@@ -333,3 +333,15 @@ isolated crash regression.
   extend behind the player strip, and the third card row has insufficient
   clearance above it. PPSA99742 will retain this typography while compacting
   only the surrounding panel and strip geometry.
+
+## PPSA99742 - TV-scale layout clearance
+
+- Goal: retain PPSA99741's hardware-verified Roboto rendering and larger text
+  while restoring deliberate space around the fixed player strip.
+- Changes:
+  - widens and compacts the selected-station panel so metadata stays on one
+    line and both actions remain above the player strip;
+  - reduces card chrome by six pixels without changing card text sizes;
+  - lowers the player strip by six pixels while retaining a ten-pixel gap above
+    the footer;
+  - writes `/download0/PPSA99742-ui.bmp` for exact 1920x1080 inspection.
