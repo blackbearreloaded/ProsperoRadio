@@ -356,3 +356,12 @@ isolated crash regression.
   baselines throughout. All six cards, both selected-station actions, the
   player strip, and the footer fit with clear separation and no clipping,
   overlap, malformed controls, or unintended wrapping.
+
+## PPSA99743 - production polished UI
+
+- Goal: package the hardware-verified PPSA99742 typography and layout without
+  diagnostic writes in the runtime frame loop.
+- Changes:
+  - keeps the byte-equivalent Roboto font loading, RmlUi markup, RCSS, and SDL
+    rendering paths verified in PPSA99742;
+  - removes the one-time `/download0` BMP capture.
