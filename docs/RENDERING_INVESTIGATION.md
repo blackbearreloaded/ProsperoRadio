@@ -1023,3 +1023,37 @@ isolated crash regression.
   for each space glyph; one degenerate quad made the all-or-fallback batch
   validator reject the complete string. The fix is to preserve the space
   advance and kerning while omitting only its empty geometry.
+
+## PPSA99766 - pixel-exact LVGL text rendering
+
+- Commit: `0c648cf`
+- Goal: keep whitespace metrics and kerning while allowing every visible glyph
+  in a string to use the exact retained-atlas surface blitter.
+- Changes:
+  - omits geometry only for zero-area glyphs such as spaces;
+  - still applies their kerning, advance, and CSS letter spacing;
+  - restores CPU surfaces to LVGL font atlases only and removes the bounded
+    runtime trace;
+  - preserves RmlUi HTML/RCSS layout, SDL icons, and all non-font geometry.
+- Outcome: entered `eboot`, wrote the native frame, remained stable, closed
+  cleanly, and released its runtime layers and Chiaki before the PS5 lock was
+  released. Final lock state was free and the local Chiaki process count was
+  zero.
+- Evidence:
+  - `PPSA99766-native/PPSA99766-ui.bmp`, SHA-256
+    `AE797A4096DCDA55A3D79146BFE48A2C898FDD42A1036D75E9A61C273CDA438C`;
+  - `PPSA99766-20260823-182218-result.json`, lifecycle result `entered-eboot`;
+  - eboot SHA-256
+    `B40A9F748D3A2F71C79080558836CDB68713D743454374862E8044DF66F224D9`.
+- FFPFSC: 15,794,176 bytes, SHA-256
+  `8F642F6E0807752462B34DB6D5F6B3B319866ABC98E9D1B91510EE4A2D8E6E15`.
+- Exact pixel audit: reconstructed masks from the generated FNT/TGA assets were
+  compared with the native framebuffer after inverting the known foreground
+  and background blend palette. `RADIO BROWSER`, `Popular stations`, both
+  `KEXP 90.3 FM` sizes, `Seattle - Alternative`, `NTS Radio`,
+  `London - Electronic`, and the selected metadata all report
+  `support_diff=0`, `alpha_diff=0`, and `alpha_abs=0`.
+- Result: RmlUi now places the same integer-advanced, class-kerned glyph masks
+  as LVGL, and SDL copies every coverage texel without texture sampling. The
+  previously malformed `K`, `P`, `9`, slash, `N`, `S`, lowercase letters, and
+  lower rows are byte-exact to their LVGL source masks.
