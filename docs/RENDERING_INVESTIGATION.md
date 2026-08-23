@@ -627,3 +627,50 @@ isolated crash regression.
 - Result: production redesign milestone complete. The page uses fewer, larger
   strings with explicit vertical clearance and controller-native iconography;
   it has no proprietary font dependency and no text-based PS5 button labels.
+
+## PPSA99754 - Source Sans and generated controller assets
+
+- Goal: remove the remaining malformed Noto Sans glyph shapes reported in
+  `NTS Radio` and replace the block-built footer controls with polished bitmap
+  symbols.
+- Typography diagnosis: the lossless PPSA99753 layout already had substantial
+  vertical clearance. The residual uneven `N`, `S`, `a`, `r`, and slash shapes
+  were therefore font-outline/raster results, not CSS descendants clipping one
+  another.
+- Changes:
+  - replaces Noto Sans with Adobe Source Sans 3 v3.052 static Regular and
+    Semibold OTF/CFF1 faces under the SIL Open Font License 1.1;
+  - preserves the verified integer font sizes, integer line boxes, two-line
+    cards, and exact glyph-quad renderer;
+  - replaces all five footer controller constructions with ImageGen-derived
+    Cross, Circle, Square, Triangle, and Options masks;
+  - exports each runtime icon as a straight-alpha, uncompressed 36 x 36 TGA and
+    renders it 1:1 with nearest sampling;
+  - adds a minimal TGA loader to the existing SDL renderer, without SDL_image
+    or another image dependency;
+  - writes `/download0/PPSA99754-ui.bmp` for lossless inspection.
+- Font provenance:
+  - upstream: `https://github.com/adobe-fonts/source-sans`, tag `3.052R`;
+  - Regular SHA-256:
+    `08DF266400933D3178D081A45F94A08814C3E55B4B7DD2E0FF69CB1329F13AB6`;
+  - Semibold SHA-256:
+    `36F1CD2C344AA3109E64429BCE41A41E4B2B923BEB2DB19B8DBF9BB56F05A4F9`.
+- Image generation provenance: `ui/icons/README.md` retains the complete prompt,
+  generated source mask, transparent masters, runtime palette, and conversion
+  description.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki
+  before releasing the shared PS5 lock. A second brief locked operation fetched
+  the download image, then released the lock again.
+- Evidence:
+  - `PPSA99754-native/PPSA99754-ui.bmp`, SHA-256
+    `56C9E864C583BF0F4555FB2C9B6B58A62EDEF093B980454F2A2917011D1AC678`;
+  - `PPSA99754-20260823-161631-running.png`, SHA-256
+    `576C6D97B16B08C297FF986A541721A785817DF8FD41E745B35CEFA500E8397F`;
+  - exact native crops: `brand.png`, `nts-card.png`, `selected.png`, and
+    `controller-icons.png` under `PPSA99754-native`.
+- FFPFSC: 15,007,744 bytes, SHA-256
+  `D992B9779E91E1D7B4E3059A6F92AE3C2D0F0095CA81C3A2B94DDBF454358410`.
+- Result: the native framebuffer shows complete lower glyph rows, a consistent
+  baseline, clean Source Sans letterforms in every reported problem string,
+  and smooth, recognizable controller symbols with no scaling artifacts.
