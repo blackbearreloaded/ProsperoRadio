@@ -1,5 +1,5 @@
 diff --git a/tools/SharpProspero.Link/DynamicWriter.cs b/tools/SharpProspero.Link/DynamicWriter.cs
-index 125daac..6800bea 100644
+index 125daac..6c2d072 100644
 --- a/tools/SharpProspero.Link/DynamicWriter.cs
 +++ b/tools/SharpProspero.Link/DynamicWriter.cs
 @@ -97,10 +97,7 @@ public static class DynamicWriter
@@ -125,6 +125,29 @@ index 125daac..6800bea 100644
          // A symbol defined in a section another object carried first has no address of its own: the
          // reference resolves through the copy that was kept, the same way an undefined one does.
          if (!sym.IsUndefined && !resolution.DroppedSections.Contains((obj, sym.SectionIndex)))
+@@ -1987,10 +1997,10 @@ public static class DynamicWriter
+     /// The heap figures the module carries for the C library to point at. A module that names no size
+     /// gets the library's built-in one, which is a quarter of a megabyte for the whole process - enough
+     /// to start almost nothing, and reached silently, as an allocation simply failing. The value below
+-    /// is the one the platform's own header gives for "no limit", and it is what most shipping modules
+-    /// carry; the flag beside it clears the same limit by a second route.
++    /// is an explicit finite request because this app launch path ignores the platform's unlimited
++    /// sentinel and silently falls back to the quarter-megabyte default.
+     /// </summary>
+-    private const ulong LibcHeapNoLimit = 0xFFFFFFFFFFFFFFFF;
++    private const ulong LibcHeapSize = 128UL * 1024 * 1024;
+ 
+     /// <summary>Where each block starts, measured from the first.</summary>
+     private static readonly int[] ParamBlockOffsets =
+@@ -2022,7 +2032,7 @@ public static class DynamicWriter
+             if (counts[i] != 0)
+                 BinaryPrimitives.WriteUInt64LittleEndian(b.AsSpan(ParamBlockOffsets[i] + 8), counts[i]);
+         }
+-        BinaryPrimitives.WriteUInt64LittleEndian(b.AsSpan(HeapSizeValueOffset), LibcHeapNoLimit);
++        BinaryPrimitives.WriteUInt64LittleEndian(b.AsSpan(HeapSizeValueOffset), LibcHeapSize);
+         BinaryPrimitives.WriteUInt32LittleEndian(b.AsSpan(HeapExtendedValueOffset), 1);
+         return b;
+     }
 @@ -2034,19 +2044,19 @@ public static class DynamicWriter
      // this block verbatim, which is where its contents come from rather than from inference.
      //

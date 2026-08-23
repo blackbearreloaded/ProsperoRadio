@@ -10,7 +10,6 @@
 #include <cstdio>
 #include <cstdint>
 #include <cstdlib>
-#include <new>
 #include <pthread.h>
 #include <vector>
 
@@ -21,16 +20,6 @@ extern "C" char __eh_frame_hdr_start[1] = {};
 extern "C" char __eh_frame_hdr_end[1] = {};
 extern "C" char __eh_frame_start[1] = {};
 extern "C" char __eh_frame_end[1] = {};
-
-void* operator new(std::size_t size) {
-    void* allocation = std::malloc(size == 0 ? 1 : size);
-    if (!allocation) {
-        std::fprintf(stderr, "[radio] operator new failed: %zu bytes\n", size);
-        std::fflush(stderr);
-        std::abort();
-    }
-    return allocation;
-}
 
 extern "C" int pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
     constexpr int running = 2;
@@ -227,7 +216,7 @@ bool RunSmoke() {
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return false;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99718", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99719", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
