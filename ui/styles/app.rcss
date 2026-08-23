@@ -91,7 +91,7 @@ h2 { margin-bottom: 8px; font-size: 30px; }
 .favorite { position: absolute; top: 13px; right: 14px; color: #70e1dc; font-size: 20px; font-weight: 600; }
 .status-dot { display: inline-block; width: 9px; height: 9px; background: #a7bbc0; }
 .status-dot.online { background: #69d997; }
-.now-playing { width: 360px; flex: none; overflow: hidden; padding: 14px; border: 2px #70e1dc; background: rgba(20, 41, 52, .92); }
+.now-playing { width: 390px; flex: none; overflow: hidden; padding: 14px; border: 2px #70e1dc; background: rgba(20, 41, 52, .92); }
 .player-art { width: 100%; height: 118px; margin-bottom: 10px; font-size: 44px; line-height: 118px; }
 .now-playing h2 { margin-bottom: 4px; font-size: 30px; line-height: 1.35; }
 .player-rule { height: 1px; margin: 10px 0 8px; background: #31505d; }

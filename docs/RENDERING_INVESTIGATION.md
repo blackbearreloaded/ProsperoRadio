@@ -425,3 +425,14 @@ isolated crash regression.
   complete lower rows, and less blocky emphasis. Inter's wider metadata wraps
   in the selected-station panel, making its lower edge touch the player strip;
   PPSA99746 will correct only that width-dependent layout regression.
+
+## PPSA99746 - pixel-perfect Inter layout
+
+- Goal: retain PPSA99745's verified Inter glyph rendering while restoring clear
+  separation between the selected-station panel and player strip.
+- Changes:
+  - widens only the selected-station panel from 360 to 390 pixels so its fixed
+    metadata remains on one line and shortens the panel by one text line;
+  - retains all font sizes, line heights, card dimensions, and exact glyph-quad
+    blitting from PPSA99745;
+  - writes `/download0/PPSA99746-ui.bmp` for final native layout inspection.
