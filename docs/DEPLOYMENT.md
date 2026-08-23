@@ -34,6 +34,12 @@ Keep loader and mount services on a trusted local network.
 Rebuild the selected format immediately before deployment so an older package
 is not mistaken for the current application.
 
+## Title ID allocation
+
+The current app identity is `PPSA99700`. Allocate the next app as `PPSA99701`
+and increment the five-digit numeric suffix by one for each future app. Keep
+the `conceptId` and the title-ID portion of `contentId` synchronized.
+
 ## Smoke test
 
 The default application hides the splash screen, displays
