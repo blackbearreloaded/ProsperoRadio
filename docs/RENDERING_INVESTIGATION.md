@@ -280,3 +280,12 @@ isolated crash regression.
   - makes a matched DejaVu Sans 2.37 regular/bold pair the primary UI family;
   - preserves the verified safe line boxes and Noto Emoji fallback;
   - writes `/download0/PPSA99739-ui.bmp` for exact 1920x1080 inspection.
+- Outcome: entered `eboot`, remained stable, closed cleanly, and released its
+  runtime layers.
+- Evidence: `PPSA99739-native/PPSA99739-ui.bmp`, SHA-256
+  `6D51505708A4A3E4BDECF0C29769C8C8EDFF2D027E4D11AC58157713E1CDB09D`.
+- FFPFSC: 12,845,056 bytes, SHA-256
+  `361686F903F16AB257A9159C4CF7F95B712D0525AE43B5088D3600AFF17AE82F`.
+- Result: the native frame shows an even lowercase baseline and a conventional
+  `t` stem/crossbar. The wider face still fits every card, button, player field,
+  and footer label without clipping, overlap, or unintended wrapping.
