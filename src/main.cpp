@@ -223,14 +223,16 @@ public:
 
 class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility {
 public:
-    explicit SdlRenderInterface(SDL_Renderer* renderer) : renderer_(renderer) {
+    SdlRenderInterface(SDL_Renderer* renderer, SDL_Surface* surface) :
+        renderer_(renderer), surface_(surface) {
         SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
     }
 
     void RenderGeometry(Rml::Vertex* rml_vertices, int num_vertices, int* indices,
         int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation) override {
-        if (texture && RenderPixelAlignedQuads(rml_vertices, num_vertices, indices,
-                num_indices, reinterpret_cast<SDL_Texture*>(texture), translation)) {
+        AppTexture* app_texture = reinterpret_cast<AppTexture*>(texture);
+        if (app_texture && RenderPixelAlignedQuads(rml_vertices, num_vertices, indices,
+                num_indices, app_texture, translation)) {
             return;
         }
 
@@ -245,7 +247,7 @@ public:
             sdl_vertex.tex_coord = {vertex.tex_coord.x, vertex.tex_coord.y};
             vertices.push_back(sdl_vertex);
         }
-        SDL_RenderGeometry(renderer_, reinterpret_cast<SDL_Texture*>(texture),
+        SDL_RenderGeometry(renderer_, app_texture ? app_texture->texture : nullptr,
             vertices.data(), num_vertices, indices, num_indices);
     }
 
@@ -295,8 +297,33 @@ public:
             return false;
         }
 
+        auto* app_texture = new AppTexture;
+        app_texture->texture = texture;
+        app_texture->width = width;
+        app_texture->height = height;
+        app_texture->exact_pixels = source.find("lvgl-bitmap") != Rml::String::npos;
+        app_texture->rgba.resize(pixels.size());
+        for (std::size_t i = 0; i < pixels.size(); i += 4) {
+            app_texture->rgba[i + 0] = pixels[i + 2];
+            app_texture->rgba[i + 1] = pixels[i + 1];
+            app_texture->rgba[i + 2] = pixels[i + 0];
+            app_texture->rgba[i + 3] = pixels[i + 3];
+        }
+        if (app_texture->exact_pixels) {
+            app_texture->surface = SDL_CreateRGBSurfaceWithFormatFrom(
+                app_texture->rgba.data(), width, height, 32, width * 4,
+                SDL_PIXELFORMAT_RGBA32);
+            if (!app_texture->surface ||
+                SDL_SetSurfaceBlendMode(app_texture->surface, SDL_BLENDMODE_BLEND) != 0) {
+                SDL_FreeSurface(app_texture->surface);
+                SDL_DestroyTexture(texture);
+                delete app_texture;
+                return false;
+            }
+        }
+
         texture_dimensions = {width, height};
-        texture_handle = reinterpret_cast<Rml::TextureHandle>(texture);
+        texture_handle = reinterpret_cast<Rml::TextureHandle>(app_texture);
         return true;
     }
 
@@ -313,12 +340,24 @@ public:
             SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
             SDL_SetTextureScaleMode(texture, SDL_ScaleModeNearest);
         }
-        texture_handle = reinterpret_cast<Rml::TextureHandle>(texture);
-        return texture != nullptr;
+        if (!texture) return false;
+
+        auto* app_texture = new AppTexture;
+        app_texture->texture = texture;
+        app_texture->width = dimensions.x;
+        app_texture->height = dimensions.y;
+        app_texture->rgba.assign(source, source +
+            static_cast<std::size_t>(dimensions.x) * static_cast<std::size_t>(dimensions.y) * 4);
+        texture_handle = reinterpret_cast<Rml::TextureHandle>(app_texture);
+        return true;
     }
 
     void ReleaseTexture(Rml::TextureHandle texture) override {
-        SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(texture));
+        auto* app_texture = reinterpret_cast<AppTexture*>(texture);
+        if (!app_texture) return;
+        SDL_FreeSurface(app_texture->surface);
+        SDL_DestroyTexture(app_texture->texture);
+        delete app_texture;
     }
 
     void EnableScissorRegion(bool enable) override {
@@ -332,6 +371,21 @@ public:
     }
 
 private:
+    struct AppTexture {
+        SDL_Texture* texture = nullptr;
+        SDL_Surface* surface = nullptr;
+        int width = 0;
+        int height = 0;
+        bool exact_pixels = false;
+        std::vector<Rml::byte> rgba;
+    };
+
+    struct PixelCopy {
+        SDL_Rect source;
+        SDL_Rect destination;
+        Rml::ColourbPremultiplied colour;
+    };
+
     static int RoundPixel(float value) {
         return static_cast<int>(value + (value >= 0.0f ? 0.5f : -0.5f));
     }
@@ -342,21 +396,15 @@ private:
     }
 
     bool RenderPixelAlignedQuads(Rml::Vertex* vertices, int num_vertices, int* indices,
-        int num_indices, SDL_Texture* texture, const Rml::Vector2f& translation) {
+        int num_indices, AppTexture* texture, const Rml::Vector2f& translation) {
         if (num_vertices <= 0 || num_indices <= 0 || num_indices % 6 != 0) return false;
 
-        int texture_width = 0;
-        int texture_height = 0;
-        if (SDL_QueryTexture(texture, nullptr, nullptr, &texture_width, &texture_height) != 0)
-            return false;
+        const int texture_width = texture->width;
+        const int texture_height = texture->height;
+        if (texture_width <= 0 || texture_height <= 0) return false;
 
-        struct Copy {
-            SDL_Rect source;
-            SDL_Rect destination;
-            Rml::ColourbPremultiplied colour;
-        };
         const int num_quads = num_indices / 6;
-        std::vector<Copy> copies;
+        std::vector<PixelCopy> copies;
         copies.reserve(static_cast<size_t>(num_quads));
         for (int quad = 0; quad < num_quads; ++quad) {
             const int index = quad * 6;
@@ -389,26 +437,56 @@ private:
                 source_height != destination_height)
                 return false;
 
+            SDL_Rect source{
+                RoundPixel(v0.tex_coord.x * texture_width),
+                RoundPixel(v0.tex_coord.y * texture_height), source_width, source_height};
+            if (source.x < 0 || source.y < 0 || source.x + source.w > texture_width ||
+                source.y + source.h > texture_height)
+                return false;
             copies.push_back({
-                {RoundPixel(v0.tex_coord.x * texture_width),
-                    RoundPixel(v0.tex_coord.y * texture_height), source_width, source_height},
+                source,
                 {RoundPixel(v0.position.x + translation.x),
                     RoundPixel(v0.position.y + translation.y), destination_width, destination_height},
                 v0.colour});
         }
 
-        for (const Copy& copy : copies) {
-            SDL_SetTextureColorMod(texture, copy.colour.red, copy.colour.green, copy.colour.blue);
-            SDL_SetTextureAlphaMod(texture, copy.colour.alpha);
-            SDL_RenderCopy(renderer_, texture, &copy.source, &copy.destination);
+        if (texture->exact_pixels) return CompositeExactPixels(*texture, copies);
+
+        for (const PixelCopy& copy : copies) {
+            SDL_SetTextureColorMod(texture->texture,
+                copy.colour.red, copy.colour.green, copy.colour.blue);
+            SDL_SetTextureAlphaMod(texture->texture, copy.colour.alpha);
+            SDL_RenderCopy(renderer_, texture->texture, &copy.source, &copy.destination);
         }
 
-        SDL_SetTextureColorMod(texture, 255, 255, 255);
-        SDL_SetTextureAlphaMod(texture, 255);
+        SDL_SetTextureColorMod(texture->texture, 255, 255, 255);
+        SDL_SetTextureAlphaMod(texture->texture, 255);
+        return true;
+    }
+
+    bool CompositeExactPixels(const AppTexture& texture,
+        const std::vector<PixelCopy>& copies) {
+        if (!surface_ || !texture.surface) return false;
+        SDL_RenderFlush(renderer_);
+
+        SDL_Rect old_clip{};
+        SDL_GetClipRect(surface_, &old_clip);
+        SDL_SetClipRect(surface_, scissor_enabled_ ? &scissor_ : nullptr);
+        for (const PixelCopy& copy : copies) {
+            SDL_SetSurfaceColorMod(texture.surface,
+                copy.colour.red, copy.colour.green, copy.colour.blue);
+            SDL_SetSurfaceAlphaMod(texture.surface, copy.colour.alpha);
+            SDL_Rect destination = copy.destination;
+            SDL_BlitSurface(texture.surface, &copy.source, surface_, &destination);
+        }
+        SDL_SetSurfaceColorMod(texture.surface, 255, 255, 255);
+        SDL_SetSurfaceAlphaMod(texture.surface, 255);
+        SDL_SetClipRect(surface_, &old_clip);
         return true;
     }
 
     SDL_Renderer* renderer_;
+    SDL_Surface* surface_;
     SDL_Rect scissor_{};
     bool scissor_enabled_ = false;
 };
@@ -451,7 +529,7 @@ bool RunSmoke() {
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99763", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99764", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
@@ -461,7 +539,7 @@ bool RunSmoke() {
 
     AppSystemInterface system_interface;
     AppFileInterface file_interface;
-    SdlRenderInterface render_interface(renderer);
+    SdlRenderInterface render_interface(renderer, surface);
     BitmapFontEngine font_engine;
     Rml::RenderInterface* adapted_render_interface = render_interface.GetAdaptedInterface();
     Rml::SetSystemInterface(&system_interface);
@@ -493,7 +571,7 @@ bool RunSmoke() {
         SDL_RenderFlush(renderer);
         SDL_UpdateWindowSurface(window);
         if (!screenshot_saved) {
-            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99763-ui.bmp") == 0;
+            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99764-ui.bmp") == 0;
         }
         sceKernelUsleep(16667);
     }
