@@ -13,7 +13,9 @@
                 <button class="icon-button" aria-label="Search stations">
                     <span class="search-icon" aria-hidden="true">
                         <span class="search-ring"></span>
-                        <span class="search-handle"></span>
+                        <span class="search-step search-step-a"></span>
+                        <span class="search-step search-step-b"></span>
+                        <span class="search-step search-step-c"></span>
                     </span>
                 </button>
             </header>
@@ -106,8 +108,11 @@
             <footer class="bottom-bar">
                 <div class="controller-hint">
                     <span class="pad-icon pad-cross" aria-hidden="true">
-                        <span class="pad-stroke cross-a"></span>
-                        <span class="pad-stroke cross-b"></span>
+                        <span class="cross-block cross-a"></span>
+                        <span class="cross-block cross-b"></span>
+                        <span class="cross-block cross-c"></span>
+                        <span class="cross-block cross-d"></span>
+                        <span class="cross-block cross-e"></span>
                     </span>
                     <span>Select</span>
                 </div>
@@ -121,9 +126,12 @@
                 </div>
                 <div class="controller-hint">
                     <span class="pad-icon pad-triangle" aria-hidden="true">
-                        <span class="pad-stroke triangle-left"></span>
-                        <span class="pad-stroke triangle-right"></span>
-                        <span class="pad-stroke triangle-bottom"></span>
+                        <span class="triangle-block triangle-a"></span>
+                        <span class="triangle-block triangle-b"></span>
+                        <span class="triangle-block triangle-c"></span>
+                        <span class="triangle-block triangle-d"></span>
+                        <span class="triangle-block triangle-e"></span>
+                        <span class="triangle-block triangle-f"></span>
                     </span>
                     <span>Details</span>
                 </div>

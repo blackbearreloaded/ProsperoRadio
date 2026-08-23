@@ -391,7 +391,7 @@ bool RunSmoke() {
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99751", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99752", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
@@ -431,7 +431,7 @@ bool RunSmoke() {
         SDL_RenderFlush(renderer);
         SDL_UpdateWindowSurface(window);
         if (!screenshot_saved) {
-            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99751-ui.bmp") == 0;
+            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99752-ui.bmp") == 0;
         }
         sceKernelUsleep(16667);
     }

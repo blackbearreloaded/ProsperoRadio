@@ -94,19 +94,18 @@ button:focus, .station-card:focus, .filter:focus, .play-button:focus, .icon-butt
     width: 18px;
     height: 18px;
     border: 3px #70e1dc;
-    border-radius: 50%;
+    border-radius: 9px;
 }
-.search-handle {
+.search-step {
     position: absolute;
-    left: 20px;
-    top: 19px;
     display: block;
     width: 4px;
-    height: 13px;
+    height: 4px;
     background: #70e1dc;
-    transform-origin: 50% 0 0;
-    transform: rotate(-45deg);
 }
+.search-step-a { left: 18px; top: 18px; }
+.search-step-b { left: 21px; top: 21px; }
+.search-step-c { left: 24px; top: 24px; }
 
 .main { position: relative; flex: 1; min-height: 0; }
 .state-panel {
@@ -238,16 +237,12 @@ h2 { margin-bottom: 4px; font-size: 36px; line-height: 52px; }
 }
 .controller-hint { display: flex; align-items: center; gap: 9px; }
 .pad-icon { position: relative; display: block; flex: none; width: 34px; height: 34px; }
-.pad-stroke { position: absolute; display: block; background: #f2f7f8; }
-.pad-cross .pad-stroke {
-    left: 5px;
-    top: 15px;
-    width: 24px;
-    height: 4px;
-    transform-origin: 50% 50% 0;
-}
-.cross-a { transform: rotate(45deg); }
-.cross-b { transform: rotate(-45deg); }
+.cross-block { position: absolute; display: block; width: 8px; height: 8px; background: #70e1dc; }
+.cross-a { left: 2px; top: 2px; }
+.cross-b { right: 2px; top: 2px; }
+.cross-c { left: 13px; top: 13px; }
+.cross-d { left: 2px; bottom: 2px; }
+.cross-e { right: 2px; bottom: 2px; }
 .pad-ring, .pad-box {
     position: absolute;
     left: 4px;
@@ -255,13 +250,16 @@ h2 { margin-bottom: 4px; font-size: 36px; line-height: 52px; }
     display: block;
     width: 26px;
     height: 26px;
-    border: 3px #f2f7f8;
+    border: 3px #d18be5;
 }
-.pad-ring { border-radius: 50%; }
-.pad-triangle .pad-stroke { width: 23px; height: 3px; transform-origin: 50% 50% 0; }
-.triangle-left { left: 0; top: 15px; transform: rotate(-60deg); }
-.triangle-right { left: 11px; top: 15px; transform: rotate(60deg); }
-.triangle-bottom { left: 6px; top: 26px; width: 22px; }
+.pad-ring { border-color: #ff8793; border-radius: 13px; }
+.triangle-block { position: absolute; display: block; background: #69d997; }
+.triangle-a { left: 14px; top: 2px; width: 6px; height: 5px; }
+.triangle-b { left: 8px; top: 8px; width: 6px; height: 7px; }
+.triangle-c { right: 8px; top: 8px; width: 6px; height: 7px; }
+.triangle-d { left: 3px; top: 16px; width: 6px; height: 8px; }
+.triangle-e { right: 3px; top: 16px; width: 6px; height: 8px; }
+.triangle-f { left: 3px; top: 25px; width: 28px; height: 4px; }
 .option-line {
     position: absolute;
     left: 7px;
