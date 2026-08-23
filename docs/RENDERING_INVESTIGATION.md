@@ -211,6 +211,14 @@ isolated crash regression.
 
 ## PPSA99736 - production UI handoff
 
+- Commit: `6094aed`
+- Outcome: entered `eboot`, remained alive through observation, and closed
+  cleanly with runtime release confirmed.
+- Evidence: `PPSA99736-20260823-115820-result.json` and klog; visual output is
+  the same renderer/RCSS path as the lossless PPSA99735 native frame.
+- FFPFSC: 12,451,840 bytes, SHA-256
+  `F151019926233464D1B8161670428DDBBA5CBE34D2BD8E07CCCD406B4077EB7F`.
 - Changes:
   - keeps the byte-equivalent verified rendering and RCSS paths;
   - removes the one-time native BMP capture from the frame loop.
+- Result: production UI milestone complete.
