@@ -223,13 +223,19 @@ struct Geometry {
     std::vector<int> indices;
 };
 
+Uint8 Unpremultiply(Rml::byte channel, Rml::byte alpha) {
+    return alpha ? static_cast<Uint8>((static_cast<unsigned>(channel) * 255) / alpha) : 255;
+}
+
+SDL_Color ToSdlColor(const Rml::ColourbPremultiplied& color) {
+    return {Unpremultiply(color.red, color.alpha), Unpremultiply(color.green, color.alpha),
+        Unpremultiply(color.blue, color.alpha), color.alpha};
+}
+
 class SdlRenderInterface final : public Rml::RenderInterface {
 public:
     explicit SdlRenderInterface(SDL_Renderer* renderer) : renderer_(renderer) {
-        blend_mode_ = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ONE,
-            SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD,
-            SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
-            SDL_BLENDOPERATION_ADD);
+        SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
     }
 
     Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices,
@@ -252,8 +258,7 @@ public:
         for (const Rml::Vertex& vertex : geometry->vertices) {
             SDL_Vertex sdl_vertex{};
             sdl_vertex.position = {vertex.position.x + translation.x, vertex.position.y + translation.y};
-            sdl_vertex.color = {vertex.colour.red, vertex.colour.green,
-                vertex.colour.blue, vertex.colour.alpha};
+            sdl_vertex.color = ToSdlColor(vertex.colour);
             sdl_vertex.tex_coord = {vertex.tex_coord.x, vertex.tex_coord.y};
             vertices.push_back(sdl_vertex);
         }
@@ -270,14 +275,23 @@ public:
             return 0;
         }
 
+        std::vector<Rml::byte> pixels(source.size());
+        for (size_t i = 0; i < source.size(); i += 4) {
+            const Rml::byte alpha = source[i + 3];
+            pixels[i] = Unpremultiply(source[i], alpha);
+            pixels[i + 1] = Unpremultiply(source[i + 1], alpha);
+            pixels[i + 2] = Unpremultiply(source[i + 2], alpha);
+            pixels[i + 3] = alpha;
+        }
+
         SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(
-            const_cast<Rml::byte*>(source.data()), dimensions.x, dimensions.y, 32,
+            pixels.data(), dimensions.x, dimensions.y, 32,
             dimensions.x * 4, SDL_PIXELFORMAT_RGBA32);
         if (!surface) return 0;
 
         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_, surface);
         SDL_FreeSurface(surface);
-        if (texture) SDL_SetTextureBlendMode(texture, blend_mode_);
+        if (texture) SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
         return reinterpret_cast<Rml::TextureHandle>(texture);
     }
 
@@ -295,7 +309,6 @@ public:
 
 private:
     SDL_Renderer* renderer_;
-    SDL_BlendMode blend_mode_ = SDL_BLENDMODE_BLEND;
     SDL_Rect scissor_{};
 };
 
@@ -324,7 +337,7 @@ bool RunSmoke() {
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return false;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99722", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99723", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
