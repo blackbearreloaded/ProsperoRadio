@@ -32,12 +32,12 @@ body {
     overflow: hidden;
     background: #071016;
     color: #f2f7f8;
-    font-family: "LatoLatin";
+    font-family: "DejaVu Sans";
     font-size: 24px;
     line-height: 1.3;
 }
 button {
-    font-family: "LatoLatin";
+    font-family: "DejaVu Sans";
     font-size: 24px;
     font-style: normal;
     font-weight: 400;

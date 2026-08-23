@@ -271,3 +271,12 @@ isolated crash regression.
 - FFPFSC: 12,451,840 bytes, SHA-256
   `BE4A9408054408D93FA9F71696ED94AECCAF92EAF147FAAD347BD99702F804F9`.
 - Result: production typography milestone complete.
+
+## PPSA99739 - neutral small-text glyph test
+
+- Goal: replace LatoLatin's deliberately asymmetric lowercase `t` and compact
+  x-height with more conventional, evenly hinted small-screen glyphs.
+- Changes:
+  - makes a matched DejaVu Sans 2.37 regular/bold pair the primary UI family;
+  - preserves the verified safe line boxes and Noto Emoji fallback;
+  - writes `/download0/PPSA99739-ui.bmp` for exact 1920x1080 inspection.
