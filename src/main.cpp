@@ -216,7 +216,7 @@ bool RunSmoke() {
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return false;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99716", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99717", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
