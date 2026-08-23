@@ -32,12 +32,12 @@ body {
     overflow: hidden;
     background: #071016;
     color: #f2f7f8;
-    font-family: "Inter";
+    font-family: "SST";
     font-size: 27px;
     line-height: 1.35;
 }
 button {
-    font-family: "Inter";
+    font-family: "SST";
     font-size: 27px;
     font-style: normal;
     font-weight: 400;

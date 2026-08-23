@@ -466,3 +466,17 @@ isolated crash regression.
   clean lowercase `r` contours, aligned baselines, complete bottom glyph rows,
   consistent Regular/SemiBold text, and unclipped controls. The Chiaki capture
   also shows the same typography and layout under the PS5 system overlay.
+
+## PPSA99748 - native PlayStation SST typography
+
+- Goal: replace the remaining malformed Inter diagonals and curves (`K`, `9`,
+  and `/`) with the native PlayStation UI face, while retaining exact glyph
+  bitmap coverage and the established layout.
+- Changes:
+  - loads `/preinst/common/font/SST-Light.otf` and `SST-Bold.otf` directly from
+    the console through RmlUi's existing FreeType engine;
+  - uses the `SST` family for all document and button text;
+  - retains the exact unscaled glyph-quad blitter and Noto Emoji fallback;
+  - writes `/download0/PPSA99748-ui.bmp` for lossless 1920x1080 inspection.
+- Packaging note: the Sony font files remain on the console and are not copied
+  into or redistributed with the application.
