@@ -23,17 +23,17 @@ body {
     overflow: hidden;
     background: #071016;
     color: #f2f7f8;
-    font-family: "Source Sans 3";
+    font-family: "Liberation Sans";
     font-size: 28px;
-    font-weight: 600;
+    font-weight: 400;
     line-height: 44px;
 }
 
 button {
-    font-family: "Source Sans 3";
+    font-family: "Liberation Sans";
     font-size: 28px;
     font-style: normal;
-    font-weight: 600;
+    font-weight: 400;
     line-height: 44px;
     nav: auto;
 }
@@ -120,6 +120,8 @@ button:focus, .station-card:focus, .filter:focus, .play-button:focus, .icon-butt
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-size: 48px; line-height: 68px; }
 h2 { margin-bottom: 4px; font-size: 36px; line-height: 52px; }
+.brand-name, h1, h2, .station-name, .station-art, .player-art,
+.selection-label, .filter.active, .play-button { font-weight: 700; }
 .muted { color: #b7c7cb; }
 
 .screen-header {

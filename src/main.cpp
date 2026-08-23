@@ -413,8 +413,8 @@ private:
 };
 
 bool LoadFonts() {
-    return Rml::LoadFontFace("ui/fonts/SourceSans3-Regular.otf") &&
-        Rml::LoadFontFace("ui/fonts/SourceSans3-Semibold.otf");
+    return Rml::LoadFontFace("ui/fonts/LiberationSans-Regular.ttf") &&
+        Rml::LoadFontFace("ui/fonts/LiberationSans-Bold.ttf");
 }
 
 [[noreturn]] void KeepProcessAlive() {
@@ -439,7 +439,7 @@ bool RunSmoke() {
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99755", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99756", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
@@ -466,6 +466,7 @@ bool RunSmoke() {
         running = false;
     }
 
+    bool screenshot_saved = false;
     while (running) {
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
@@ -477,6 +478,9 @@ bool RunSmoke() {
         context->Render();
         SDL_RenderFlush(renderer);
         SDL_UpdateWindowSurface(window);
+        if (!screenshot_saved) {
+            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99756-ui.bmp") == 0;
+        }
         sceKernelUsleep(16667);
     }
 
