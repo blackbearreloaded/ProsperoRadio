@@ -251,3 +251,12 @@ isolated crash regression.
 - Result: the lossless native frame shows intact lower strokes and descenders
   in regular and bold text throughout the top bar, cards, controls, player,
   and footer. No text overlaps or layout regressions are visible.
+
+## PPSA99738 - production typography handoff
+
+- Goal: package the hardware-verified LatoLatin typography and safe line boxes
+  without diagnostic writes in the runtime frame loop.
+- Changes:
+  - keeps the byte-equivalent PPSA99737 font loading, RCSS, and SDL rendering
+    paths;
+  - removes the one-time `/download0` BMP capture.
