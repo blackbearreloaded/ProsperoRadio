@@ -739,3 +739,77 @@ isolated crash regression.
   conventional glyphs in every previously reported string, intact baselines,
   and a stronger regular-versus-bold hierarchy. PPSA99756 remains the installed
   review build pending live-TV acceptance before creating a production title.
+
+## PPSA99757 - isolate native hinting
+
+- Goal: determine whether the remaining malformed `K`, `P`, `9`, slash, and
+  apparent lower-edge clipping originates in the selected font, RmlUi layout,
+  SDL compositing, or FreeType rasterization.
+- Diagnosis:
+  - RmlUi loads each glyph with `FT_LOAD_COLOR`, which enables the font's native
+    TrueType hinter by default;
+  - the generated glyph atlas, integer RmlUi quads, straight-alpha texture
+    conversion, 1:1 SDL blit, and 1920 x 1080 presentation path preserve every
+    selected source row and column;
+  - the lossless PPSA99756 framebuffer contains the reported contour defects
+    before Remote Play scaling, ruling out Chiaki and the television as their
+    source.
+- Experiment:
+  - changes only the FreeType load flags to
+    `FT_LOAD_COLOR | FT_LOAD_NO_HINTING`;
+  - preserves Liberation Sans 2.1.5, all font sizes, weights, line boxes,
+    markup, UI geometry, renderer code, colors, and image assets;
+  - stores the reproducible RmlUi delta as
+    `vendor/ps5/rmlui/patches/0001-disable-font-hinting.patch`;
+  - rebuilt `librmlui.a` SHA-256:
+    `66D71B9FCA92DE9703C9BC90EC9740CFABDF16772EE080E8E04413A3597CD85D`.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki before
+  releasing the shared PS5 lock. The capture was fetched during a second brief
+  locked operation.
+- Evidence:
+  - `PPSA99757-native/PPSA99757-ui.bmp`, SHA-256
+    `C422B35DED8E7806DE579978D9AACC612C3382E2862F9951A760095C3C7307A9`;
+  - `PPSA99757-20260823-165213-running.png`, SHA-256
+    `8FB70D774F10A334218D6BD95E582AFA21516F2BC7B006EFA038CAAA2F5CDC32`;
+  - exact and nearest-neighbor 6x crops: `kexp-render.png` and
+    `kexp-render-6x.png` under `PPSA99757-native`.
+- FFPFSC: 15,466,496 bytes, SHA-256
+  `AB9FD055D387D7A0CF2F1379AE3BE718540E70A8ED207EA30F9666375AC2D17A`.
+- Result: removing native hinting eliminates the irregularly snapped contours
+  and proves that the defect is rasterizer configuration, not the font or CSS.
+  Fully unhinted text is smoother but slightly too soft for the final TV UI.
+
+## PPSA99758 - light auto-hinted production typography
+
+- Goal: retain PPSA99757's corrected glyph shapes while recovering crisp,
+  consistent screen-text stems.
+- Changes:
+  - loads glyphs with
+    `FT_LOAD_COLOR | FT_LOAD_FORCE_AUTOHINT | FT_LOAD_TARGET_LIGHT`;
+  - changes no font file, size, weight, line box, markup, UI geometry, renderer
+    code, color, or image asset;
+  - applies the reproducible follow-up patch
+    `vendor/ps5/rmlui/patches/0002-use-light-autohint.patch` after the
+    PPSA99757 diagnostic patch;
+  - rebuilt `librmlui.a` SHA-256:
+    `876BE332FA588DFA8B253813AA0D373DA352391BC7A886FD08074BD0711701DB`.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki before
+  releasing the shared PS5 lock. A second locked capture fetch waited for
+  another agent to release the console, then acquired and released the lock
+  normally.
+- Evidence:
+  - `PPSA99758-native/PPSA99758-ui.bmp`, SHA-256
+    `23DFA5AD5BFC4CC3FF3AD0921A76355A61C987FC2B7B8D16F3EFC324FA6D53A6`;
+  - `PPSA99758-20260823-170112-running.png`, SHA-256
+    `2095EB05F02F8D0DA5979E274CE855A56F4186CCD47AAC0C2495AF33EDE20931`;
+  - exact native crops: `brand.png`, `nts-card.png`, `selected-copy.png`,
+    `footer.png`, and `kexp-render.png` under `PPSA99758-native`;
+  - nearest-neighbor 6x comparison crop: `kexp-render-6x.png`.
+- FFPFSC: 15,466,496 bytes, SHA-256
+  `8CD7EC8877E4A0DAA92C07B23148E3392A5292CB28C7D25567B14712A7D8B99B`.
+- Result: the lossless PS5 framebuffer shows complete lower glyph rows,
+  consistent baselines, crisp stems, and stable contours for every reported
+  problem class: `K`, `P`, `9`, `N`, `S`, lowercase `a`, `r`, `t`, slash, and
+  footer labels. PPSA99758 is the installed renderer-review build.
