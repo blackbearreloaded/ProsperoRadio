@@ -696,3 +696,46 @@ isolated crash regression.
 - Result: production typography-and-icon milestone complete. The release frame
   visibly matches the lossless PPSA99754 proof while performing no diagnostic
   filesystem write in the render loop.
+
+## PPSA99756 - plain Liberation Sans review build
+
+- Goal: replace Source Sans 3's remaining humanist character with a deliberately
+  neutral, conventional typeface while preserving the accepted layout and
+  generated controller icons.
+- Changes:
+  - uses Liberation Sans 2.1.5, an Arial-metric-compatible static TrueType
+    family with conventional `a`, `r`, `t`, `N`, `S`, numeral, and punctuation
+    forms;
+  - replaces the global SemiBold style with Regular 400 for metadata, footer,
+    and inactive filters;
+  - uses the real Bold 700 face only for headings, station names, artwork
+    labels, active filters, and primary actions; no synthetic weight is used;
+  - changes no dimensions, line boxes, RmlUi markup, renderer code, colors, or
+    controller assets;
+  - writes `/download0/PPSA99756-ui.bmp` for lossless inspection.
+- Font provenance:
+  - upstream: `https://github.com/liberationfonts/liberation-fonts`, release
+    `2.1.5`;
+  - license: SIL Open Font License 1.1, bundled as
+    `ui/fonts/LiberationSans-OFL.txt`;
+  - Regular SHA-256:
+    `76D04C18EA243F426B7DE1F3AD208E927008F961DC5945E5AAD352D0DFDE8EE8`;
+  - Bold SHA-256:
+    `788ABEE4C806D660E8AEE46689DD8540CD4BB98DA03DCC9D171CE3EFD99A9173`.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki
+  before releasing the shared PS5 lock. A second brief locked operation fetched
+  the download image and released the lock immediately.
+- Evidence:
+  - `PPSA99756-native/PPSA99756-ui.bmp`, SHA-256
+    `01C3C105117AF3839D83943DFC836811CDF45BFC0B9D4058A4FF4D8535D701A1`;
+  - `PPSA99756-20260823-163517-running.png`, SHA-256
+    `08E6F5AB1277CC6ACDF229A984D897ABE861A3FE0736CBEFF06E17E5DA85CF04`;
+  - exact native crops: `brand.png`, `nts-card.png`, `selected.png`, and
+    `controller-icons.png` under `PPSA99756-native`.
+- FFPFSC: 15,466,496 bytes, SHA-256
+  `64E458D96D993C4BBFBC346359DFB18F785616D736E17F9BE4C6808FE35E4F4C`.
+- Result: the native frame has a visibly plainer typography system, clean
+  conventional glyphs in every previously reported string, intact baselines,
+  and a stronger regular-versus-bold hierarchy. PPSA99756 remains the installed
+  review build pending live-TV acceptance before creating a production title.
