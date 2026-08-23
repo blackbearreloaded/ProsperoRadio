@@ -414,3 +414,14 @@ isolated crash regression.
   - retains PPSA99744's exact unscaled glyph-quad blitter and changes no layout
     dimensions;
   - writes `/download0/PPSA99745-ui.bmp` for native comparison.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki
+  before releasing the shared PS5 lock.
+- Evidence: `PPSA99745-native/PPSA99745-ui.bmp`, SHA-256
+  `230381D5B9EB2825E703DC2F5547C12861CCAEB2F3BB64ABC8A210BDCAFB625E`.
+- FFPFSC: 13,828,096 bytes, SHA-256
+  `FE2EF8D061A91B77DB888336DFF14E8831AF03F89886B91F56D491EC3469BF5E`.
+- Result: native and Chiaki frames show a clean lowercase `r`, even baseline,
+  complete lower rows, and less blocky emphasis. Inter's wider metadata wraps
+  in the selected-station panel, making its lower edge touch the player strip;
+  PPSA99746 will correct only that width-dependent layout regression.
