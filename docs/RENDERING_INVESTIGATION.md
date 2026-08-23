@@ -480,3 +480,14 @@ isolated crash regression.
   - writes `/download0/PPSA99748-ui.bmp` for lossless 1920x1080 inspection.
 - Packaging note: the Sony font files remain on the console and are not copied
   into or redistributed with the application.
+- Outcome: entered `eboot` and remained stable, but displayed the deliberate
+  red initialization-failure frame. It then closed cleanly and released its
+  runtime layers and Chiaki before the shared PS5 lock was released.
+- Evidence: `PPSA99748-20260823-152303-result.json`, klog, and running/after-close
+  screenshots; lifecycle classification is `entered-eboot`. The retrieved
+  `download0.dat` contains no BMP because the render loop was never entered.
+- FFPFSC: 13,828,096 bytes, SHA-256
+  `EFD6CD58DA80020C7635433279FDACBEACE7FA5A3C3682F176BE5722B1B206F9`.
+- Result: FTP can read both SST files, but the native application sandbox cannot
+  open `/preinst/common/font`; `LoadFonts()` fails before document creation.
+  Direct system-font loading is rejected. The title ID will not be reused.
