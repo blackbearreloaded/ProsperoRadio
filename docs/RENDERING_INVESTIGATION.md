@@ -491,3 +491,19 @@ isolated crash regression.
 - Result: FTP can read both SST files, but the native application sandbox cannot
   open `/preinst/common/font`; `LoadFonts()` fails before document creation.
   Direct system-font loading is rejected. The title ID will not be reused.
+
+## PPSA99749 - matched Noto Sans screen typography
+
+- Goal: correct Inter's glyph-specific `K`, `9`, `/`, and lower-edge shapes
+  using a redistributable, statically hinted family with matched metrics.
+- Changes:
+  - pairs the existing official Noto Sans 2.008 Regular with the matching
+    official 2.008 SemiBold instead of the older mismatched Bold asset;
+  - uses 1.4 line boxes for proportional text to provide explicit lower-edge
+    clearance without reducing font sizes;
+  - retains RmlUi's grayscale FreeType rasterizer, compatibility conversion to
+    straight alpha, and exact unscaled SDL glyph-quad blitter;
+  - writes `/download0/PPSA99749-ui.bmp` for lossless 1920x1080 inspection.
+- Asset hashes:
+  - Regular: `B85C38ECEA8A7CFB39C24E395A4007474FA5A4FC864F6EE33309EB4948D232D5`;
+  - SemiBold: `87A8B90ECE1E89746B544E4E086F85A3710E41485A8078F9BE874837DFAD45D5`.
