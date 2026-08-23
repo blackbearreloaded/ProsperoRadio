@@ -222,3 +222,21 @@ isolated crash regression.
   - keeps the byte-equivalent verified rendering and RCSS paths;
   - removes the one-time native BMP capture from the frame loop.
 - Result: production UI milestone complete.
+
+## PPSA99737 - matched font metrics
+
+- Goal: remove the one-to-two-pixel baseline clipping visible across regular
+  and bold strings on the physical PS5.
+- Diagnosis:
+  - the bundled Noto Sans regular and bold files report different internal
+    releases;
+  - their 1362-unit line spacing exceeds the 1000-unit em square, making the
+    existing 1.3 line boxes slightly shorter than the face's native metrics;
+  - the bundled LatoLatin regular and bold files are a matched release and use
+    consistent 2400-unit line spacing over a 2000-unit em square.
+- Changes:
+  - makes the matched LatoLatin regular/bold pair the primary UI family;
+  - retains DejaVu Sans and Noto Emoji as fallback coverage;
+  - makes every proportional text line at least 1.3 high, with 1.25 retained
+    only for the oversized 43 px page heading;
+  - writes `/download0/PPSA99737-ui.bmp` for exact 1920x1080 verification.
