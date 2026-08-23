@@ -5,6 +5,7 @@
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/FileInterface.h>
 #include <RmlUi/Core/RenderInterface.h>
+#include <RmlUi/Core/RenderInterfaceCompatibility.h>
 #include <RmlUi/Core/SystemInterface.h>
 
 #include <cstdio>
@@ -218,81 +219,43 @@ public:
     }
 };
 
-struct Geometry {
-    std::vector<Rml::Vertex> vertices;
-    std::vector<int> indices;
-};
-
-Uint8 Unpremultiply(Rml::byte channel, Rml::byte alpha) {
-    return alpha ? static_cast<Uint8>((static_cast<unsigned>(channel) * 255) / alpha) : 255;
-}
-
-SDL_Color ToSdlColor(const Rml::ColourbPremultiplied& color) {
-    return {Unpremultiply(color.red, color.alpha), Unpremultiply(color.green, color.alpha),
-        Unpremultiply(color.blue, color.alpha), color.alpha};
-}
-
-class SdlRenderInterface final : public Rml::RenderInterface {
+class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility {
 public:
     explicit SdlRenderInterface(SDL_Renderer* renderer) : renderer_(renderer) {
         SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
     }
 
-    Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices,
-        Rml::Span<const int> indices) override {
-        auto* geometry = new Geometry;
-        geometry->vertices.assign(vertices.begin(), vertices.end());
-        geometry->indices.assign(indices.begin(), indices.end());
-        return reinterpret_cast<Rml::CompiledGeometryHandle>(geometry);
-    }
-
-    void ReleaseGeometry(Rml::CompiledGeometryHandle handle) override {
-        delete reinterpret_cast<Geometry*>(handle);
-    }
-
-    void RenderGeometry(Rml::CompiledGeometryHandle handle, Rml::Vector2f translation,
-        Rml::TextureHandle texture) override {
-        auto* geometry = reinterpret_cast<Geometry*>(handle);
+    void RenderGeometry(Rml::Vertex* rml_vertices, int num_vertices, int* indices,
+        int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation) override {
         std::vector<SDL_Vertex> vertices;
-        vertices.reserve(geometry->vertices.size());
-        for (const Rml::Vertex& vertex : geometry->vertices) {
+        vertices.reserve(static_cast<size_t>(num_vertices));
+        for (int i = 0; i < num_vertices; ++i) {
+            const Rml::Vertex& vertex = rml_vertices[i];
             SDL_Vertex sdl_vertex{};
             sdl_vertex.position = {vertex.position.x + translation.x, vertex.position.y + translation.y};
-            sdl_vertex.color = ToSdlColor(vertex.colour);
+            sdl_vertex.color = {vertex.colour.red, vertex.colour.green,
+                vertex.colour.blue, vertex.colour.alpha};
             sdl_vertex.tex_coord = {vertex.tex_coord.x, vertex.tex_coord.y};
             vertices.push_back(sdl_vertex);
         }
         SDL_RenderGeometry(renderer_, reinterpret_cast<SDL_Texture*>(texture),
-            vertices.data(), static_cast<int>(vertices.size()), geometry->indices.data(),
-            static_cast<int>(geometry->indices.size()));
+            vertices.data(), num_vertices, indices, num_indices);
     }
 
-    Rml::TextureHandle LoadTexture(Rml::Vector2i&, const Rml::String&) override { return 0; }
+    bool LoadTexture(Rml::TextureHandle&, Rml::Vector2i&, const Rml::String&) override { return false; }
 
-    Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source,
-        Rml::Vector2i dimensions) override {
-        if (!source.data() || source.size() != static_cast<size_t>(dimensions.x * dimensions.y * 4)) {
-            return 0;
-        }
-
-        std::vector<Rml::byte> pixels(source.size());
-        for (size_t i = 0; i < source.size(); i += 4) {
-            const Rml::byte alpha = source[i + 3];
-            pixels[i] = Unpremultiply(source[i], alpha);
-            pixels[i + 1] = Unpremultiply(source[i + 1], alpha);
-            pixels[i + 2] = Unpremultiply(source[i + 2], alpha);
-            pixels[i + 3] = alpha;
-        }
-
+    bool GenerateTexture(Rml::TextureHandle& texture_handle, const Rml::byte* source,
+        const Rml::Vector2i& dimensions) override {
         SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(
-            pixels.data(), dimensions.x, dimensions.y, 32,
+            const_cast<Rml::byte*>(source), dimensions.x, dimensions.y, 32,
             dimensions.x * 4, SDL_PIXELFORMAT_RGBA32);
-        if (!surface) return 0;
+        if (!surface) return false;
 
         SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_, surface);
         SDL_FreeSurface(surface);
         if (texture) SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-        return reinterpret_cast<Rml::TextureHandle>(texture);
+        texture_handle = reinterpret_cast<Rml::TextureHandle>(texture);
+        return texture != nullptr;
     }
 
     void ReleaseTexture(Rml::TextureHandle texture) override {
@@ -300,21 +263,24 @@ public:
     }
 
     void EnableScissorRegion(bool enable) override {
+        scissor_enabled_ = enable;
         SDL_RenderSetClipRect(renderer_, enable ? &scissor_ : nullptr);
     }
 
-    void SetScissorRegion(Rml::Rectanglei region) override {
-        scissor_ = {region.Left(), region.Top(), region.Width(), region.Height()};
+    void SetScissorRegion(int x, int y, int width, int height) override {
+        scissor_ = {x, y, width, height};
+        if (scissor_enabled_) SDL_RenderSetClipRect(renderer_, &scissor_);
     }
 
 private:
     SDL_Renderer* renderer_;
     SDL_Rect scissor_{};
+    bool scissor_enabled_ = false;
 };
 
 bool LoadFonts() {
-    return Rml::LoadFontFace("ui/fonts/LatoLatin-Regular.ttf") &&
-        Rml::LoadFontFace("ui/fonts/LatoLatin-Bold.ttf") &&
+    return Rml::LoadFontFace("ui/fonts/NotoSans-Regular.ttf") &&
+        Rml::LoadFontFace("ui/fonts/NotoSans-Bold.ttf") &&
         Rml::LoadFontFace("ui/fonts/DejaVuSans.ttf", true) &&
         Rml::LoadFontFace("ui/fonts/NotoEmoji-Regular.ttf", true);
 }
@@ -337,7 +303,7 @@ bool RunSmoke() {
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return false;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99723", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99724", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
@@ -349,13 +315,14 @@ bool RunSmoke() {
     AppSystemInterface system_interface;
     AppFileInterface file_interface;
     SdlRenderInterface render_interface(renderer);
+    Rml::RenderInterface* adapted_render_interface = render_interface.GetAdaptedInterface();
     Rml::SetSystemInterface(&system_interface);
     Rml::SetFileInterface(&file_interface);
-    Rml::SetRenderInterface(&render_interface);
+    Rml::SetRenderInterface(adapted_render_interface);
 
     bool running = Rml::Initialise();
     if (running) running = LoadFonts();
-    Rml::Context* context = running ? Rml::CreateContext("radio-browser", {1920, 1080}, &render_interface) : nullptr;
+    Rml::Context* context = running ? Rml::CreateContext("radio-browser", {1920, 1080}, adapted_render_interface) : nullptr;
     Rml::ElementDocument* document = context ? context->LoadDocument("ui/main.rml") : nullptr;
     if (document) {
         document->Show();
