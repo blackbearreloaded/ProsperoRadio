@@ -605,3 +605,25 @@ isolated crash regression.
 - Result: the native 1920x1080 frame shows complete, unclipped large-type text
   and distinct Cross, Circle, Square, Triangle, Options, Search, Save, and Play
   symbols. The simplified screen has no overlapping or malformed controls.
+
+## PPSA99753 - production simplified large-type UI
+
+- Goal: package the hardware-verified PPSA99752 screen without diagnostic
+  filesystem activity.
+- Changes:
+  - keeps the two-line station cards, integer line boxes, larger Noto Sans
+    SemiBold typography, simplified information hierarchy, and axis-aligned
+    controller symbols verified in PPSA99752;
+  - removes the one-time `/download0` framebuffer capture.
+- Outcome: entered `eboot`, remained stable through observation, closed
+  cleanly, and released its runtime layers. Chiaki exited before the shared PS5
+  lock was released.
+- Evidence: `PPSA99753-20260823-160010-result.json`, klog, and running/after-close
+  screenshots; lifecycle classification is `entered-eboot`. Running screenshot
+  SHA-256:
+  `FCFEAEE16AC71797CE03D18487A78D4ACBF53D235F19E799DB21F601DDAA15A2`.
+- FFPFSC: 14,155,776 bytes, SHA-256
+  `BB4E30B389FA3DDA0398FED34C9C6BFDBFFFA1E8DA832AEB2480D7A675D50900`.
+- Result: production redesign milestone complete. The page uses fewer, larger
+  strings with explicit vertical clearance and controller-native iconography;
+  it has no proprietary font dependency and no text-based PS5 button labels.
