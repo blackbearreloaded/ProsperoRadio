@@ -17,6 +17,12 @@
 }
 
 * { box-sizing: border-box; }
+
+/* RmlUi has no browser user-agent stylesheet. Declare normal document flow. */
+div, header, main, section, nav, aside, footer, h1, h2, p {
+    display: block;
+}
+
 body {
     margin: 0;
     width: 100%;
@@ -30,7 +36,14 @@ body {
     font-size: 21px;
     line-height: 1.25;
 }
-button { font: inherit; nav: auto; }
+button {
+    font-family: LatoLatin;
+    font-size: 21px;
+    font-style: normal;
+    font-weight: 400;
+    line-height: 1.25;
+    nav: auto;
+}
 button:focus, .station-card:focus, .filter:focus, .play-button:focus, .icon-button:focus, .strip-button:focus {
     outline: 4px solid #ffffff;
     outline-offset: 4px;
@@ -50,7 +63,7 @@ button:hover { border-color: #70e1dc; }
 .main { position: relative; flex: 1; min-height: 0; }
 .state-panel { position: absolute; inset: 0; display: none; padding: 34px 64px 140px; overflow: auto; }
 .state-panel.is-active { display: block; }
-.screen-header { display: flex; align-items: end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
+.screen-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; }
 h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 8px; font-size: 43px; line-height: 1.05; }
 h2 { margin-bottom: 8px; font-size: 27px; }
@@ -63,7 +76,7 @@ h2 { margin-bottom: 8px; font-size: 27px; }
 .filter-row { display: flex; gap: 10px; margin-bottom: 25px; }
 .filter { min-height: 50px; padding: 8px 20px; border: 2px solid transparent; border-radius: 7px; background: transparent; color: #a7bbc0; cursor: pointer; font-weight: 700; }
 .filter.active { border-color: #70e1dc; background: #1c3b48; color: #f2f7f8; }
-.content-layout { display: flex; align-items: start; gap: 28px; }
+.content-layout { display: flex; align-items: flex-start; gap: 28px; }
 .station-area { flex: 1; min-width: 0; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
 .result-count { color: #a7bbc0; font-size: 16px; }
@@ -72,7 +85,7 @@ h2 { margin-bottom: 8px; font-size: 27px; }
 .station-card.selected { border-color: #70e1dc; background: #1c3b48; }
 .station-art, .player-art, .strip-art { display: flex; align-items: center; justify-content: center; flex: none; background: #25617a; color: #fff; font-weight: 900; letter-spacing: 1px; }
 .station-art { width: 76px; height: 76px; font-size: 20px; }
-.station-copy { display: flex; flex-direction: column; min-width: 0; gap: 4px; }
+.station-copy { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 4px; }
 .station-name { overflow: hidden; font-size: 22px; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
 .station-meta, .station-status { color: #a7bbc0; font-size: 16px; }
 .station-status { display: flex; align-items: center; gap: 7px; }
@@ -91,7 +104,7 @@ h2 { margin-bottom: 8px; font-size: 27px; }
 .controller-hint { display: flex; align-items: center; gap: 7px; }
 .key { display: inline-flex; align-items: center; justify-content: center; min-width: 28px; height: 28px; padding: 0 6px; border: 1px solid #a7bbc0; border-radius: 6px; color: #f2f7f8; font-size: 13px; font-weight: 800; }
 .connection-status { display: flex; align-items: center; gap: 8px; margin-left: auto; color: #69d997; }
-.player-strip { position: absolute; right: 48px; bottom: 82px; left: 48px; z-index: 2; display: flex; align-items: center; gap: 14px; min-height: 76px; padding: 10px 16px; border: 2px solid #70e1dc; background: #102530; box-shadow: 0 12px 28px rgba(0, 0, 0, .35); }
+.player-strip { position: absolute; right: 48px; bottom: 82px; left: 48px; z-index: 2; display: flex; align-items: center; gap: 14px; min-height: 76px; padding: 10px 16px; border: 2px solid #70e1dc; background-color: #102530; box-shadow: 0 12px 28px rgba(0, 0, 0, .35); }
 .strip-art { width: 52px; height: 52px; font-size: 15px; }
 .strip-copy { display: flex; flex-direction: column; flex: 1; gap: 2px; }
 .strip-copy span { color: #a7bbc0; font-size: 15px; }
