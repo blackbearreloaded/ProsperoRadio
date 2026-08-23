@@ -63,6 +63,9 @@ extern "C" char* strcasestr(const char* haystack, const char* needle) {
 
 namespace {
 
+SDL_Renderer* probe_renderer = nullptr;
+SDL_Window* probe_window = nullptr;
+
 class ProbeSystemInterface final : public Rml::SystemInterface {
 public:
     double GetElapsedTime() override {
@@ -111,17 +114,28 @@ void PresentColor(SDL_Renderer* renderer, SDL_Window* window,
 
 } // namespace
 
+extern "C" void radio_rml_probe_stage(int stage) {
+    const Uint8 red = static_cast<Uint8>(30 + (stage * 47) % 200);
+    const Uint8 green = static_cast<Uint8>(30 + (stage * 83) % 200);
+    const Uint8 blue = static_cast<Uint8>(30 + (stage * 131) % 200);
+    PresentColor(probe_renderer, probe_window, red, green, blue);
+    sceKernelUsleep(500000);
+}
+
 int main() {
     sceSystemServiceHideSplashScreen();
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99712", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99713", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
     if (!window || !renderer) return 2;
+
+    probe_window = window;
+    probe_renderer = renderer;
 
     PresentColor(renderer, window, 20, 80, 180);
     sceKernelUsleep(3000000);
