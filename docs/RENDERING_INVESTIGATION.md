@@ -579,3 +579,29 @@ isolated crash regression.
   horizontal bars, while percentage border radii left Circle and Search
   square. PPSA99752 will use only axis-aligned blocks and pixel radii for those
   icons.
+
+## PPSA99752 - software-renderer-safe controller icons
+
+- Goal: preserve PPSA99751's accepted typography while making every visual
+  control hint recognizable in RmlUi's PS5 software-rendering path.
+- Changes:
+  - replaces rotated Cross and Triangle strokes with integer-positioned,
+    axis-aligned color blocks;
+  - replaces percentage radii on Circle and Search with fixed pixel radii;
+  - keeps Square and Options as integer-positioned borders and bars;
+  - keeps Play as the verified CSS border triangle;
+  - uses no Unicode controller glyphs, icon fonts, external textures, SVG
+    plugin, or generated bitmap dependencies;
+  - writes `/download0/PPSA99752-ui.bmp` for exact-frame inspection.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki
+  before releasing the shared PS5 lock.
+- Evidence: `PPSA99752-native/PPSA99752-ui.bmp`, SHA-256
+  `04C89B96DF1313AACB070608CEDDCF6CAB9C1D554ECEA710F353F8238E493998`;
+  running screenshot SHA-256
+  `B3E2097899591DB5A8FF58643B8E479DC4F137B2ACAE70870C19766B538A1104`.
+- FFPFSC: 14,155,776 bytes, SHA-256
+  `0CAF0B0734C64F5CE9FEE961AC815BF65E72FE7826A5B19E5B7AF9939BABBCA2`.
+- Result: the native 1920x1080 frame shows complete, unclipped large-type text
+  and distinct Cross, Circle, Square, Triangle, Options, Search, Save, and Play
+  symbols. The simplified screen has no overlapping or malformed controls.
