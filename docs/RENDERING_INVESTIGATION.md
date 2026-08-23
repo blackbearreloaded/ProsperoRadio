@@ -455,3 +455,14 @@ isolated crash regression.
   - keeps the exact glyph-quad blitter, Inter Regular/SemiBold assets, RCSS, and
     RmlUi markup verified in PPSA99746;
   - removes the one-time `/download0` BMP capture from the frame loop.
+- Outcome: entered `eboot`, remained stable through observation, closed
+  cleanly, and released its runtime layers. Chiaki exited before the shared PS5
+  lock was released.
+- Evidence: `PPSA99747-20260823-150200-result.json`, klog, and running/after-close
+  screenshots; lifecycle classification is `entered-eboot`.
+- FFPFSC: 13,828,096 bytes, SHA-256
+  `BAF31D4F72643A7210BA26263E1E09784D7EB8F169BBC8ACE194019947B6D959`.
+- Result: the production build preserves PPSA99746's inspected native frame:
+  clean lowercase `r` contours, aligned baselines, complete bottom glyph rows,
+  consistent Regular/SemiBold text, and unclipped controls. The Chiaki capture
+  also shows the same typography and layout under the PS5 system overlay.
