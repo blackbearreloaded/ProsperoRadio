@@ -545,3 +545,37 @@ isolated crash regression.
   `CC638561515F11447D827EE8D68D63D431C164C7E3FD62F3A5BD320B1DE12D64`.
 - Result: production open-font typography milestone complete, with no runtime
   dependence on proprietary or console-installed fonts.
+
+## PPSA99751 - simplified large-type browse screen
+
+- Goal: remove the residual lower-edge clipping by correcting the dense card
+  layout rather than changing the verified Noto family again.
+- Diagnosis: each old 136-pixel card provided 104 pixels of inner height after
+  padding and borders, while its three proportional text lines and gaps needed
+  about 112 pixels. The centered `.station-copy` overflowed its box and its
+  descendants clipped the excess. The absolutely positioned `SAVED` label did
+  not share that constraint, explaining why it appeared complete.
+- Changes:
+  - reduces each station card from three text lines to two;
+  - uses 184-pixel cards, integer 48/44-pixel line boxes, larger SemiBold text,
+    and visible vertical overflow for the text container;
+  - displays four stations and one spacious selection panel;
+  - removes the introductory subtitle, bitrate/codec rows, duplicate player
+    strip, and secondary selected-station actions;
+  - replaces text controller abbreviations with CSS-native controller symbols;
+  - writes `/download0/PPSA99751-ui.bmp` for exact-frame inspection.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki
+  before releasing the shared PS5 lock.
+- Evidence: `PPSA99751-native/PPSA99751-ui.bmp`, SHA-256
+  `9490ABE064EE1DFADF65DFDBB3ABB2276723D9DB8563D571AC4D5143E3670A4D`;
+  running screenshot SHA-256
+  `96F54ECC4A85181D375EC33196D29881C866238F2E6F6C38FB54B4357A04BE67`.
+- FFPFSC: 14,155,776 bytes, SHA-256
+  `D5203366075AB055639D597C9717D8DF008B04305CF9CEA1CD2070C6FC1C204C`.
+- Result: the lossless frame and 4x card crop show complete lower glyph rows
+  with substantial clearance. Typography and layout are accepted. RmlUi did
+  not preserve rotated child strokes in the footer: Cross and Triangle became
+  horizontal bars, while percentage border radii left Circle and Search
+  square. PPSA99752 will use only axis-aligned blocks and pixel radii for those
+  icons.
