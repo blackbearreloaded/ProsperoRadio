@@ -227,6 +227,11 @@ public:
 
     void RenderGeometry(Rml::Vertex* rml_vertices, int num_vertices, int* indices,
         int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation) override {
+        if (texture && RenderPixelAlignedQuads(rml_vertices, num_vertices, indices,
+                num_indices, reinterpret_cast<SDL_Texture*>(texture), translation)) {
+            return;
+        }
+
         std::vector<SDL_Vertex> vertices;
         vertices.reserve(static_cast<size_t>(num_vertices));
         for (int i = 0; i < num_vertices; ++i) {
@@ -255,7 +260,7 @@ public:
         SDL_FreeSurface(surface);
         if (texture) {
             SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-            SDL_SetTextureScaleMode(texture, SDL_ScaleModeLinear);
+            SDL_SetTextureScaleMode(texture, SDL_ScaleModeNearest);
         }
         texture_handle = reinterpret_cast<Rml::TextureHandle>(texture);
         return texture != nullptr;
@@ -276,6 +281,83 @@ public:
     }
 
 private:
+    static int RoundPixel(float value) {
+        return static_cast<int>(value + (value >= 0.0f ? 0.5f : -0.5f));
+    }
+
+    static bool SameColor(const Rml::Vertex& lhs, const Rml::Vertex& rhs) {
+        return lhs.colour.red == rhs.colour.red && lhs.colour.green == rhs.colour.green &&
+            lhs.colour.blue == rhs.colour.blue && lhs.colour.alpha == rhs.colour.alpha;
+    }
+
+    bool RenderPixelAlignedQuads(Rml::Vertex* vertices, int num_vertices, int* indices,
+        int num_indices, SDL_Texture* texture, const Rml::Vector2f& translation) {
+        if (num_vertices <= 0 || num_vertices % 4 != 0 || num_indices != (num_vertices / 4) * 6) {
+            return false;
+        }
+
+        int texture_width = 0;
+        int texture_height = 0;
+        if (SDL_QueryTexture(texture, nullptr, nullptr, &texture_width, &texture_height) != 0) {
+            return false;
+        }
+
+        const int num_quads = num_vertices / 4;
+        for (int quad = 0; quad < num_quads; ++quad) {
+            const int base = quad * 4;
+            const int index = quad * 6;
+            if (indices[index + 0] != base + 0 || indices[index + 1] != base + 3 ||
+                indices[index + 2] != base + 1 || indices[index + 3] != base + 1 ||
+                indices[index + 4] != base + 3 || indices[index + 5] != base + 2) {
+                return false;
+            }
+
+            const Rml::Vertex& v0 = vertices[base + 0];
+            const Rml::Vertex& v1 = vertices[base + 1];
+            const Rml::Vertex& v2 = vertices[base + 2];
+            const Rml::Vertex& v3 = vertices[base + 3];
+            if (v0.position.y != v1.position.y || v1.position.x != v2.position.x ||
+                v2.position.y != v3.position.y || v3.position.x != v0.position.x ||
+                v0.tex_coord.y != v1.tex_coord.y || v1.tex_coord.x != v2.tex_coord.x ||
+                v2.tex_coord.y != v3.tex_coord.y || v3.tex_coord.x != v0.tex_coord.x ||
+                !SameColor(v0, v1) || !SameColor(v0, v2) || !SameColor(v0, v3)) {
+                return false;
+            }
+
+            const int source_width = RoundPixel((v1.tex_coord.x - v0.tex_coord.x) * texture_width);
+            const int source_height = RoundPixel((v3.tex_coord.y - v0.tex_coord.y) * texture_height);
+            const int destination_width = RoundPixel(v1.position.x - v0.position.x);
+            const int destination_height = RoundPixel(v3.position.y - v0.position.y);
+            if (source_width <= 0 || source_height <= 0 || source_width != destination_width ||
+                source_height != destination_height) {
+                return false;
+            }
+        }
+
+        for (int quad = 0; quad < num_quads; ++quad) {
+            const Rml::Vertex& v0 = vertices[quad * 4 + 0];
+            const Rml::Vertex& v1 = vertices[quad * 4 + 1];
+            const Rml::Vertex& v3 = vertices[quad * 4 + 3];
+            SDL_Rect source{
+                RoundPixel(v0.tex_coord.x * texture_width),
+                RoundPixel(v0.tex_coord.y * texture_height),
+                RoundPixel((v1.tex_coord.x - v0.tex_coord.x) * texture_width),
+                RoundPixel((v3.tex_coord.y - v0.tex_coord.y) * texture_height)};
+            SDL_Rect destination{
+                RoundPixel(v0.position.x + translation.x),
+                RoundPixel(v0.position.y + translation.y),
+                RoundPixel(v1.position.x - v0.position.x),
+                RoundPixel(v3.position.y - v0.position.y)};
+            SDL_SetTextureColorMod(texture, v0.colour.red, v0.colour.green, v0.colour.blue);
+            SDL_SetTextureAlphaMod(texture, v0.colour.alpha);
+            SDL_RenderCopy(renderer_, texture, &source, &destination);
+        }
+
+        SDL_SetTextureColorMod(texture, 255, 255, 255);
+        SDL_SetTextureAlphaMod(texture, 255);
+        return true;
+    }
+
     SDL_Renderer* renderer_;
     SDL_Rect scissor_{};
     bool scissor_enabled_ = false;
@@ -308,8 +390,8 @@ bool RunSmoke() {
         return false;
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99743", SDL_WINDOWPOS_UNDEFINED,
+    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99744", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
@@ -336,6 +418,7 @@ bool RunSmoke() {
         running = false;
     }
 
+    bool screenshot_saved = false;
     while (running) {
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
@@ -347,6 +430,9 @@ bool RunSmoke() {
         context->Render();
         SDL_RenderFlush(renderer);
         SDL_UpdateWindowSurface(window);
+        if (!screenshot_saved) {
+            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99744-ui.bmp") == 0;
+        }
         sceKernelUsleep(16667);
     }
 

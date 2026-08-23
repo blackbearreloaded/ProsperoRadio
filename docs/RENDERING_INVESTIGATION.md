@@ -375,3 +375,19 @@ isolated crash regression.
 - Result: production polished-UI milestone complete. Its rendering path is
   equivalent to the lossless PPSA99742 frame, with no diagnostic filesystem
   activity in the frame loop.
+
+## PPSA99744 - exact glyph-quad blitting
+
+- Goal: eliminate the malformed lowercase `r` shoulders and subtly eroded
+  bottom rows still visible on the physical TV.
+- Diagnosis: RmlUi generates every font glyph as an integer-positioned,
+  axis-aligned quad, but SDL's software `RenderGeometry` path splits each quad
+  into two fixed-point textured triangles. That path previously produced
+  visible seams in other UI geometry and does not preserve exact glyph bitmap
+  coverage.
+- Changes:
+  - detects RmlUi's canonical four-vertex/six-index textured quads;
+  - sends only unscaled, axis-aligned quads through SDL's exact rectangle blit;
+  - retains `SDL_RenderGeometry` as the fallback for all other geometry;
+  - uses nearest sampling and writes `/download0/PPSA99744-ui.bmp` for native
+    1920x1080 comparison.
