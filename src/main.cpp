@@ -344,12 +344,14 @@ private:
     bool RenderPixelAlignedQuads(Rml::Vertex* vertices, int num_vertices, int* indices,
         int num_indices, SDL_Texture* texture, const Rml::Vector2f& translation) {
         if (num_vertices <= 0 || num_vertices % 4 != 0 || num_indices != (num_vertices / 4) * 6) {
+            LogPixelPath("batch-shape", num_vertices, num_indices, 0, 0, 0, 0);
             return false;
         }
 
         int texture_width = 0;
         int texture_height = 0;
         if (SDL_QueryTexture(texture, nullptr, nullptr, &texture_width, &texture_height) != 0) {
+            LogPixelPath("texture-query", num_vertices, num_indices, 0, 0, 0, 0);
             return false;
         }
 
@@ -360,6 +362,8 @@ private:
             if (indices[index + 0] != base + 0 || indices[index + 1] != base + 3 ||
                 indices[index + 2] != base + 1 || indices[index + 3] != base + 1 ||
                 indices[index + 4] != base + 3 || indices[index + 5] != base + 2) {
+                LogPixelPath("indices", num_vertices, num_indices, texture_width,
+                    texture_height, 0, 0);
                 return false;
             }
 
@@ -372,6 +376,8 @@ private:
                 v0.tex_coord.y != v1.tex_coord.y || v1.tex_coord.x != v2.tex_coord.x ||
                 v2.tex_coord.y != v3.tex_coord.y || v3.tex_coord.x != v0.tex_coord.x ||
                 !SameColor(v0, v1) || !SameColor(v0, v2) || !SameColor(v0, v3)) {
+                LogPixelPath("quad-layout", num_vertices, num_indices, texture_width,
+                    texture_height, 0, 0);
                 return false;
             }
 
@@ -381,9 +387,14 @@ private:
             const int destination_height = RoundPixel(v3.position.y - v0.position.y);
             if (source_width <= 0 || source_height <= 0 || source_width != destination_width ||
                 source_height != destination_height) {
+                LogPixelPath("quad-size", num_vertices, num_indices, source_width,
+                    source_height, destination_width, destination_height);
                 return false;
             }
         }
+
+        LogPixelPath("accepted", num_vertices, num_indices, texture_width,
+            texture_height, num_quads, 0);
 
         for (int quad = 0; quad < num_quads; ++quad) {
             const Rml::Vertex& v0 = vertices[quad * 4 + 0];
@@ -409,9 +420,20 @@ private:
         return true;
     }
 
+    void LogPixelPath(const char* result, int vertices, int indices,
+        int value_a, int value_b, int value_c, int value_d) {
+        if (pixel_path_logs_ >= 12) return;
+        std::fprintf(stderr,
+            "[radio-font] pixel-path=%s vertices=%d indices=%d values=%d,%d,%d,%d\n",
+            result, vertices, indices, value_a, value_b, value_c, value_d);
+        std::fflush(stderr);
+        ++pixel_path_logs_;
+    }
+
     SDL_Renderer* renderer_;
     SDL_Rect scissor_{};
     bool scissor_enabled_ = false;
+    int pixel_path_logs_ = 0;
 };
 
 bool LoadFonts() {
@@ -452,7 +474,7 @@ bool RunSmoke() {
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99761", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99762", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
@@ -494,7 +516,7 @@ bool RunSmoke() {
         SDL_RenderFlush(renderer);
         SDL_UpdateWindowSurface(window);
         if (!screenshot_saved) {
-            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99761-ui.bmp") == 0;
+            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99762-ui.bmp") == 0;
         }
         sceKernelUsleep(16667);
     }
