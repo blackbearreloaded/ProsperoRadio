@@ -446,3 +446,12 @@ isolated crash regression.
 - Result: the lossless frame has clean `r` shoulders, even baselines, complete
   lower rows, consistent Regular/SemiBold weight, one-line selected metadata,
   and clear separation between every panel, player strip, and footer.
+
+## PPSA99747 - production pixel-perfect UI
+
+- Goal: package the hardware-verified PPSA99746 renderer, Inter typography, and
+  layout without diagnostic filesystem activity.
+- Changes:
+  - keeps the exact glyph-quad blitter, Inter Regular/SemiBold assets, RCSS, and
+    RmlUi markup verified in PPSA99746;
+  - removes the one-time `/download0` BMP capture from the frame loop.
