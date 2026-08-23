@@ -58,7 +58,7 @@ button:hover { border-color: #70e1dc; }
 .brand-subtitle { margin-top: 3px; color: #bac9cd; font-size: 18px; line-height: 1.25; letter-spacing: 1px; }
 .topbar-title { flex: 1; color: #bac9cd; font-size: 27px; }
 .topbar-actions { display: flex; gap: 12px; }
-.icon-button, .strip-button { min-width: 54px; min-height: 54px; padding: 8px 14px; border: 2px #31505d; border-radius: 8px; background: #0d1b24; color: #f2f7f8; cursor: pointer; font-size: 17px; font-weight: 700; }
+.icon-button, .strip-button { min-width: 54px; min-height: 54px; padding: 8px 14px; border: 2px #31505d; border-radius: 0; background: #0d1b24; color: #f2f7f8; cursor: pointer; font-size: 17px; font-weight: 700; }
 .main { position: relative; flex: 1; min-height: 0; }
 .state-panel { position: absolute; inset: 0; display: none; padding: 34px 64px 140px; overflow: auto; }
 .state-panel.is-active { display: block; }
@@ -69,18 +69,18 @@ h2 { margin-bottom: 8px; font-size: 27px; }
 .muted { color: #bac9cd; }
 .eyebrow { margin-bottom: 8px; color: #70e1dc; font-size: 17px; font-weight: 700; line-height: 1.2; letter-spacing: 1.4px; }
 .header-actions, .error-actions, .player-actions { display: flex; gap: 12px; }
-.button { min-height: 58px; padding: 12px 22px; border: 2px #31505d; border-radius: 8px; background: #142934; color: #f2f7f8; cursor: pointer; font-weight: 700; }
+.button { min-height: 58px; padding: 12px 22px; border: 2px #31505d; border-radius: 0; background: #142934; color: #f2f7f8; cursor: pointer; font-weight: 700; }
 .button.primary { border-color: #70e1dc; background: #1e8f94; }
 .button.secondary { background: transparent; }
 .filter-row { display: flex; gap: 10px; margin-bottom: 25px; }
-.filter { min-height: 50px; padding: 8px 20px; border: 2px transparent; border-radius: 7px; background: transparent; color: #bac9cd; cursor: pointer; font-weight: 700; }
+.filter { min-height: 50px; padding: 8px 20px; border: 2px transparent; border-radius: 0; background: transparent; color: #bac9cd; cursor: pointer; font-weight: 700; }
 .filter.active { border-color: #70e1dc; background: #1c3b48; color: #f2f7f8; }
 .content-layout { display: flex; align-items: flex-start; gap: 28px; }
 .station-area { flex: 1; min-width: 0; }
 .section-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
 .result-count { color: #bac9cd; font-size: 18px; line-height: 1.25; }
 .station-grid { display: flex; flex-wrap: wrap; gap: 14px; }
-.station-card { position: relative; display: flex; flex: 1 1 45%; align-items: center; gap: 16px; min-width: 320px; min-height: 126px; padding: 16px; border: 2px #31505d; border-radius: 10px; background: #0d1b24; color: #f2f7f8; text-align: left; cursor: pointer; }
+.station-card { position: relative; display: flex; flex: 1 1 45%; align-items: center; gap: 16px; min-width: 320px; min-height: 126px; padding: 16px; border: 2px #31505d; border-radius: 0; background: #0d1b24; color: #f2f7f8; text-align: left; cursor: pointer; }
 .station-card.selected { border-color: #70e1dc; background: #1c3b48; }
 .station-art, .player-art, .strip-art { display: block; flex: none; background: #25617a; color: #fff; font-weight: 700; letter-spacing: 1px; text-align: center; }
 .station-art { width: 76px; height: 76px; font-size: 20px; line-height: 76px; }
@@ -96,7 +96,7 @@ h2 { margin-bottom: 8px; font-size: 27px; }
 .now-playing h2 { font-size: 27px; }
 .player-rule { height: 1px; margin: 14px 0 12px; background: #31505d; }
 .playing-label { display: flex; align-items: center; gap: 8px; color: #69d997; font-size: 18px; line-height: 1.25; font-weight: 700; }
-.play-button { display: block; width: 112px; height: 58px; margin: 14px auto 16px; padding: 0; border: 2px #70e1dc; border-radius: 8px; background: #70e1dc; color: #061016; cursor: pointer; font-size: 18px; font-weight: 700; line-height: 54px; text-align: center; }
+.play-button { display: block; width: 112px; height: 58px; margin: 14px auto 16px; padding: 0; border: 2px #70e1dc; border-radius: 0; background: #70e1dc; color: #061016; cursor: pointer; font-size: 18px; font-weight: 700; line-height: 54px; text-align: center; }
 .player-actions { flex-direction: column; gap: 8px; }
 .player-actions .button { min-height: 46px; font-size: 20px; line-height: 1.2; }
 .bottom-bar { position: absolute; right: 0; bottom: 0; left: 0; display: flex; align-items: center; gap: 22px; height: 66px; padding: 0 64px; border-top: 1px #31505d; background: rgba(7, 16, 22, .98); color: #bac9cd; font-size: 18px; line-height: 1.25; }
@@ -109,7 +109,7 @@ h2 { margin-bottom: 8px; font-size: 27px; }
 .strip-copy strong, .strip-copy span, .now-playing h2 { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .strip-copy span { color: #bac9cd; font-size: 18px; line-height: 1.25; }
 .strip-live { display: flex; align-items: center; gap: 7px; margin-right: 10px; color: #69d997; font-size: 18px; line-height: 1.25; font-weight: 700; }
-.strip-button { display: block; min-width: 68px; height: 44px; padding: 4px 10px; border-radius: 8px; font-size: 17px; line-height: 32px; text-align: center; }
+.strip-button { display: block; min-width: 68px; height: 44px; padding: 4px 10px; border-radius: 0; font-size: 17px; line-height: 32px; text-align: center; }
 .icon-button { font-size: 20px; line-height: 1.2; }
 .strip-play { background: #70e1dc; color: #061016; border-color: #70e1dc; }
 

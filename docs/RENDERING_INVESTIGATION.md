@@ -183,6 +183,21 @@ isolated crash regression.
 
 ## PPSA99734 - proven download mount and native capture
 
+- Commit: `00c258a`
+- Outcome: entered `eboot`, wrote the native frame, remained alive, and closed
+  cleanly.
+- Evidence: `PPSA99734-native/PPSA99734-ui.bmp` extracted from the title's
+  `/user/download/PPSA99734/download0.dat` UFS2 image.
 - Changes:
   - restores the hardware-proven 256 MB `/download0` reservation;
   - writes `/download0/PPSA99734-ui.bmp` after the first complete UI frame.
+- Result: the lossless 1920x1080 frame proves smooth, readable Noto Sans and
+  correct layout. Rounded interactive borders still show SDL software-raster
+  seams; square panel borders do not.
+
+## PPSA99735 - seam-free controls
+
+- Changes:
+  - sets card and interactive-control radii to zero while preserving the same
+    spacing, color hierarchy, focus borders, and typography;
+  - writes `/download0/PPSA99735-ui.bmp` for lossless verification.
