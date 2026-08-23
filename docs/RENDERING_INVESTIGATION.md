@@ -152,6 +152,10 @@ isolated crash regression.
 
 ## PPSA99732 - TV typography and layout polish
 
+- Commit: `23627bb`
+- Outcome: entered `eboot`, displayed the complete UI, remained alive, and
+  closed cleanly.
+- Evidence: `PPSA99732-20260823-113558-running.png`.
 - Changes:
   - keeps Noto Sans regular/bold and raises every secondary label to at least
     17-20 px;
@@ -159,3 +163,15 @@ isolated crash regression.
     height;
   - adds overflow protection for real Radio Browser station names and metadata;
   - compacts the selected-station panel so its actions clear the player strip.
+- Result: labels and metadata fit without overlap at the forced 640x480 host
+  capture scale. A lossless native frame is needed for final 1920x1080 review.
+
+## PPSA99733 - lossless native UI capture
+
+- Changes:
+  - saves the first complete 1920x1080 SDL surface to
+    `/download0/PPSA99733-ui.bmp`;
+  - reduces the temporary download-data reservation to 32 MB so the backing
+    UFS2 image remains quick to retrieve and inspect.
+- Goal: validate exact PS5 renderer output independently of Chiaki window and
+  host-desktop scaling.
