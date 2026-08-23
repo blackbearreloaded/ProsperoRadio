@@ -240,3 +240,14 @@ isolated crash regression.
   - makes every proportional text line at least 1.3 high, with 1.25 retained
     only for the oversized 43 px page heading;
   - writes `/download0/PPSA99737-ui.bmp` for exact 1920x1080 verification.
+- Outcome: entered `eboot`, remained stable, closed cleanly, and released its
+  runtime layers. The first attempt never launched because the obsolete klog
+  default at port 40972 refused the connection; the byte-identical retry used
+  the console's active klog endpoint at port 3232.
+- Evidence: `PPSA99737-native/PPSA99737-ui.bmp`, SHA-256
+  `84A9187F06E1B85515E05BC6E8D7D93D254C43D72243C18E5C5711F558433493`.
+- FFPFSC: 12,451,840 bytes, SHA-256
+  `0BEA2DCCA87F5FDEE240BCF6FF7931A29E9B52305BED0912BDC9E24941CAE44C`.
+- Result: the lossless native frame shows intact lower strokes and descenders
+  in regular and bold text throughout the top bar, cards, controls, player,
+  and footer. No text overlaps or layout regressions are visible.
