@@ -289,3 +289,12 @@ isolated crash regression.
 - Result: the native frame shows an even lowercase baseline and a conventional
   `t` stem/crossbar. The wider face still fits every card, button, player field,
   and footer label without clipping, overlap, or unintended wrapping.
+
+## PPSA99740 - production neutral typography
+
+- Goal: package the hardware-verified DejaVu Sans rendering without diagnostic
+  writes in the runtime frame loop.
+- Changes:
+  - keeps the byte-equivalent PPSA99739 font loading, RCSS, and SDL rendering
+    paths;
+  - removes the one-time `/download0` BMP capture.
