@@ -321,3 +321,15 @@ isolated crash regression.
   - proportionally increases the top bar, cards, selected-station panel, player
     strip, and footer while preserving the existing layout;
   - writes `/download0/PPSA99741-ui.bmp` for exact 1920x1080 inspection.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers.
+- Evidence: `PPSA99741-native/PPSA99741-ui.bmp`, SHA-256
+  `57CE986B2746A3783FA061D8FFA1AB14CA9DCF72EBBDEA114FE53FF7451454D0`.
+- FFPFSC: 13,434,880 bytes, SHA-256
+  `66AD755C4EC92FFDBDA66691A3E1CEF2885F5AA12A7042E270DCA1C9B8AA4E53`.
+- Result: the lossless frame confirms smooth, conventional glyph shapes and
+  complete lower stems in the top bar, cards, controls, and player. The larger
+  scale exposed a separate layout regression: the selected-station actions
+  extend behind the player strip, and the third card row has insufficient
+  clearance above it. PPSA99742 will retain this typography while compacting
+  only the surrounding panel and strip geometry.
