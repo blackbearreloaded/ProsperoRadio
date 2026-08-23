@@ -119,6 +119,9 @@ isolated crash regression.
 
 ## PPSA99730 - direct OSMesa visual probe
 
+- Commit: `7be64c1`
+- Outcome: entered `eboot`, remained alive, and closed cleanly.
+- Evidence: `PPSA99730-20260823-111811-running.png`.
 - Changes:
   - removed runtime file logging;
   - starts from the proven SDL software surface and encodes every OSMesa loader,
@@ -126,3 +129,16 @@ isolated crash regression.
     color;
   - calls OSMesa directly with `/app0/libOSMesa.so.8`, independent of SDL's
     hardcoded basename-only OSMesa loader.
+- Result: the screenshot reached the absolute-path `dlopen` failure color.
+  Pacbrew's raw shared object is incompatible with this native app loader, so
+  dynamic OSMesa is removed from subsequent packages.
+
+## PPSA99731 - linearly sampled font atlases
+
+- Changes:
+  - restored the stable PPSA99726 SDL software renderer;
+  - forces `SDL_ScaleModeLinear` on every generated RmlUi texture and requests
+    linear render scaling globally;
+  - removes the 92 MB OSMesa runtime from the staged app.
+- Goal: preserve the proven native renderer while smoothing glyph alpha edges
+  and texture-coordinate quantization at small sizes.
