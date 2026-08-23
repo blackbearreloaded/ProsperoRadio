@@ -56,9 +56,12 @@ an evidence warning and still captures the restored Chiaki rectangle. This made
 the launch/capture/close workflow self-sufficient without weakening PS5 lock
 ownership or runtime-release checks.
 
-## PPSA99727 - OSMesa/OpenGL renderer
+## PPSA99727 - first OSMesa/OpenGL renderer probe
 
-- Build status: compiled, linked, staged, and packaged; PS5 test pending.
+- Commit: `57d0ac9`
+- Outcome: entered `eboot`, remained alive, and closed cleanly, but presented a
+  black frame.
+- Evidence: `PPSA99727-20260823-110336-running.png` and its klog.
 - Runtime source: pacbrew-repo v0.39 `ps5-payload-dev.tar.gz`.
 - Runtime: `libOSMesa.so.8`, 92,405,336 bytes, SHA-256
   `128D2AB20B980B96DECB1F20A9ED57D10CC922605259666B63EFA52963920F0A`.
@@ -77,3 +80,18 @@ ownership or runtime-release checks.
   - added hash-validated app-root runtime-file staging to the build.
 - Goal: preserve anti-aliased font atlas sampling and rounded geometry without
   SDL software `RenderGeometry` quantization.
+
+The absence of a crash proves the app and runtime mount survived, but the first
+probe did not expose which initialization stage returned early because ordinary
+stderr was not present in the captured klog.
+
+## PPSA99728 - OSMesa stage diagnostics
+
+- Changes:
+  - uses lazy relocation for the OSMesa preload, matching SDL's own loader;
+  - records each loader, SDL, OpenGL, and RmlUi stage through
+    `sceKernelDebugOutText` and `/data/homebrew/PPSA99728/runtime.log`;
+  - presents a purple OpenGL diagnostic frame before RmlUi initialization.
+- Interpretation: a black frame with a runtime log identifies an early loader
+  or SDL failure; purple identifies successful GL presentation but later RmlUi
+  failure; the complete UI proves the renderer path.
