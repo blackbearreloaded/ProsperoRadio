@@ -320,7 +320,8 @@ layout is a guide, not a requirement to pre-create empty abstractions.
 
 ### Phase 0: Preserve and baseline the template
 
-Status: project copy created; baseline build pending.
+Status: project copy created; doctor and clean-room baseline build pass;
+on-device launch remains pending.
 
 - keep the source boilerplate unchanged;
 - assign a unique title name, title ID, concept ID, and content ID for this app;
@@ -334,6 +335,8 @@ changes are introduced.
 
 ### Phase 1: Static RmlUi design
 
+Status: initial mock station UI created; visual review remains pending.
+
 - create the initial RML/RCSS documents and mock station data;
 - define page shell, card, button, focus, player strip, loading, empty, and
   error primitives;
@@ -344,6 +347,9 @@ Exit condition: the UI design is coherent enough to implement in the PS5
 runtime, with controller focus behavior explicitly represented.
 
 ### Phase 2: SDL + RmlUi PS5 smoke test
+
+Status: SDL + RmlUi link and folder package pass; on-device render/input
+validation remains pending.
 
 - convert the entry point to C++;
 - add SDL2 headers and static archives through the boilerplate project config;
