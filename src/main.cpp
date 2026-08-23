@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <pthread.h>
 
 extern "C" int sceKernelUsleep(std::uint32_t microseconds);
 extern "C" int sceSystemServiceHideSplashScreen(void);
@@ -16,6 +17,28 @@ extern "C" char __eh_frame_hdr_start[1] = {};
 extern "C" char __eh_frame_hdr_end[1] = {};
 extern "C" char __eh_frame_start[1] = {};
 extern "C" char __eh_frame_end[1] = {};
+
+// The homebrew loader does not resolve the SDK stub's libkernel.sprx alias for
+// pthread_once. Keep the implementation local so libc++ can safely initialize
+// its process-wide state during Rml::Initialise().
+extern "C" int pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
+    constexpr int running = 2;
+    int state = __atomic_load_n(&once_control->state, __ATOMIC_ACQUIRE);
+    if (state == PTHREAD_DONE_INIT) return 0;
+
+    int expected = PTHREAD_NEEDS_INIT;
+    if (__atomic_compare_exchange_n(&once_control->state, &expected, running, false,
+            __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE)) {
+        init_routine();
+        __atomic_store_n(&once_control->state, PTHREAD_DONE_INIT, __ATOMIC_RELEASE);
+        return 0;
+    }
+
+    while (__atomic_load_n(&once_control->state, __ATOMIC_ACQUIRE) != PTHREAD_DONE_INIT) {
+        sceKernelUsleep(100);
+    }
+    return 0;
+}
 
 extern "C" void __assert(const char*, const char*, int, const char*) {
     std::abort();
@@ -93,7 +116,7 @@ int main() {
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99711", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99712", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
