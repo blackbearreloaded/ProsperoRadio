@@ -345,3 +345,14 @@ isolated crash regression.
   - lowers the player strip by six pixels while retaining a ten-pixel gap above
     the footer;
   - writes `/download0/PPSA99742-ui.bmp` for exact 1920x1080 inspection.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers. Chiaki exited
+  before the shared PS5 lock was released.
+- Evidence: `PPSA99742-native/PPSA99742-ui.bmp`, SHA-256
+  `E993BACABB848049DCAA82FCB17E4235063EBB40127C3B566E6AA8BC4FFD659E`.
+- FFPFSC: 13,434,880 bytes, SHA-256
+  `79E177BA2B22A938B104376C7BAB6A520148A35FDE76A18470212CC2ECBEDF8E`.
+- Result: the native 1920x1080 frame has complete lower stems and consistent
+  baselines throughout. All six cards, both selected-station actions, the
+  player strip, and the footer fit with clear separation and no clipping,
+  overlap, malformed controls, or unintended wrapping.
