@@ -343,76 +343,64 @@ private:
 
     bool RenderPixelAlignedQuads(Rml::Vertex* vertices, int num_vertices, int* indices,
         int num_indices, SDL_Texture* texture, const Rml::Vector2f& translation) {
-        if (num_vertices <= 0 || num_vertices % 4 != 0 || num_indices != (num_vertices / 4) * 6) {
-            LogPixelPath("batch-shape", num_vertices, num_indices, 0, 0, 0, 0);
-            return false;
-        }
+        if (num_vertices <= 0 || num_indices <= 0 || num_indices % 6 != 0) return false;
 
         int texture_width = 0;
         int texture_height = 0;
-        if (SDL_QueryTexture(texture, nullptr, nullptr, &texture_width, &texture_height) != 0) {
-            LogPixelPath("texture-query", num_vertices, num_indices, 0, 0, 0, 0);
+        if (SDL_QueryTexture(texture, nullptr, nullptr, &texture_width, &texture_height) != 0)
             return false;
-        }
 
-        const int num_quads = num_vertices / 4;
+        struct Copy {
+            SDL_Rect source;
+            SDL_Rect destination;
+            Rml::ColourbPremultiplied colour;
+        };
+        const int num_quads = num_indices / 6;
+        std::vector<Copy> copies;
+        copies.reserve(static_cast<size_t>(num_quads));
         for (int quad = 0; quad < num_quads; ++quad) {
-            const int base = quad * 4;
             const int index = quad * 6;
-            if (indices[index + 0] != base + 0 || indices[index + 1] != base + 3 ||
-                indices[index + 2] != base + 1 || indices[index + 3] != base + 1 ||
-                indices[index + 4] != base + 3 || indices[index + 5] != base + 2) {
-                LogPixelPath("indices", num_vertices, num_indices, texture_width,
-                    texture_height, 0, 0);
+            const int i0 = indices[index + 0];
+            const int i3 = indices[index + 1];
+            const int i1 = indices[index + 2];
+            const int i2 = indices[index + 5];
+            if (i0 < 0 || i0 >= num_vertices || i1 < 0 || i1 >= num_vertices ||
+                i2 < 0 || i2 >= num_vertices || i3 < 0 || i3 >= num_vertices ||
+                indices[index + 3] != i1 || indices[index + 4] != i3 ||
+                i0 == i1 || i0 == i2 || i0 == i3 || i1 == i2 || i1 == i3 || i2 == i3)
                 return false;
-            }
 
-            const Rml::Vertex& v0 = vertices[base + 0];
-            const Rml::Vertex& v1 = vertices[base + 1];
-            const Rml::Vertex& v2 = vertices[base + 2];
-            const Rml::Vertex& v3 = vertices[base + 3];
+            const Rml::Vertex& v0 = vertices[i0];
+            const Rml::Vertex& v1 = vertices[i1];
+            const Rml::Vertex& v2 = vertices[i2];
+            const Rml::Vertex& v3 = vertices[i3];
             if (v0.position.y != v1.position.y || v1.position.x != v2.position.x ||
                 v2.position.y != v3.position.y || v3.position.x != v0.position.x ||
                 v0.tex_coord.y != v1.tex_coord.y || v1.tex_coord.x != v2.tex_coord.x ||
                 v2.tex_coord.y != v3.tex_coord.y || v3.tex_coord.x != v0.tex_coord.x ||
-                !SameColor(v0, v1) || !SameColor(v0, v2) || !SameColor(v0, v3)) {
-                LogPixelPath("quad-layout", num_vertices, num_indices, texture_width,
-                    texture_height, 0, 0);
+                !SameColor(v0, v1) || !SameColor(v0, v2) || !SameColor(v0, v3))
                 return false;
-            }
 
             const int source_width = RoundPixel((v1.tex_coord.x - v0.tex_coord.x) * texture_width);
             const int source_height = RoundPixel((v3.tex_coord.y - v0.tex_coord.y) * texture_height);
             const int destination_width = RoundPixel(v1.position.x - v0.position.x);
             const int destination_height = RoundPixel(v3.position.y - v0.position.y);
             if (source_width <= 0 || source_height <= 0 || source_width != destination_width ||
-                source_height != destination_height) {
-                LogPixelPath("quad-size", num_vertices, num_indices, source_width,
-                    source_height, destination_width, destination_height);
+                source_height != destination_height)
                 return false;
-            }
+
+            copies.push_back({
+                {RoundPixel(v0.tex_coord.x * texture_width),
+                    RoundPixel(v0.tex_coord.y * texture_height), source_width, source_height},
+                {RoundPixel(v0.position.x + translation.x),
+                    RoundPixel(v0.position.y + translation.y), destination_width, destination_height},
+                v0.colour});
         }
 
-        LogPixelPath("accepted", num_vertices, num_indices, texture_width,
-            texture_height, num_quads, 0);
-
-        for (int quad = 0; quad < num_quads; ++quad) {
-            const Rml::Vertex& v0 = vertices[quad * 4 + 0];
-            const Rml::Vertex& v1 = vertices[quad * 4 + 1];
-            const Rml::Vertex& v3 = vertices[quad * 4 + 3];
-            SDL_Rect source{
-                RoundPixel(v0.tex_coord.x * texture_width),
-                RoundPixel(v0.tex_coord.y * texture_height),
-                RoundPixel((v1.tex_coord.x - v0.tex_coord.x) * texture_width),
-                RoundPixel((v3.tex_coord.y - v0.tex_coord.y) * texture_height)};
-            SDL_Rect destination{
-                RoundPixel(v0.position.x + translation.x),
-                RoundPixel(v0.position.y + translation.y),
-                RoundPixel(v1.position.x - v0.position.x),
-                RoundPixel(v3.position.y - v0.position.y)};
-            SDL_SetTextureColorMod(texture, v0.colour.red, v0.colour.green, v0.colour.blue);
-            SDL_SetTextureAlphaMod(texture, v0.colour.alpha);
-            SDL_RenderCopy(renderer_, texture, &source, &destination);
+        for (const Copy& copy : copies) {
+            SDL_SetTextureColorMod(texture, copy.colour.red, copy.colour.green, copy.colour.blue);
+            SDL_SetTextureAlphaMod(texture, copy.colour.alpha);
+            SDL_RenderCopy(renderer_, texture, &copy.source, &copy.destination);
         }
 
         SDL_SetTextureColorMod(texture, 255, 255, 255);
@@ -420,20 +408,9 @@ private:
         return true;
     }
 
-    void LogPixelPath(const char* result, int vertices, int indices,
-        int value_a, int value_b, int value_c, int value_d) {
-        if (pixel_path_logs_ >= 12) return;
-        std::fprintf(stderr,
-            "[radio-font] pixel-path=%s vertices=%d indices=%d values=%d,%d,%d,%d\n",
-            result, vertices, indices, value_a, value_b, value_c, value_d);
-        std::fflush(stderr);
-        ++pixel_path_logs_;
-    }
-
     SDL_Renderer* renderer_;
     SDL_Rect scissor_{};
     bool scissor_enabled_ = false;
-    int pixel_path_logs_ = 0;
 };
 
 bool LoadFonts() {
@@ -474,7 +451,7 @@ bool RunSmoke() {
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99762", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99763", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
@@ -516,7 +493,7 @@ bool RunSmoke() {
         SDL_RenderFlush(renderer);
         SDL_UpdateWindowSurface(window);
         if (!screenshot_saved) {
-            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99762-ui.bmp") == 0;
+            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99763-ui.bmp") == 0;
         }
         sceKernelUsleep(16667);
     }
