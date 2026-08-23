@@ -44,6 +44,11 @@ extern "C" void __assert(const char*, const char*, int, const char*) {
     std::abort();
 }
 
+// Keep CSS numeric parsing off the unresolved libSceLibcInternal.sprx alias.
+extern "C" float strtof(const char* value, char** end) {
+    return static_cast<float>(strtod(value, end));
+}
+
 extern "C" char* strcasestr(const char* haystack, const char* needle) {
     if (!*needle) return const_cast<char*>(haystack);
     for (; *haystack; ++haystack) {
@@ -127,7 +132,7 @@ int main() {
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return 1;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99713", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99714", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
