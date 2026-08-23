@@ -879,3 +879,85 @@ isolated crash regression.
   not merely the number of alpha levels. The next implementation will keep
   RmlUi for HTML/CSS layout but use those exact LVGL bitmap masks through
   RmlUi's supported custom bitmap-font interface.
+
+## PPSA99761 - exact LVGL bitmap-font engine
+
+- Commit: `022ea3d`
+- Goal: render the exact masks used by LVGL while retaining RmlUi for HTML/RCSS
+  layout.
+- Changes:
+  - adds a custom RmlUi bitmap-font engine derived from RmlUi's supported sample
+    interface;
+  - generates 20, 24, 28, 32, 36, 40, and 48-pixel BMFont atlases directly
+    from LVGL's built-in 4-bit Montserrat C data;
+  - preserves LVGL glyph dimensions, offsets, integer advances, class kerning,
+    and all 16 alpha levels;
+  - adds `tools/generate_lvgl_bitmap_fonts.py --check`, whose 16 generated files
+    have combined SHA-256
+    `c1e9b41232afd6720e04ea14c972caaea20cd839149766ada95aecd4e15ee677`.
+- Outcome: entered `eboot`, wrote the native frame, remained stable, closed
+  cleanly, and released its runtime layers and Chiaki before the PS5 lock was
+  released.
+- Evidence:
+  - `PPSA99761-native/PPSA99761-ui.bmp`, SHA-256
+    `2DABFA54059DAFF461170B461F53D96CD9B22E8CAF680DA546A6E05EB67E1325`;
+  - exact source-atlas reconstruction matches the LVGL preview with zero mask
+    or alpha differences;
+  - nearest-neighbor comparisons under `PPSA99761-native` show the native RmlUi
+    output still differs from that source mask.
+- FFPFSC: 15,794,176 bytes, SHA-256
+  `D4DE55FD1CF06997EF034B9BE78FEE6031CA4C05835EF42A6BA7E64917AF02C6`.
+- Result: font selection, hinting, and mask generation are no longer variables.
+  The remaining defect occurs after the exact atlas enters the SDL rendering
+  path.
+
+## PPSA99762 - textured-quad dispatch diagnostic
+
+- Commit: `559c8e9`
+- Goal: determine why exact LVGL atlas texels were not preserved by the final
+  textured-quad path.
+- Changes:
+  - adds bounded diagnostics for each strict 1:1 quad acceptance or rejection
+    branch;
+  - changes no font asset, glyph metric, layout rule, texture data, or renderer
+    decision.
+- Outcome: entered `eboot`, remained stable, closed cleanly, and released its
+  runtime layers and Chiaki before the PS5 lock was released.
+- Evidence: `PPSA99762-20260823-175454-result.json`; eboot SHA-256
+  `0755AD003B7B0B5D4C7E8258FB1A9B3146A07C15A9F17D546FDF60DAEF0BABED`.
+- FFPFSC: 15,794,176 bytes, SHA-256
+  `62D9D1990E168151518379C836ED6A1C91AF43DE67218ABACF70DF4F83C6F520`.
+- Result: app `stderr` is not forwarded into the port-3232 kernel log, so this
+  diagnostic channel cannot classify renderer-internal branches and was
+  removed in the next build.
+
+## PPSA99763 - generic indexed-quad copy control
+
+- Commit: `a4e74e6`
+- Goal: remove the strict contiguous-vertex assumption from the 1:1 texture
+  copy path and test whether RmlUi's final mesh batching caused fallback to
+  `SDL_RenderGeometry`.
+- Changes:
+  - recognizes each canonical two-triangle quad from its six indices, including
+    non-contiguous vertex storage;
+  - validates the complete batch before drawing and copies accepted 1:1 quads
+    with nearest sampling;
+  - removes the ineffective `stderr` diagnostics.
+- Outcome: entered `eboot`, wrote the native frame, remained stable, closed
+  cleanly, and released its runtime layers and Chiaki before the PS5 lock was
+  released. Lock state was free and the local Chiaki process count was zero
+  after the cycle.
+- Evidence:
+  - `PPSA99763-native/PPSA99763-ui.bmp`, SHA-256
+    `2DABFA54059DAFF461170B461F53D96CD9B22E8CAF680DA546A6E05EB67E1325`;
+  - `PPSA99763-20260823-180222-result.json`, lifecycle result `entered-eboot`;
+  - eboot SHA-256
+    `0C0C31AF0182F8173FF0985E554FF1315DD963F100D9B88D4131696FF3A621A9`.
+- FFPFSC: 15,794,176 bytes, SHA-256
+  `A7EE4DE0EBDB5FDB51393E03CAE802DE6A21B258F41CDBCD3BFA5ABC358A79AB`.
+- Result: the native BMP is byte-identical to PPSA99761, disproving mesh
+  batching as the cause. Pixel inspection of the 32-pixel `K` finds the exact
+  first atlas rows followed by skipped/compressed interior rows: the PS5 SDL
+  textured-copy sampler does not preserve a nominal 1:1 atlas rectangle. The
+  next experiment will composite the retained atlas texels directly into the
+  software framebuffer, bypassing texture-coordinate sampling entirely.
