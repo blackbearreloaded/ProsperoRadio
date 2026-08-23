@@ -34,24 +34,6 @@ extern "C" char __eh_frame_end[1] = {};
 
 namespace {
 
-constexpr const char* kRuntimeLogPath = "/app0/runtime.log";
-
-void LogRuntime(const char* message) {
-    std::FILE* log = std::fopen(kRuntimeLogPath, "ab");
-    if (log) {
-        std::fputs(message, log);
-        std::fputc('\n', log);
-        std::fclose(log);
-    }
-}
-
-void LogRuntimeError(const char* stage, const char* detail) {
-    char message[768]{};
-    std::snprintf(message, sizeof(message), "[radio PPSA99729] %s: %s", stage,
-        detail ? detail : "unknown error");
-    LogRuntime(message);
-}
-
 constexpr std::size_t kMappedAllocationThreshold = 64 * 1024;
 constexpr std::uint64_t kAllocationMagic = UINT64_C(0x524144494F4D454D);
 constexpr int kProtectionReadWrite = 3;
@@ -251,91 +233,75 @@ bool LoadFonts() {
     for (;;) sceKernelUsleep(1000000);
 }
 
-bool RunSmoke() {
-    LogRuntime("[radio PPSA99729] entering RunSmoke");
-    if (SDL_SetMemoryFunctions(AllocateTracked, CallocTracked, ReallocTracked, FreeTracked) != 0) {
-        LogRuntimeError("SDL_SetMemoryFunctions failed", SDL_GetError());
-        return false;
-    }
+bool PaintSurface(SDL_Window* window, Uint32 color) {
+    SDL_Surface* surface = SDL_GetWindowSurface(window);
+    return surface && SDL_FillRect(surface, nullptr, color) == 0 &&
+        SDL_UpdateWindowSurface(window) == 0;
+}
 
-    setenv("LD_LIBRARY_PATH", "/app0", 1);
-    void* osmesa_library = dlopen("/app0/libOSMesa.so.8", RTLD_LAZY | RTLD_GLOBAL);
-    if (!osmesa_library) {
-        LogRuntimeError("OSMesa preload failed", dlerror());
+bool RunSmoke() {
+    if (SDL_SetMemoryFunctions(AllocateTracked, CallocTracked, ReallocTracked, FreeTracked) != 0) {
         return false;
     }
-    LogRuntime("[radio PPSA99729] OSMesa preload succeeded");
 
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
-        LogRuntimeError("SDL_Init failed", SDL_GetError());
         return false;
     }
-    LogRuntime("[radio PPSA99729] SDL video initialized");
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99730", SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
+    if (!window) return false;
 
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99729", SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
-    if (!window) {
-        LogRuntimeError("SDL_CreateWindow failed", SDL_GetError());
+    // Blue: SDL software presentation is alive and the OSMesa probe is starting.
+    PaintSurface(window, 0xff203b70u);
+
+    void* library = dlopen("/app0/libOSMesa.so.8", RTLD_LAZY | RTLD_GLOBAL);
+    if (!library) {
+        PaintSurface(window, 0xff9f1d20u); // Red: absolute-path dlopen failed.
         return false;
     }
-    LogRuntime("[radio PPSA99729] SDL OpenGL window created");
-    SDL_GLContext gl_context = window ? SDL_GL_CreateContext(window) : nullptr;
-    if (!gl_context || SDL_GL_MakeCurrent(window, gl_context) != 0) {
-        LogRuntimeError("OSMesa context failed", SDL_GetError());
+
+    using GetProcAddress = void* (*)(const char*);
+    using CreateContext = void* (*)(unsigned int, void*);
+    using MakeCurrent = unsigned char (*)(void*, void*, unsigned int, int, int);
+    using PixelStore = void (*)(int, int);
+    const auto get_proc = reinterpret_cast<GetProcAddress>(dlsym(library, "OSMesaGetProcAddress"));
+    const auto create_context = reinterpret_cast<CreateContext>(dlsym(library, "OSMesaCreateContext"));
+    const auto make_current = reinterpret_cast<MakeCurrent>(dlsym(library, "OSMesaMakeCurrent"));
+    const auto pixel_store = reinterpret_cast<PixelStore>(dlsym(library, "OSMesaPixelStore"));
+    if (!get_proc || !create_context || !make_current || !pixel_store) {
+        PaintSurface(window, 0xffd16b20u); // Orange: a required OSMesa symbol is absent.
         return false;
     }
-    LogRuntime("[radio PPSA99729] OSMesa context current");
 
-    AppSystemInterface system_interface;
-    AppFileInterface file_interface;
-    OSMesaRenderInterface render_interface(1920, 1080);
-    if (!render_interface.Initialize()) {
-        LogRuntime("[radio PPSA99729] OpenGL function loading failed");
+    void* context = create_context(0x1908u, nullptr); // GL_RGBA
+    if (!context) {
+        PaintSurface(window, 0xffd5ba35u); // Yellow: context creation failed.
         return false;
     }
-    render_interface.BeginFrame();
-    render_interface.Clear(0.45f, 0.05f, 0.55f, 1.0f);
-    SDL_GL_SwapWindow(window);
-    LogRuntime("[radio PPSA99729] OpenGL diagnostic frame presented");
-    Rml::RenderInterface* adapted_render_interface = render_interface.GetAdaptedInterface();
-    Rml::SetSystemInterface(&system_interface);
-    Rml::SetFileInterface(&file_interface);
-    Rml::SetRenderInterface(adapted_render_interface);
+    SDL_Surface* surface = SDL_GetWindowSurface(window);
+    if (!surface || !make_current(context, surface->pixels, 0x1401u, surface->w, surface->h)) {
+        PaintSurface(window, 0xffb1329bu); // Magenta: binding the SDL surface failed.
+        return false;
+    }
+    pixel_store(0x11, 0); // OSMESA_Y_UP = false.
 
-    bool running = Rml::Initialise();
-    if (!running) LogRuntime("[radio PPSA99729] RmlUi initialization failed");
-    if (running) running = LoadFonts();
-    if (!running) LogRuntime("[radio PPSA99729] RmlUi font loading failed");
-    Rml::Context* context = running ? Rml::CreateContext("radio-browser", {1920, 1080}, adapted_render_interface) : nullptr;
-    Rml::ElementDocument* document = context ? context->LoadDocument("ui/main.rml") : nullptr;
-    if (document) {
-        document->Show();
-        LogRuntime("[radio PPSA99729] RmlUi document shown");
-    } else {
-        render_interface.BeginFrame();
-        render_interface.Clear(0.70f, 0.04f, 0.10f, 1.0f);
-        SDL_GL_SwapWindow(window);
-        running = false;
-        LogRuntime("[radio PPSA99729] RmlUi document loading failed");
+    using ClearColor = void (*)(float, float, float, float);
+    using Clear = void (*)(unsigned int);
+    using Flush = void (*)();
+    const auto clear_color = reinterpret_cast<ClearColor>(get_proc("glClearColor"));
+    const auto clear = reinterpret_cast<Clear>(get_proc("glClear"));
+    const auto flush = reinterpret_cast<Flush>(get_proc("glFlush"));
+    if (!clear_color || !clear || !flush) {
+        PaintSurface(window, 0xff257f8du); // Teal: OpenGL entry-point lookup failed.
+        return false;
     }
 
-    while (running) {
-        SDL_Event event{};
-        while (SDL_PollEvent(&event)) {
-            if (event.type == SDL_QUIT) running = false;
-        }
-        context->Update();
-        render_interface.BeginFrame();
-        render_interface.Clear(7.0f / 255.0f, 16.0f / 255.0f, 22.0f / 255.0f, 1.0f);
-        context->Render();
-        SDL_GL_SwapWindow(window);
-        sceKernelUsleep(16667);
-    }
-
-    return running;
+    clear_color(0.16f, 0.64f, 0.36f, 1.0f);
+    clear(0x00004000u); // GL_COLOR_BUFFER_BIT
+    flush();
+    SDL_UpdateWindowSurface(window); // Green: OSMesa rendered into the SDL surface.
+    return true;
 }
 
 } // namespace

@@ -105,8 +105,24 @@ isolated crash regression.
 
 ## PPSA99729 - file-only OSMesa diagnostics
 
+- Commit: `9eda50c`
+- Outcome: signal 11 immediately after `eboot`, before a frame or file log.
+- Evidence: `PPSA99729-20260823-111034-klog.log`.
 - Changes:
   - removed `sceKernelDebugOutText` entirely;
   - writes stage diagnostics to `/app0/runtime.log` before each risky loader,
     SDL, OpenGL, and RmlUi operation;
   - retains lazy OSMesa relocation and the purple GL diagnostic frame.
+- Result: `/app0` is not a writable diagnostic location. The backtrace is a
+  null function call from early `main`; `libOSMesa.so.8` is absent from the
+  loaded-library list, so execution did not reach a successful preload.
+
+## PPSA99730 - direct OSMesa visual probe
+
+- Changes:
+  - removed runtime file logging;
+  - starts from the proven SDL software surface and encodes every OSMesa loader,
+    symbol, context, surface-binding, and OpenGL-clear stage as a distinct solid
+    color;
+  - calls OSMesa directly with `/app0/libOSMesa.so.8`, independent of SDL's
+    hardcoded basename-only OSMesa loader.
