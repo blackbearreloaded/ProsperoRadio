@@ -120,7 +120,7 @@
                             <h2>KEXP 90.3 FM</h2>
                             <p class="muted">Seattle - Indie / Alternative</p>
                             <div class="player-rule"></div>
-                            <p class="playing-label"><span class="status-dot online"></span> Ready to play</p>
+                            <p class="playing-label"><span class="status-dot online"></span><span>Ready to play</span></p>
                             <button class="play-button" aria-label="Play station">PLAY</button>
                             <div class="player-actions">
                                 <button class="button secondary">Save favorite</button>
@@ -155,17 +155,17 @@
             </main>
 
             <footer class="bottom-bar">
-                <div class="controller-hint"><span class="key">X</span> Select</div>
-                <div class="controller-hint"><span class="key">O</span> Back</div>
-                <div class="controller-hint"><span class="key">SQ</span> Favorite</div>
-                <div class="controller-hint"><span class="key">OPT</span> Menu</div>
-                <div class="connection-status"><span class="status-dot online"></span> Connected</div>
+                <div class="controller-hint"><span class="key">X</span><span>Select</span></div>
+                <div class="controller-hint"><span class="key">O</span><span>Back</span></div>
+                <div class="controller-hint"><span class="key">SQ</span><span>Favorite</span></div>
+                <div class="controller-hint"><span class="key">OPT</span><span>Menu</span></div>
+                <div class="connection-status"><span class="status-dot online"></span><span>Connected</span></div>
             </footer>
 
             <div class="player-strip">
                 <div class="strip-art art-blue">FM</div>
                 <div class="strip-copy"><strong>KEXP 90.3 FM</strong><span>Seattle - Indie / Alternative</span></div>
-                <span class="strip-live"><span class="status-dot online"></span> LIVE</span>
+                <span class="strip-live"><span class="status-dot online"></span><span>LIVE</span></span>
                 <button class="strip-button" aria-label="Previous station">PREV</button>
                 <button class="strip-button strip-play" aria-label="Play station">PLAY</button>
                 <button class="strip-button" aria-label="Next station">NEXT</button>
