@@ -8,14 +8,13 @@
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/SystemInterface.h>
 
-#include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <vector>
 
 extern "C" int sceKernelUsleep(uint32_t microseconds);
 extern "C" int sceSystemServiceHideSplashScreen(void);
-extern "C" long write(int fd, const void* buffer, std::size_t count);
+extern "C" int sceKernelDebugOutText(int fd, const char* message);
 extern "C" void* __dso_handle = nullptr;
 extern "C" char __eh_frame_hdr_start[1] = {};
 extern "C" char __eh_frame_hdr_end[1] = {};
@@ -155,12 +154,8 @@ private:
 }
 
 void Trace(const char* message) {
-    std::size_t length = 0;
-    while (message[length] != '\0') {
-        ++length;
-    }
-    write(1, message, length);
-    write(1, "\n", 1);
+    sceKernelDebugOutText(0, message);
+    sceKernelDebugOutText(0, "\n");
 }
 
 bool RunSmoke() {
@@ -173,7 +168,7 @@ bool RunSmoke() {
     Trace("radio: SDL_Init complete");
 
     Trace("radio: SDL_CreateWindow");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99704", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99705", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     Trace(window ? "radio: SDL_CreateWindow complete" : "radio: SDL_CreateWindow failed");
     SDL_Renderer* renderer = window ? SDL_CreateRenderer(window, -1,
