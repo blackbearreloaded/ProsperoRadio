@@ -72,12 +72,14 @@ public:
             position.x += pair_kerning;
 
             const BitmapGlyph& glyph = glyph_it->second;
-            const Rml::Vector2f uv_top_left = glyph.position / texture_dimensions_;
-            const Rml::Vector2f uv_bottom_right =
-                (glyph.position + glyph.dimension) / texture_dimensions_;
-            Rml::MeshUtilities::GenerateQuad(mesh,
-                (position + glyph.offset).Round(), glyph.dimension, colour,
-                uv_top_left, uv_bottom_right);
+            if (glyph.dimension.x > 0 && glyph.dimension.y > 0) {
+                const Rml::Vector2f uv_top_left = glyph.position / texture_dimensions_;
+                const Rml::Vector2f uv_bottom_right =
+                    (glyph.position + glyph.dimension) / texture_dimensions_;
+                Rml::MeshUtilities::GenerateQuad(mesh,
+                    (position + glyph.offset).Round(), glyph.dimension, colour,
+                    uv_top_left, uv_bottom_right);
+            }
 
             width += glyph.advance + letter_spacing;
             position.x += glyph.advance + letter_spacing;

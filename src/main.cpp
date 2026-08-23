@@ -299,10 +299,9 @@ public:
 
         auto* app_texture = new AppTexture;
         app_texture->texture = texture;
-        app_texture->source = source;
         app_texture->width = width;
         app_texture->height = height;
-        app_texture->exact_pixels = true;
+        app_texture->exact_pixels = source.find("lvgl-bitmap") != Rml::String::npos;
         app_texture->rgba.resize(pixels.size());
         for (std::size_t i = 0; i < pixels.size(); i += 4) {
             app_texture->rgba[i + 0] = pixels[i + 2];
@@ -374,7 +373,6 @@ public:
 private:
     struct AppTexture {
         SDL_Texture* texture = nullptr;
-        Rml::String source;
         SDL_Surface* surface = nullptr;
         int width = 0;
         int height = 0;
@@ -452,10 +450,7 @@ private:
                 v0.colour});
         }
 
-        if (texture->exact_pixels) {
-            LogExactPath(*texture, copies, num_vertices, num_indices);
-            return CompositeExactPixels(*texture, copies);
-        }
+        if (texture->exact_pixels) return CompositeExactPixels(*texture, copies);
 
         for (const PixelCopy& copy : copies) {
             SDL_SetTextureColorMod(texture->texture,
@@ -490,29 +485,10 @@ private:
         return true;
     }
 
-    void LogExactPath(const AppTexture& texture, const std::vector<PixelCopy>& copies,
-        int num_vertices, int num_indices) {
-        if (exact_log_count_ >= 32 || copies.empty()) return;
-        std::FILE* file = std::fopen("/download0/PPSA99765-render.log",
-            exact_log_count_ == 0 ? "wb" : "ab");
-        if (!file) return;
-        const PixelCopy& first = copies.front();
-        std::fprintf(file,
-            "source=%s texture=%dx%d vertices=%d indices=%d copies=%zu "
-            "first_source=%d,%d,%d,%d first_destination=%d,%d,%d,%d\n",
-            texture.source.c_str(), texture.width, texture.height, num_vertices,
-            num_indices, copies.size(), first.source.x, first.source.y,
-            first.source.w, first.source.h, first.destination.x,
-            first.destination.y, first.destination.w, first.destination.h);
-        std::fclose(file);
-        ++exact_log_count_;
-    }
-
     SDL_Renderer* renderer_;
     SDL_Surface* surface_;
     SDL_Rect scissor_{};
     bool scissor_enabled_ = false;
-    int exact_log_count_ = 0;
 };
 
 bool LoadFonts() {
@@ -553,7 +529,7 @@ bool RunSmoke() {
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99765", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99766", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
@@ -595,7 +571,7 @@ bool RunSmoke() {
         SDL_RenderFlush(renderer);
         SDL_UpdateWindowSurface(window);
         if (!screenshot_saved) {
-            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99765-ui.bmp") == 0;
+            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99766-ui.bmp") == 0;
         }
         sceKernelUsleep(16667);
     }
