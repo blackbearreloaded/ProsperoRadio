@@ -674,3 +674,25 @@ isolated crash regression.
 - Result: the native framebuffer shows complete lower glyph rows, a consistent
   baseline, clean Source Sans letterforms in every reported problem string,
   and smooth, recognizable controller symbols with no scaling artifacts.
+
+## PPSA99755 - production polished UI
+
+- Goal: package the hardware-verified PPSA99754 rendering without diagnostic
+  framebuffer writes.
+- Changes:
+  - keeps the byte-equivalent Source Sans 3 faces, RCSS geometry, RmlUi markup,
+    exact glyph-quad renderer, generated 36 x 36 TGA assets, and straight-alpha
+    SDL texture path verified in PPSA99754;
+  - removes the one-time `/download0` BMP capture;
+  - increments the title ID and displayed title name to PPSA99755.
+- Outcome: entered `eboot`, remained stable through observation, closed
+  cleanly, and released its runtime layers. Chiaki exited before the shared PS5
+  lock was released.
+- Evidence: `PPSA99755-20260823-162140-result.json`, klog, and running/after-close
+  screenshots. Running screenshot SHA-256:
+  `CA414F01F27C6867B9E4B422C88A00DDD88698B2C59D2AA1B1D39D345929CD53`.
+- FFPFSC: 15,007,744 bytes, SHA-256
+  `D9CD10CBF29CC368F81267C128023933750844DA504A001488E5CE43D7D15448`.
+- Result: production typography-and-icon milestone complete. The release frame
+  visibly matches the lossless PPSA99754 proof while performing no diagnostic
+  filesystem write in the render loop.
