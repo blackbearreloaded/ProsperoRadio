@@ -402,3 +402,15 @@ isolated crash regression.
   path as a source of nondeterminism. The enlarged comparison still preserves
   Roboto's objectionable lowercase `r` shoulder, proving that remaining shape
   is in the hinted glyph rather than its quad rasterization.
+
+## PPSA99745 - Inter screen-typeface test
+
+- Goal: replace Roboto's remaining lowercase `r` shape while preserving exact
+  bitmap coverage, native 1920x1080 placement, and the verified layout.
+- Changes:
+  - uses official Inter 4.1 Regular and SemiBold, a face designed for
+    computer-screen readability and a tall mixed-case x-height;
+  - maps emphasized UI text to weight 600 instead of synthetic weight 700;
+  - retains PPSA99744's exact unscaled glyph-quad blitter and changes no layout
+    dimensions;
+  - writes `/download0/PPSA99745-ui.bmp` for native comparison.
