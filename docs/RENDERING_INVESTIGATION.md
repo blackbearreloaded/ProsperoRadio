@@ -993,3 +993,33 @@ isolated crash regression.
   remains unchanged, with 18 extra and 8 missing pixels against the LVGL atlas.
   The next diagnostic will force all loaded TGA textures through this path and
   record the actual source/destination rectangles to `/download0`.
+
+## PPSA99765 - forced-blit path trace
+
+- Commit: `5eb1348`
+- Goal: prove which rendered strings reach the CPU surface blitter and capture
+  their actual atlas and destination rectangles.
+- Changes:
+  - enables retained CPU surfaces for every loaded TGA;
+  - writes at most 32 accepted 1:1 batches to
+    `/download0/PPSA99765-render.log`;
+  - records source path, texture size, mesh size, copy count, and the first
+    source and destination rectangle for each batch.
+- Outcome: entered `eboot`, wrote the native frame and trace, remained stable,
+  closed cleanly, and released its runtime layers and Chiaki before the PS5
+  lock was released.
+- Evidence:
+  - `PPSA99765-native/PPSA99765-ui.bmp`, SHA-256
+    `AF7B1181A4F4D9255C186343F1C2A40439243D57C652755490D0D505AD578B4B`;
+  - `PPSA99765-native/PPSA99765-render.log`;
+  - `PPSA99765-20260823-181916-result.json`, lifecycle result `entered-eboot`;
+  - eboot SHA-256
+    `1BEF4863A5E33ACFF78422E96EF7ED9852410816A944F345F5D6418C95217571`.
+- FFPFSC: 15,794,176 bytes, SHA-256
+  `4FF3FB54192068BCBEA88662DC90978A665865EADDB553C86CE51EB821C6A881`.
+- Result: accepted trace entries include `Jazz24`, one-word filters, artwork
+  labels, and controller icons, but exclude `KEXP 90.3 FM`, headings, metadata,
+  and other strings containing spaces. The bitmap engine emitted a 0 x 0 quad
+  for each space glyph; one degenerate quad made the all-or-fallback batch
+  validator reject the complete string. The fix is to preserve the space
+  advance and kerning while omitting only its empty geometry.
