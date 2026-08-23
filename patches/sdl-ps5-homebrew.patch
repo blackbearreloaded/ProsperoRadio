@@ -1,0 +1,59 @@
+diff --git a/src/dynapi/SDL_dynapi.h b/src/dynapi/SDL_dynapi.h
+index b5c9cbbe3..bab4aec12 100644
+--- a/src/dynapi/SDL_dynapi.h
++++ b/src/dynapi/SDL_dynapi.h
+@@ -63,6 +63,8 @@
+ #define SDL_DYNAMIC_API 0 /* Turn off for static analysis, so reports are more clear. */
+ #elif defined(__VITA__)
+ #define SDL_DYNAMIC_API 0 /* vitasdk doesn't support dynamic linking */
++#elif defined(__PROSPERO__)
++#define SDL_DYNAMIC_API 0 /* PS5 homebrew is statically linked. */
+ #elif defined(__NGAGE__)
+ #define SDL_DYNAMIC_API 0 /* The N-Gage doesn't support dynamic linking either */
+ #elif defined(__3DS__)
+diff --git a/src/video/ps5/SDL_ps5video.c b/src/video/ps5/SDL_ps5video.c
+index 699812e6e..8a6b572e8 100644
+--- a/src/video/ps5/SDL_ps5video.c
++++ b/src/video/ps5/SDL_ps5video.c
+@@ -90,6 +90,7 @@ static int PS5_CreateWindowFramebuffer(_THIS, SDL_Window *window,
+                                        Uint32 *format, void **pixels,
+                                        int *pitch)
+ {
++    PS5_DeviceData *device_data = (PS5_DeviceData *)_this->driverdata;
+     const Uint32 surface_format = SDL_PIXELFORMAT_ABGR8888;
+     SDL_Surface *surface;
+     int w, h;
+@@ -99,7 +100,13 @@ static int PS5_CreateWindowFramebuffer(_THIS, SDL_Window *window,
+     SDL_assert(window->surface == NULL);
+ 
+     SDL_GetWindowSizeInPixels(window, &w, &h);
+-    surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 0, surface_format);
++    if (device_data->surface != NULL &&
++        device_data->surface->w == w && device_data->surface->h == h &&
++        device_data->surface->format->format == surface_format) {
++        surface = device_data->surface;
++    } else {
++        surface = SDL_CreateRGBSurfaceWithFormat(0, w, h, 0, surface_format);
++    }
+     if (!surface) {
+         return -1;
+     }
+@@ -308,7 +315,7 @@ static void PS5_DestroyWindow(_THIS, SDL_Window *window)
+ 
+ static void PS5_PumpEvents(_THIS)
+ {
+-    PS5_Keyboard_PumpEvents();
++    (void)_this;
+ }
+ 
+ static SDL_VideoDevice *PS5_CreateDevice(void)
+@@ -328,9 +335,6 @@ static SDL_VideoDevice *PS5_CreateDevice(void)
+         return NULL;
+     }
+ 
+-    PS5_Keyboard_Init();
+-    PS5_Keyboard_Open();
+-
+     device->VideoInit = PS5_VideoInit;
+     device->VideoQuit = PS5_VideoQuit;
+     device->GetDisplayModes = PS5_GetDisplayModes;
