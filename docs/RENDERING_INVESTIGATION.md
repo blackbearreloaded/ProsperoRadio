@@ -306,3 +306,18 @@ isolated crash regression.
 - FFPFSC: 12,845,056 bytes, SHA-256
   `29E8AD2BF21BC7AC4D570AF74827CE3C16342240043C171E64E71DD336DDA40E`.
 - Result: production neutral-typography milestone complete.
+
+## PPSA99741 - hinted Roboto TV-scale typography
+
+- Goal: eliminate the hard, apparently cropped lower stems that remain visible
+  at 18-25 px on a television after multiple matched font-family tests.
+- Diagnosis: RmlUi 6.2 uses FreeType's hinted bitmap rasterizer, and SDL 2.30.12
+  software rendering copies each glyph quad at exact pixel size. At the former
+  small sizes, snapped lower stems have no soft edge and read as clipped even
+  when the bitmap and line box are complete.
+- Changes:
+  - uses the matched, statically hinted Roboto 2.0 regular/bold pair;
+  - raises small UI text by roughly 12-16% and provides 1.35-1.4 line boxes;
+  - proportionally increases the top bar, cards, selected-station panel, player
+    strip, and footer while preserving the existing layout;
+  - writes `/download0/PPSA99741-ui.bmp` for exact 1920x1080 inspection.
