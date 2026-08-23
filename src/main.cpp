@@ -69,7 +69,12 @@ void* AllocateTracked(std::size_t size) {
 void FreeTracked(void* allocation) noexcept {
     if (!allocation) return;
     auto* header = static_cast<AllocationHeader*>(allocation) - 1;
-    if (header->magic != kAllocationMagic) std::abort();
+    // SDL can retain small allocations made by its original allocator before
+    // custom memory functions are installed. Those remain libc-owned.
+    if (header->magic != kAllocationMagic) {
+        std::free(allocation);
+        return;
+    }
     if (header->mapped_size != 0) {
         munmap(header, header->mapped_size);
     } else {
@@ -313,13 +318,13 @@ void PresentColor(SDL_Renderer* renderer, SDL_Window* window, Uint8 red, Uint8 g
 }
 
 bool RunSmoke() {
-    SDL_SetMainReady();
     if (SDL_SetMemoryFunctions(AllocateTracked, CallocTracked, ReallocTracked, FreeTracked) != 0) {
         return false;
     }
+    SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return false;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99720", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99721", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
