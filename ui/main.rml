@@ -107,40 +107,23 @@
 
             <footer class="bottom-bar">
                 <div class="controller-hint">
-                    <span class="pad-icon pad-cross" aria-hidden="true">
-                        <span class="cross-block cross-a"></span>
-                        <span class="cross-block cross-b"></span>
-                        <span class="cross-block cross-c"></span>
-                        <span class="cross-block cross-d"></span>
-                        <span class="cross-block cross-e"></span>
-                    </span>
+                    <img class="controller-icon" src="icons/cross.tga" width="36" height="36" alt="" />
                     <span>Select</span>
                 </div>
                 <div class="controller-hint">
-                    <span class="pad-icon pad-circle" aria-hidden="true"><span class="pad-ring"></span></span>
+                    <img class="controller-icon" src="icons/circle.tga" width="36" height="36" alt="" />
                     <span>Back</span>
                 </div>
                 <div class="controller-hint">
-                    <span class="pad-icon pad-square" aria-hidden="true"><span class="pad-box"></span></span>
+                    <img class="controller-icon" src="icons/square.tga" width="36" height="36" alt="" />
                     <span>Save</span>
                 </div>
                 <div class="controller-hint">
-                    <span class="pad-icon pad-triangle" aria-hidden="true">
-                        <span class="triangle-block triangle-a"></span>
-                        <span class="triangle-block triangle-b"></span>
-                        <span class="triangle-block triangle-c"></span>
-                        <span class="triangle-block triangle-d"></span>
-                        <span class="triangle-block triangle-e"></span>
-                        <span class="triangle-block triangle-f"></span>
-                    </span>
+                    <img class="controller-icon" src="icons/triangle.tga" width="36" height="36" alt="" />
                     <span>Details</span>
                 </div>
                 <div class="controller-hint">
-                    <span class="pad-icon pad-options" aria-hidden="true">
-                        <span class="option-line option-a"></span>
-                        <span class="option-line option-b"></span>
-                        <span class="option-line option-c"></span>
-                    </span>
+                    <img class="controller-icon" src="icons/options.tga" width="36" height="36" alt="" />
                     <span>Menu</span>
                 </div>
                 <div class="connection-status"><span class="status-dot"></span><span>Connected</span></div>

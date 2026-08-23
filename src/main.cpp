@@ -247,7 +247,56 @@ public:
             vertices.data(), num_vertices, indices, num_indices);
     }
 
-    bool LoadTexture(Rml::TextureHandle&, Rml::Vector2i&, const Rml::String&) override { return false; }
+    bool LoadTexture(Rml::TextureHandle& texture_handle, Rml::Vector2i& texture_dimensions,
+        const Rml::String& source) override {
+        texture_handle = {};
+        texture_dimensions = {};
+
+        std::FILE* file = std::fopen(source.c_str(), "rb");
+        if (!file && !source.empty() && source[0] != '/') {
+            const Rml::String app_path = "/app0/" + source;
+            file = std::fopen(app_path.c_str(), "rb");
+        }
+        if (!file) return false;
+
+        unsigned char header[18]{};
+        const bool header_read = std::fread(header, 1, sizeof(header), file) == sizeof(header);
+        const int width = header[12] | (header[13] << 8);
+        const int height = header[14] | (header[15] << 8);
+        const bool supported = header_read && header[0] == 0 && header[1] == 0 &&
+            header[2] == 2 && width > 0 && height > 0 && header[16] == 32 &&
+            (header[17] & 0x0f) == 8 && (header[17] & 0x30) == 0x20;
+        if (!supported || static_cast<std::size_t>(width) >
+                std::numeric_limits<std::size_t>::max() /
+                    (static_cast<std::size_t>(height) * 4)) {
+            std::fclose(file);
+            return false;
+        }
+
+        std::vector<unsigned char> pixels(
+            static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4);
+        const bool pixels_read = std::fread(pixels.data(), 1, pixels.size(), file) == pixels.size();
+        std::fclose(file);
+        if (!pixels_read) return false;
+
+        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(pixels.data(), width, height,
+            32, width * 4, SDL_PIXELFORMAT_BGRA32);
+        if (!surface) return false;
+
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_, surface);
+        SDL_FreeSurface(surface);
+        if (!texture) return false;
+
+        if (SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND) != 0 ||
+            SDL_SetTextureScaleMode(texture, SDL_ScaleModeNearest) != 0) {
+            SDL_DestroyTexture(texture);
+            return false;
+        }
+
+        texture_dimensions = {width, height};
+        texture_handle = reinterpret_cast<Rml::TextureHandle>(texture);
+        return true;
+    }
 
     bool GenerateTexture(Rml::TextureHandle& texture_handle, const Rml::byte* source,
         const Rml::Vector2i& dimensions) override {
@@ -364,9 +413,8 @@ private:
 };
 
 bool LoadFonts() {
-    return Rml::LoadFontFace("ui/fonts/NotoSans-Regular.ttf") &&
-        Rml::LoadFontFace("ui/fonts/NotoSans-SemiBold.ttf") &&
-        Rml::LoadFontFace("ui/fonts/NotoEmoji-Regular.ttf", true);
+    return Rml::LoadFontFace("ui/fonts/SourceSans3-Regular.otf") &&
+        Rml::LoadFontFace("ui/fonts/SourceSans3-Semibold.otf");
 }
 
 [[noreturn]] void KeepProcessAlive() {
@@ -391,7 +439,7 @@ bool RunSmoke() {
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99753", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99754", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
@@ -418,6 +466,7 @@ bool RunSmoke() {
         running = false;
     }
 
+    bool screenshot_saved = false;
     while (running) {
         SDL_Event event{};
         while (SDL_PollEvent(&event)) {
@@ -429,6 +478,9 @@ bool RunSmoke() {
         context->Render();
         SDL_RenderFlush(renderer);
         SDL_UpdateWindowSurface(window);
+        if (!screenshot_saved) {
+            screenshot_saved = SDL_SaveBMP(surface, "/download0/PPSA99754-ui.bmp") == 0;
+        }
         sceKernelUsleep(16667);
     }
 

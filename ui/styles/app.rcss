@@ -23,14 +23,14 @@ body {
     overflow: hidden;
     background: #071016;
     color: #f2f7f8;
-    font-family: "Noto Sans";
+    font-family: "Source Sans 3";
     font-size: 28px;
     font-weight: 600;
     line-height: 44px;
 }
 
 button {
-    font-family: "Noto Sans";
+    font-family: "Source Sans 3";
     font-size: 28px;
     font-style: normal;
     font-weight: 600;
@@ -235,42 +235,8 @@ h2 { margin-bottom: 4px; font-size: 36px; line-height: 52px; }
     font-size: 24px;
     line-height: 38px;
 }
-.controller-hint { display: flex; align-items: center; gap: 9px; }
-.pad-icon { position: relative; display: block; flex: none; width: 34px; height: 34px; }
-.cross-block { position: absolute; display: block; width: 8px; height: 8px; background: #70e1dc; }
-.cross-a { left: 2px; top: 2px; }
-.cross-b { right: 2px; top: 2px; }
-.cross-c { left: 13px; top: 13px; }
-.cross-d { left: 2px; bottom: 2px; }
-.cross-e { right: 2px; bottom: 2px; }
-.pad-ring, .pad-box {
-    position: absolute;
-    left: 4px;
-    top: 4px;
-    display: block;
-    width: 26px;
-    height: 26px;
-    border: 3px #d18be5;
-}
-.pad-ring { border-color: #ff8793; border-radius: 13px; }
-.triangle-block { position: absolute; display: block; background: #69d997; }
-.triangle-a { left: 14px; top: 2px; width: 6px; height: 5px; }
-.triangle-b { left: 8px; top: 8px; width: 6px; height: 7px; }
-.triangle-c { right: 8px; top: 8px; width: 6px; height: 7px; }
-.triangle-d { left: 3px; top: 16px; width: 6px; height: 8px; }
-.triangle-e { right: 3px; top: 16px; width: 6px; height: 8px; }
-.triangle-f { left: 3px; top: 25px; width: 28px; height: 4px; }
-.option-line {
-    position: absolute;
-    left: 7px;
-    display: block;
-    width: 20px;
-    height: 3px;
-    background: #f2f7f8;
-}
-.option-a { top: 7px; }
-.option-b { top: 15px; }
-.option-c { top: 23px; }
+.controller-hint { display: flex; align-items: center; gap: 10px; overflow: visible; }
+.controller-icon { display: block; flex: none; width: 36px; height: 36px; }
 .connection-status { display: flex; align-items: center; gap: 10px; margin-left: auto; color: #69d997; }
 
 .state-panel[data-state="boot"], .state-panel[data-state="empty"], .state-panel[data-state="error"] {
