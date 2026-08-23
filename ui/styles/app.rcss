@@ -23,17 +23,17 @@ body {
     overflow: hidden;
     background: #071016;
     color: #f2f7f8;
-    font-family: "Liberation Sans";
+    font-family: "Montserrat";
     font-size: 28px;
-    font-weight: 400;
+    font-weight: 500;
     line-height: 44px;
 }
 
 button {
-    font-family: "Liberation Sans";
+    font-family: "Montserrat";
     font-size: 28px;
     font-style: normal;
-    font-weight: 400;
+    font-weight: 500;
     line-height: 44px;
     nav: auto;
 }
@@ -121,7 +121,7 @@ h1, h2, p { margin-top: 0; }
 h1 { margin-bottom: 0; font-size: 48px; line-height: 68px; }
 h2 { margin-bottom: 4px; font-size: 36px; line-height: 52px; }
 .brand-name, h1, h2, .station-name, .station-art, .player-art,
-.selection-label, .filter.active, .play-button { font-weight: 700; }
+.selection-label, .filter.active, .play-button { font-weight: 500; }
 .muted { color: #b7c7cb; }
 
 .screen-header {
@@ -170,11 +170,11 @@ h2 { margin-bottom: 4px; font-size: 36px; line-height: 52px; }
     text-align: center;
     letter-spacing: 1px;
 }
-.station-art { width: 94px; height: 94px; font-size: 26px; line-height: 94px; }
+.station-art { width: 94px; height: 94px; font-size: 24px; line-height: 94px; }
 .station-copy { display: flex; flex: 1; flex-direction: column; min-width: 0; gap: 8px; padding-right: 44px; overflow: visible; }
 .station-name, .station-meta { display: block; overflow-x: hidden; overflow-y: visible; text-overflow: ellipsis; white-space: nowrap; }
 .station-name { font-size: 32px; line-height: 48px; }
-.station-meta { color: #b7c7cb; font-size: 27px; line-height: 44px; }
+.station-meta { color: #b7c7cb; font-size: 28px; line-height: 44px; }
 .favorite {
     position: absolute;
     top: 18px;
@@ -195,9 +195,9 @@ h2 { margin-bottom: 4px; font-size: 36px; line-height: 52px; }
     background: #142934;
 }
 .selection-label { margin-bottom: 14px; color: #70e1dc; font-size: 24px; line-height: 38px; letter-spacing: 1px; }
-.player-art { width: 100%; height: 178px; margin-bottom: 20px; font-size: 54px; line-height: 178px; }
+.player-art { width: 100%; height: 178px; margin-bottom: 20px; font-size: 48px; line-height: 178px; }
 .selection-meta { margin-bottom: 16px; color: #b7c7cb; font-size: 28px; line-height: 44px; }
-.ready { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; color: #69d997; font-size: 25px; line-height: 40px; }
+.ready { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; color: #69d997; font-size: 24px; line-height: 40px; }
 .status-dot { display: inline-block; width: 11px; height: 11px; background: #69d997; }
 .play-button {
     display: flex;
@@ -247,7 +247,7 @@ h2 { margin-bottom: 4px; font-size: 36px; line-height: 52px; }
     text-align: center;
 }
 .state-panel[data-state="boot"].is-active, .state-panel[data-state="empty"].is-active, .state-panel[data-state="error"].is-active { display: flex; }
-.boot-mark { margin-bottom: 20px; color: #70e1dc; font-size: 56px; line-height: 76px; }
+.boot-mark { margin-bottom: 20px; color: #70e1dc; font-size: 48px; line-height: 76px; }
 .message-card { width: 720px; padding: 56px; border: 2px #31505d; background: #0d1b24; }
 .error-card { border-color: #ff7c7c; }
 .action-button { min-height: 68px; margin-top: 18px; padding: 8px 24px; border: 2px #70e1dc; background: #1e8f94; color: #f2f7f8; }
