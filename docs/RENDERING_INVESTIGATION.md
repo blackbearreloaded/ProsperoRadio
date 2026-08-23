@@ -87,6 +87,9 @@ stderr was not present in the captured klog.
 
 ## PPSA99728 - OSMesa stage diagnostics
 
+- Commit: `a29f41a`
+- Outcome: crashed immediately with signal 11 before creating `runtime.log`.
+- Evidence: `PPSA99728-20260823-110653-klog.log`.
 - Changes:
   - uses lazy relocation for the OSMesa preload, matching SDL's own loader;
   - records each loader, SDL, OpenGL, and RmlUi stage through
@@ -95,3 +98,15 @@ stderr was not present in the captured klog.
 - Interpretation: a black frame with a runtime log identifies an early loader
   or SDL failure; purple identifies successful GL presentation but later RmlUi
   failure; the complete UI proves the renderer path.
+
+Because `PPSA99727` remained alive with the same renderer and the first new
+operation in `PPSA99728` was `sceKernelDebugOutText`, the debug import is the
+isolated crash regression.
+
+## PPSA99729 - file-only OSMesa diagnostics
+
+- Changes:
+  - removed `sceKernelDebugOutText` entirely;
+  - writes stage diagnostics to `/app0/runtime.log` before each risky loader,
+    SDL, OpenGL, and RmlUi operation;
+  - retains lazy OSMesa relocation and the purple GL diagnostic frame.

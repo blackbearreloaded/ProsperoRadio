@@ -23,7 +23,6 @@
 
 extern "C" int sceKernelUsleep(std::uint32_t microseconds);
 extern "C" int sceSystemServiceHideSplashScreen(void);
-extern "C" int sceKernelDebugOutText(int channel, const char* text);
 extern "C" void* mmap(void* address, std::size_t length, int protection,
     int flags, int descriptor, long offset);
 extern "C" int munmap(void* address, std::size_t length);
@@ -35,10 +34,9 @@ extern "C" char __eh_frame_end[1] = {};
 
 namespace {
 
-constexpr const char* kRuntimeLogPath = "/data/homebrew/PPSA99728/runtime.log";
+constexpr const char* kRuntimeLogPath = "/app0/runtime.log";
 
 void LogRuntime(const char* message) {
-    sceKernelDebugOutText(0, message);
     std::FILE* log = std::fopen(kRuntimeLogPath, "ab");
     if (log) {
         std::fputs(message, log);
@@ -49,7 +47,7 @@ void LogRuntime(const char* message) {
 
 void LogRuntimeError(const char* stage, const char* detail) {
     char message[768]{};
-    std::snprintf(message, sizeof(message), "[radio PPSA99728] %s: %s", stage,
+    std::snprintf(message, sizeof(message), "[radio PPSA99729] %s: %s", stage,
         detail ? detail : "unknown error");
     LogRuntime(message);
 }
@@ -254,7 +252,7 @@ bool LoadFonts() {
 }
 
 bool RunSmoke() {
-    LogRuntime("[radio PPSA99728] entering RunSmoke");
+    LogRuntime("[radio PPSA99729] entering RunSmoke");
     if (SDL_SetMemoryFunctions(AllocateTracked, CallocTracked, ReallocTracked, FreeTracked) != 0) {
         LogRuntimeError("SDL_SetMemoryFunctions failed", SDL_GetError());
         return false;
@@ -266,62 +264,62 @@ bool RunSmoke() {
         LogRuntimeError("OSMesa preload failed", dlerror());
         return false;
     }
-    LogRuntime("[radio PPSA99728] OSMesa preload succeeded");
+    LogRuntime("[radio PPSA99729] OSMesa preload succeeded");
 
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) {
         LogRuntimeError("SDL_Init failed", SDL_GetError());
         return false;
     }
-    LogRuntime("[radio PPSA99728] SDL video initialized");
+    LogRuntime("[radio PPSA99729] SDL video initialized");
 
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99728", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99729", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
     if (!window) {
         LogRuntimeError("SDL_CreateWindow failed", SDL_GetError());
         return false;
     }
-    LogRuntime("[radio PPSA99728] SDL OpenGL window created");
+    LogRuntime("[radio PPSA99729] SDL OpenGL window created");
     SDL_GLContext gl_context = window ? SDL_GL_CreateContext(window) : nullptr;
     if (!gl_context || SDL_GL_MakeCurrent(window, gl_context) != 0) {
         LogRuntimeError("OSMesa context failed", SDL_GetError());
         return false;
     }
-    LogRuntime("[radio PPSA99728] OSMesa context current");
+    LogRuntime("[radio PPSA99729] OSMesa context current");
 
     AppSystemInterface system_interface;
     AppFileInterface file_interface;
     OSMesaRenderInterface render_interface(1920, 1080);
     if (!render_interface.Initialize()) {
-        LogRuntime("[radio PPSA99728] OpenGL function loading failed");
+        LogRuntime("[radio PPSA99729] OpenGL function loading failed");
         return false;
     }
     render_interface.BeginFrame();
     render_interface.Clear(0.45f, 0.05f, 0.55f, 1.0f);
     SDL_GL_SwapWindow(window);
-    LogRuntime("[radio PPSA99728] OpenGL diagnostic frame presented");
+    LogRuntime("[radio PPSA99729] OpenGL diagnostic frame presented");
     Rml::RenderInterface* adapted_render_interface = render_interface.GetAdaptedInterface();
     Rml::SetSystemInterface(&system_interface);
     Rml::SetFileInterface(&file_interface);
     Rml::SetRenderInterface(adapted_render_interface);
 
     bool running = Rml::Initialise();
-    if (!running) LogRuntime("[radio PPSA99728] RmlUi initialization failed");
+    if (!running) LogRuntime("[radio PPSA99729] RmlUi initialization failed");
     if (running) running = LoadFonts();
-    if (!running) LogRuntime("[radio PPSA99728] RmlUi font loading failed");
+    if (!running) LogRuntime("[radio PPSA99729] RmlUi font loading failed");
     Rml::Context* context = running ? Rml::CreateContext("radio-browser", {1920, 1080}, adapted_render_interface) : nullptr;
     Rml::ElementDocument* document = context ? context->LoadDocument("ui/main.rml") : nullptr;
     if (document) {
         document->Show();
-        LogRuntime("[radio PPSA99728] RmlUi document shown");
+        LogRuntime("[radio PPSA99729] RmlUi document shown");
     } else {
         render_interface.BeginFrame();
         render_interface.Clear(0.70f, 0.04f, 0.10f, 1.0f);
         SDL_GL_SwapWindow(window);
         running = false;
-        LogRuntime("[radio PPSA99728] RmlUi document loading failed");
+        LogRuntime("[radio PPSA99729] RmlUi document loading failed");
     }
 
     while (running) {
