@@ -813,3 +813,69 @@ isolated crash regression.
   consistent baselines, crisp stems, and stable contours for every reported
   problem class: `K`, `P`, `9`, `N`, `S`, lowercase `a`, `r`, `t`, slash, and
   footer labels. PPSA99758 is the installed renderer-review build.
+
+## PPSA99759 - exact LVGL Montserrat source
+
+- Goal: remove font-family differences from the comparison with the precise
+  LVGL reference application.
+- Changes:
+  - replaces Liberation Sans with the byte-identical Montserrat Medium TTF used
+    to generate LVGL's built-in fonts;
+  - uses one real 500-weight face without synthetic bolding;
+  - aligns the app's active text sizes with LVGL's compiled 20, 24, 28, 32, 36,
+    40, and 48-pixel size set while preserving the simplified RmlUi layout;
+  - keeps light auto-hinting, the exact glyph-quad renderer, 1:1 nearest SDL
+    copies, and the existing open-source controller assets;
+  - writes `/download0/PPSA99759-ui.bmp` for lossless inspection.
+- Font provenance:
+  - Montserrat Medium SHA-256:
+    `421F26B23E2BE6B98373D32ACD3CB2897B154D4BF0A77D26534CE476E4CBED53`;
+  - SIL Open Font License SHA-256:
+    `C376DD6B498C6886FE5A43DB3C48CF83EF05CAC6846EC4010E535D48E43A29B0`.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki
+  before releasing the shared PS5 lock.
+- Evidence:
+  - `PPSA99759-native/PPSA99759-ui.bmp`, SHA-256
+    `46D60CC51726F0466D4FA1DE3E6B34B47C7DD842A88E07E9436EEEBD0A4865DA`;
+  - `PPSA99759-20260823-171946-running.png`, SHA-256
+    `D3B480B0921C51DFAED5E9E740565BE4BE1969008ED84752240597D9FBA4C536`.
+- FFPFSC: 15,597,568 bytes, SHA-256
+  `CD97082AAB14E6E345BEFF00A04460E2CE656AD17D89409FB90DCA8A958FD60C`.
+- Result: the typeface and metrics now match the LVGL design and look visibly
+  closer, but the native frame retains harder, more binary contours than the
+  LVGL pre-rasterized glyphs. This isolates the remaining difference to glyph
+  mask generation rather than font selection, CSS spacing, clipping, Remote
+  Play, or the final PS5 presentation surface.
+
+## PPSA99760 - LVGL-style 4-bit coverage diagnostic
+
+- Goal: determine whether LVGL's 16-level antialiasing coverage alone explains
+  the remaining contour difference.
+- Changes:
+  - quantizes every RmlUi grayscale glyph pixel to `0, 17, ..., 255` after
+    FreeType light auto-hinting and before atlas construction;
+  - records the one-hunk reproducible change as
+    `vendor/ps5/rmlui/patches/0003-quantize-grayscale-coverage.patch`;
+  - keeps the exact Montserrat source, fixed integer sizes, CSS geometry,
+    texture format, blend mode, and 1:1 SDL copy path unchanged;
+  - rebuilt `librmlui.a` SHA-256:
+    `1A8AE54B5F2A486FBAFAE3169EDC9141DCA6F881224883A5B9D571F549B325C2`;
+  - writes `/download0/PPSA99760-ui.bmp` for lossless inspection.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki
+  before releasing the shared PS5 lock.
+- Evidence:
+  - `PPSA99760-native/PPSA99760-ui.bmp`, SHA-256
+    `22A87D8F9518AB3F148544988BC66BFC028EEF5BB11A2E402A942BE92027E3E2`;
+  - `PPSA99760-20260823-172822-running.png`, SHA-256
+    `B4A099420FC6FFBD432E38AFC68E767A191ACE046B5080DB9B80DE1845171350`;
+  - lifecycle result: `entered-eboot`, eboot SHA-256
+    `CC2E53119310B3D9426FFCFA813EED812EECB3561A4691F6794C3804DA563F35`.
+- FFPFSC: 15,597,568 bytes, SHA-256
+  `DD7A5CFFAF06F1DDA472A1A1EEE93DBF3C71C071707382C87C6128E4D6B779DD`.
+- Result: 4-bit quantization does not materially improve the visible glyph
+  contours. LVGL's advantage comes from its build-time rasterized mask shapes,
+  not merely the number of alpha levels. The next implementation will keep
+  RmlUi for HTML/CSS layout but use those exact LVGL bitmap masks through
+  RmlUi's supported custom bitmap-font interface.
