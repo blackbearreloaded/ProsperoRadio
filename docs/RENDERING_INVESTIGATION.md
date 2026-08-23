@@ -507,3 +507,19 @@ isolated crash regression.
 - Asset hashes:
   - Regular: `B85C38ECEA8A7CFB39C24E395A4007474FA5A4FC864F6EE33309EB4948D232D5`;
   - SemiBold: `87A8B90ECE1E89746B544E4E086F85A3710E41485A8078F9BE874837DFAD45D5`.
+- Distribution: both Noto Sans faces and `NotoSans-OFL.txt` are bundled with
+  the application. No PlayStation system font is opened or copied at runtime.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki
+  before releasing the shared PS5 lock.
+- Evidence: `PPSA99749-native/PPSA99749-ui.bmp`, SHA-256
+  `DC8B22AEF4C84E0AF3D1C889033123C146402E512C831DD9C72F644D3AC5E64A`;
+  `PPSA99749-20260823-152938-running.png`, SHA-256
+  `1784D89F73F11D17962E7A311C2ABC3DBCB19EC3C4E7C2A621D10A620DC6DC60`.
+- FFPFSC: 14,155,776 bytes, SHA-256
+  `22CE5F68BE754E2276F50FBF98F47794D01FD6A2C2C9F1CBDEFB1071E3DD0414`.
+- Result: inspection of the exact 1920x1080 framebuffer and 4x
+  nearest-neighbor crops confirms conventional, complete `K`, `9`, `/`, and
+  `r` contours. Every line has empty rows below its glyph coverage; there is
+  no lower-edge clipping. Regular and SemiBold baselines are aligned, and all
+  controls remain inside their borders without overlap or wrapping regressions.
