@@ -26,7 +26,7 @@ body {
     overflow: hidden;
     background: #071016;
     color: #f2f7f8;
-    font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif;
+    font-family: Lato;
     font-size: 21px;
     line-height: 1.25;
 }
@@ -121,5 +121,4 @@ h2 { margin-bottom: 8px; font-size: 27px; }
 
 /* The C++ bridge can set reduce-motion when animation support is undesirable. */
 .reduce-motion *, .reduce-motion *::after, .reduce-motion *::before { animation: none !important; transition: none !important; }
-
 

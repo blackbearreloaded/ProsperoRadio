@@ -1,8 +1,8 @@
 {
-  "titleName": "PS5 Radio Browser PPSA99715",
-  "titleId": "PPSA99715",
-  "conceptId": "99715",
-  "contentId": "UP9000-PPSA99715_00-RADIOAPP00000001",
+  "titleName": "PS5 Radio Browser PPSA99716",
+  "titleId": "PPSA99716",
+  "conceptId": "99716",
+  "contentId": "UP9000-PPSA99716_00-RADIOAPP00000001",
   "moduleSdkVersion": "0x02000009",
   "companionSdkVersion": "0x08050001",
   "fselfMagic": "0x1D3D154F",
@@ -24,6 +24,7 @@
   "staticArchives": [
     "vendor/ps5/sdl/lib/libSDL2.a",
     "vendor/ps5/rmlui/lib/librmlui.a",
+    "vendor/ps5/freetype/lib/libfreetype.a",
     "vendor/ps5/sdk/lib/libunwind.a",
     "vendor/ps5/sdk/lib/libcxx.a",
     "vendor/ps5/sdk/lib/libcxxabi.a"

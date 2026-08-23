@@ -4,7 +4,6 @@
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/ElementDocument.h>
 #include <RmlUi/Core/FileInterface.h>
-#include <RmlUi/Core/FontEngineInterface.h>
 #include <RmlUi/Core/RenderInterface.h>
 #include <RmlUi/Core/SystemInterface.h>
 
@@ -47,6 +46,14 @@ extern "C" void __assert(const char*, const char*, int, const char*) {
 
 extern "C" float strtof(const char* value, char** end) {
     return static_cast<float>(strtod(value, end));
+}
+
+extern "C" int fseek(std::FILE* file, long offset, int origin) {
+    return fseeko(file, offset, origin);
+}
+
+extern "C" long ftell(std::FILE* file) {
+    return static_cast<long>(ftello(file));
 }
 
 extern "C" char* strcasestr(const char* haystack, const char* needle) {
@@ -113,7 +120,12 @@ struct Geometry {
 
 class SdlRenderInterface final : public Rml::RenderInterface {
 public:
-    explicit SdlRenderInterface(SDL_Renderer* renderer) : renderer_(renderer) {}
+    explicit SdlRenderInterface(SDL_Renderer* renderer) : renderer_(renderer) {
+        blend_mode_ = SDL_ComposeCustomBlendMode(SDL_BLENDFACTOR_ONE,
+            SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_BLENDOPERATION_ADD,
+            SDL_BLENDFACTOR_ONE, SDL_BLENDFACTOR_ONE_MINUS_SRC_ALPHA,
+            SDL_BLENDOPERATION_ADD);
+    }
 
     Rml::CompiledGeometryHandle CompileGeometry(Rml::Span<const Rml::Vertex> vertices,
         Rml::Span<const int> indices) override {
@@ -146,8 +158,27 @@ public:
     }
 
     Rml::TextureHandle LoadTexture(Rml::Vector2i&, const Rml::String&) override { return 0; }
-    Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte>, Rml::Vector2i) override { return 0; }
-    void ReleaseTexture(Rml::TextureHandle) override {}
+
+    Rml::TextureHandle GenerateTexture(Rml::Span<const Rml::byte> source,
+        Rml::Vector2i dimensions) override {
+        if (!source.data() || source.size() != static_cast<size_t>(dimensions.x * dimensions.y * 4)) {
+            return 0;
+        }
+
+        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(
+            const_cast<Rml::byte*>(source.data()), dimensions.x, dimensions.y, 32,
+            dimensions.x * 4, SDL_PIXELFORMAT_RGBA32);
+        if (!surface) return 0;
+
+        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_, surface);
+        SDL_FreeSurface(surface);
+        if (texture) SDL_SetTextureBlendMode(texture, blend_mode_);
+        return reinterpret_cast<Rml::TextureHandle>(texture);
+    }
+
+    void ReleaseTexture(Rml::TextureHandle texture) override {
+        SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(texture));
+    }
 
     void EnableScissorRegion(bool enable) override {
         SDL_RenderSetClipRect(renderer_, enable ? &scissor_ : nullptr);
@@ -159,8 +190,16 @@ public:
 
 private:
     SDL_Renderer* renderer_;
+    SDL_BlendMode blend_mode_ = SDL_BLENDMODE_BLEND;
     SDL_Rect scissor_{};
 };
+
+bool LoadFonts() {
+    return Rml::LoadFontFace("ui/fonts/LatoLatin-Regular.ttf") &&
+        Rml::LoadFontFace("ui/fonts/LatoLatin-Bold.ttf") &&
+        Rml::LoadFontFace("ui/fonts/DejaVuSans.ttf", true) &&
+        Rml::LoadFontFace("ui/fonts/NotoEmoji-Regular.ttf", true);
+}
 
 void PresentColor(SDL_Renderer* renderer, SDL_Window* window, Uint8 red, Uint8 green, Uint8 blue) {
     SDL_SetRenderDrawColor(renderer, red, green, blue, 255);
@@ -177,7 +216,7 @@ bool RunSmoke() {
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return false;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99715", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99716", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
@@ -188,14 +227,13 @@ bool RunSmoke() {
 
     AppSystemInterface system_interface;
     AppFileInterface file_interface;
-    Rml::FontEngineInterface font_engine;
     SdlRenderInterface render_interface(renderer);
     Rml::SetSystemInterface(&system_interface);
     Rml::SetFileInterface(&file_interface);
-    Rml::SetFontEngineInterface(&font_engine);
     Rml::SetRenderInterface(&render_interface);
 
     bool running = Rml::Initialise();
+    if (running) running = LoadFonts();
     Rml::Context* context = running ? Rml::CreateContext("radio-browser", {1920, 1080}, &render_interface) : nullptr;
     Rml::ElementDocument* document = context ? context->LoadDocument("ui/main.rml") : nullptr;
     if (document) {
