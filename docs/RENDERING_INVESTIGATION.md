@@ -523,3 +523,25 @@ isolated crash regression.
   `r` contours. Every line has empty rows below its glyph coverage; there is
   no lower-edge clipping. Regular and SemiBold baselines are aligned, and all
   controls remain inside their borders without overlap or wrapping regressions.
+
+## PPSA99750 - production distributable Noto UI
+
+- Goal: package the hardware-verified PPSA99749 renderer, Noto typography, and
+  layout without diagnostic framebuffer writes.
+- Changes:
+  - keeps the exact glyph-quad blitter, matched Noto Sans 2.008 Regular and
+    SemiBold assets, 1.4 proportional line boxes, RCSS, and RmlUi markup
+    verified in PPSA99749;
+  - bundles the font files and SIL Open Font License with the application;
+  - does not load, copy, or depend on PlayStation system fonts;
+  - removes the one-time `/download0` BMP capture from the frame loop.
+- Outcome: entered `eboot`, remained stable through observation, closed
+  cleanly, and released its runtime layers. Chiaki exited before the shared PS5
+  lock was released.
+- Evidence: `PPSA99750-20260823-153528-result.json`, klog, and running/after-close
+  screenshots; lifecycle classification is `entered-eboot`. The running frame
+  preserves the inspected PPSA99749 typography and layout.
+- FFPFSC: 14,155,776 bytes, SHA-256
+  `CC638561515F11447D827EE8D68D63D431C164C7E3FD62F3A5BD320B1DE12D64`.
+- Result: production open-font typography milestone complete, with no runtime
+  dependence on proprietary or console-installed fonts.
