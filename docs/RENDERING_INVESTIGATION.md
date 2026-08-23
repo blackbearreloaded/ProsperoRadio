@@ -436,3 +436,13 @@ isolated crash regression.
   - retains all font sizes, line heights, card dimensions, and exact glyph-quad
     blitting from PPSA99745;
   - writes `/download0/PPSA99746-ui.bmp` for final native layout inspection.
+- Outcome: entered `eboot`, wrote the native frame, remained stable through
+  observation, closed cleanly, and released its runtime layers and Chiaki
+  before releasing the shared PS5 lock.
+- Evidence: `PPSA99746-native/PPSA99746-ui.bmp`, SHA-256
+  `91300C240930D47B33A927A670C82CC1708DE71DCAE4FA869490CFEA6D51FEB1`.
+- FFPFSC: 13,828,096 bytes, SHA-256
+  `972D9E984988EEFCD529F633CDA8E3A2C2A2FCDA7C952166102FE7137B98EFA0`.
+- Result: the lossless frame has clean `r` shoulders, even baselines, complete
+  lower rows, consistent Regular/SemiBold weight, one-line selected metadata,
+  and clear separation between every panel, player strip, and footer.
