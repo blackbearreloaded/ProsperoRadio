@@ -8,18 +8,118 @@
 #include <RmlUi/Core/SystemInterface.h>
 
 #include <cstdio>
+#include <cstddef>
+#include <cstring>
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
+#include <new>
 #include <pthread.h>
 #include <vector>
 
 extern "C" int sceKernelUsleep(std::uint32_t microseconds);
 extern "C" int sceSystemServiceHideSplashScreen(void);
+extern "C" void* mmap(void* address, std::size_t length, int protection,
+    int flags, int descriptor, long offset);
+extern "C" int munmap(void* address, std::size_t length);
 extern "C" void* __dso_handle = nullptr;
 extern "C" char __eh_frame_hdr_start[1] = {};
 extern "C" char __eh_frame_hdr_end[1] = {};
 extern "C" char __eh_frame_start[1] = {};
 extern "C" char __eh_frame_end[1] = {};
+
+namespace {
+
+constexpr std::size_t kMappedAllocationThreshold = 64 * 1024;
+constexpr std::uint64_t kAllocationMagic = UINT64_C(0x524144494F4D454D);
+constexpr int kProtectionReadWrite = 3;
+constexpr int kMapPrivateAnonymous = 0x1002;
+
+struct alignas(std::max_align_t) AllocationHeader {
+    std::uint64_t magic;
+    std::size_t requested_size;
+    std::size_t mapped_size;
+};
+
+void* AllocateTracked(std::size_t size) {
+    if (size == 0) size = 1;
+    if (size > std::numeric_limits<std::size_t>::max() - sizeof(AllocationHeader)) return nullptr;
+
+    const std::size_t total = sizeof(AllocationHeader) + size;
+    AllocationHeader* header = nullptr;
+    std::size_t mapped_size = 0;
+    if (size >= kMappedAllocationThreshold) {
+        mapped_size = (total + 0x3fff) & ~std::size_t(0x3fff);
+        void* mapping = mmap(nullptr, mapped_size, kProtectionReadWrite,
+            kMapPrivateAnonymous, -1, 0);
+        if (mapping != reinterpret_cast<void*>(-1)) {
+            header = static_cast<AllocationHeader*>(mapping);
+        }
+    } else {
+        header = static_cast<AllocationHeader*>(std::malloc(total));
+    }
+    if (!header) return nullptr;
+
+    header->magic = kAllocationMagic;
+    header->requested_size = size;
+    header->mapped_size = mapped_size;
+    return header + 1;
+}
+
+void FreeTracked(void* allocation) noexcept {
+    if (!allocation) return;
+    auto* header = static_cast<AllocationHeader*>(allocation) - 1;
+    if (header->magic != kAllocationMagic) std::abort();
+    if (header->mapped_size != 0) {
+        munmap(header, header->mapped_size);
+    } else {
+        std::free(header);
+    }
+}
+
+void* CallocTracked(std::size_t count, std::size_t size) {
+    if (size != 0 && count > std::numeric_limits<std::size_t>::max() / size) return nullptr;
+    const std::size_t total = count * size;
+    void* allocation = AllocateTracked(total);
+    if (allocation) std::memset(allocation, 0, total);
+    return allocation;
+}
+
+void* ReallocTracked(void* allocation, std::size_t size) {
+    if (!allocation) return AllocateTracked(size);
+    if (size == 0) {
+        FreeTracked(allocation);
+        return nullptr;
+    }
+
+    auto* old_header = static_cast<AllocationHeader*>(allocation) - 1;
+    if (old_header->magic != kAllocationMagic) std::abort();
+    void* replacement = AllocateTracked(size);
+    if (!replacement) return nullptr;
+    std::memcpy(replacement, allocation,
+        old_header->requested_size < size ? old_header->requested_size : size);
+    FreeTracked(allocation);
+    return replacement;
+}
+
+} // namespace
+
+void* operator new(std::size_t size) {
+    void* allocation = AllocateTracked(size);
+    if (!allocation) std::abort();
+    return allocation;
+}
+
+void* operator new[](std::size_t size) {
+    void* allocation = AllocateTracked(size);
+    if (!allocation) std::abort();
+    return allocation;
+}
+
+void operator delete(void* allocation) noexcept { FreeTracked(allocation); }
+void operator delete[](void* allocation) noexcept { FreeTracked(allocation); }
+void operator delete(void* allocation, std::size_t) noexcept { FreeTracked(allocation); }
+void operator delete[](void* allocation, std::size_t) noexcept { FreeTracked(allocation); }
 
 extern "C" int pthread_once(pthread_once_t* once_control, void (*init_routine)(void)) {
     constexpr int running = 2;
@@ -214,9 +314,12 @@ void PresentColor(SDL_Renderer* renderer, SDL_Window* window, Uint8 red, Uint8 g
 
 bool RunSmoke() {
     SDL_SetMainReady();
+    if (SDL_SetMemoryFunctions(AllocateTracked, CallocTracked, ReallocTracked, FreeTracked) != 0) {
+        return false;
+    }
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return false;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99719", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99720", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
