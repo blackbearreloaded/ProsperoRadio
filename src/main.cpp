@@ -1,5 +1,7 @@
 #include <SDL2/SDL.h>
 
+#include "osmesa_render_interface.h"
+
 #include <RmlUi/Core/Context.h>
 #include <RmlUi/Core/Core.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -13,6 +15,7 @@
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
+#include <dlfcn.h>
 #include <limits>
 #include <new>
 #include <pthread.h>
@@ -219,77 +222,11 @@ public:
     }
 };
 
-class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility {
-public:
-    explicit SdlRenderInterface(SDL_Renderer* renderer) : renderer_(renderer) {
-        SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
-    }
-
-    void RenderGeometry(Rml::Vertex* rml_vertices, int num_vertices, int* indices,
-        int num_indices, Rml::TextureHandle texture, const Rml::Vector2f& translation) override {
-        std::vector<SDL_Vertex> vertices;
-        vertices.reserve(static_cast<size_t>(num_vertices));
-        for (int i = 0; i < num_vertices; ++i) {
-            const Rml::Vertex& vertex = rml_vertices[i];
-            SDL_Vertex sdl_vertex{};
-            sdl_vertex.position = {vertex.position.x + translation.x, vertex.position.y + translation.y};
-            sdl_vertex.color = {vertex.colour.red, vertex.colour.green,
-                vertex.colour.blue, vertex.colour.alpha};
-            sdl_vertex.tex_coord = {vertex.tex_coord.x, vertex.tex_coord.y};
-            vertices.push_back(sdl_vertex);
-        }
-        SDL_RenderGeometry(renderer_, reinterpret_cast<SDL_Texture*>(texture),
-            vertices.data(), num_vertices, indices, num_indices);
-    }
-
-    bool LoadTexture(Rml::TextureHandle&, Rml::Vector2i&, const Rml::String&) override { return false; }
-
-    bool GenerateTexture(Rml::TextureHandle& texture_handle, const Rml::byte* source,
-        const Rml::Vector2i& dimensions) override {
-        SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(
-            const_cast<Rml::byte*>(source), dimensions.x, dimensions.y, 32,
-            dimensions.x * 4, SDL_PIXELFORMAT_RGBA32);
-        if (!surface) return false;
-
-        SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer_, surface);
-        SDL_FreeSurface(surface);
-        if (texture) SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-        texture_handle = reinterpret_cast<Rml::TextureHandle>(texture);
-        return texture != nullptr;
-    }
-
-    void ReleaseTexture(Rml::TextureHandle texture) override {
-        SDL_DestroyTexture(reinterpret_cast<SDL_Texture*>(texture));
-    }
-
-    void EnableScissorRegion(bool enable) override {
-        scissor_enabled_ = enable;
-        SDL_RenderSetClipRect(renderer_, enable ? &scissor_ : nullptr);
-    }
-
-    void SetScissorRegion(int x, int y, int width, int height) override {
-        scissor_ = {x, y, width, height};
-        if (scissor_enabled_) SDL_RenderSetClipRect(renderer_, &scissor_);
-    }
-
-private:
-    SDL_Renderer* renderer_;
-    SDL_Rect scissor_{};
-    bool scissor_enabled_ = false;
-};
-
 bool LoadFonts() {
     return Rml::LoadFontFace("ui/fonts/NotoSans-Regular.ttf") &&
         Rml::LoadFontFace("ui/fonts/NotoSans-Bold.ttf") &&
         Rml::LoadFontFace("ui/fonts/DejaVuSans.ttf", true) &&
         Rml::LoadFontFace("ui/fonts/NotoEmoji-Regular.ttf", true);
-}
-
-void PresentColor(SDL_Renderer* renderer, SDL_Window* window, Uint8 red, Uint8 green, Uint8 blue) {
-    SDL_SetRenderDrawColor(renderer, red, green, blue, 255);
-    SDL_RenderClear(renderer);
-    SDL_RenderFlush(renderer);
-    SDL_UpdateWindowSurface(window);
 }
 
 [[noreturn]] void KeepProcessAlive() {
@@ -300,21 +237,37 @@ bool RunSmoke() {
     if (SDL_SetMemoryFunctions(AllocateTracked, CallocTracked, ReallocTracked, FreeTracked) != 0) {
         return false;
     }
+
+    setenv("LD_LIBRARY_PATH", "/app0", 1);
+    void* osmesa_library = dlopen("/app0/libOSMesa.so.8", RTLD_NOW | RTLD_GLOBAL);
+    if (!osmesa_library) {
+        std::fprintf(stderr, "[radio] OSMesa preload failed: %s\n", dlerror());
+        std::fflush(stderr);
+        return false;
+    }
+
     SDL_SetMainReady();
     if (SDL_Init(SDL_INIT_VIDEO) != 0) return false;
 
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99726", SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
-    SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
-    SDL_Surface* surface = window ? SDL_GetWindowSurface(window) : nullptr;
-    SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
-    if (!window || !renderer) return false;
-
-    PresentColor(renderer, window, 20, 80, 180);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 1);
+    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99727", SDL_WINDOWPOS_UNDEFINED,
+        SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN | SDL_WINDOW_OPENGL);
+    SDL_GLContext gl_context = window ? SDL_GL_CreateContext(window) : nullptr;
+    if (!window || !gl_context || SDL_GL_MakeCurrent(window, gl_context) != 0) {
+        std::fprintf(stderr, "[radio] OSMesa context failed: %s\n", SDL_GetError());
+        std::fflush(stderr);
+        return false;
+    }
 
     AppSystemInterface system_interface;
     AppFileInterface file_interface;
-    SdlRenderInterface render_interface(renderer);
+    OSMesaRenderInterface render_interface(1920, 1080);
+    if (!render_interface.Initialize()) {
+        std::fprintf(stderr, "[radio] OpenGL function loading failed\n");
+        std::fflush(stderr);
+        return false;
+    }
     Rml::RenderInterface* adapted_render_interface = render_interface.GetAdaptedInterface();
     Rml::SetSystemInterface(&system_interface);
     Rml::SetFileInterface(&file_interface);
@@ -327,7 +280,9 @@ bool RunSmoke() {
     if (document) {
         document->Show();
     } else {
-        PresentColor(renderer, window, 180, 20, 40);
+        render_interface.BeginFrame();
+        render_interface.Clear(0.70f, 0.04f, 0.10f, 1.0f);
+        SDL_GL_SwapWindow(window);
         running = false;
     }
 
@@ -337,11 +292,10 @@ bool RunSmoke() {
             if (event.type == SDL_QUIT) running = false;
         }
         context->Update();
-        SDL_SetRenderDrawColor(renderer, 7, 16, 22, 255);
-        SDL_RenderClear(renderer);
+        render_interface.BeginFrame();
+        render_interface.Clear(7.0f / 255.0f, 16.0f / 255.0f, 22.0f / 255.0f, 1.0f);
         context->Render();
-        SDL_RenderFlush(renderer);
-        SDL_UpdateWindowSurface(window);
+        SDL_GL_SwapWindow(window);
         sceKernelUsleep(16667);
     }
 

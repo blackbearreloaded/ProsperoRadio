@@ -1,14 +1,15 @@
 {
-  "titleName": "PS5 Radio Browser PPSA99726",
-  "titleId": "PPSA99726",
-  "conceptId": "99726",
-  "contentId": "UP9000-PPSA99726_00-RADIOAPP00000001",
+  "titleName": "PS5 Radio Browser PPSA99727",
+  "titleId": "PPSA99727",
+  "conceptId": "99727",
+  "contentId": "UP9000-PPSA99727_00-RADIOAPP00000001",
   "moduleSdkVersion": "0x02000009",
   "companionSdkVersion": "0x08050001",
   "fselfMagic": "0x1D3D154F",
   "downloadDataSize": 256,
   "sources": [
-    "src/main.cpp"
+    "src/main.cpp",
+    "src/osmesa_render_interface.cpp"
   ],
   "compileDefinitions": [
     "SDL_MAIN_HANDLED",
@@ -32,6 +33,13 @@
   "stubLibraries": [
     "vendor/ps5/sdk/stubs/libSceLibcInternal.so",
     "vendor/ps5/sdk/stubs/libkernel.so"
+  ],
+  "appFiles": [
+    {
+      "source": "runtime/libOSMesa.so.8",
+      "destination": "libOSMesa.so.8",
+      "sha256": "128D2AB20B980B96DECB1F20A9ED57D10CC922605259666B63EFA52963920F0A"
+    }
   ],
   "runtimeModules": [
     {

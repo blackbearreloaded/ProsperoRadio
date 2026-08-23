@@ -56,8 +56,24 @@ an evidence warning and still captures the restored Chiaki rectangle. This made
 the launch/capture/close workflow self-sufficient without weakening PS5 lock
 ownership or runtime-release checks.
 
-## Next milestone
+## PPSA99727 - OSMesa/OpenGL renderer
 
-`PPSA99727` moves RmlUi rendering to the OpenGL 2 interface backed by SDL's PS5
-OSMesa context. The goal is to preserve anti-aliased font atlas sampling and
-rounded geometry without the SDL software `RenderGeometry` quantization.
+- Build status: compiled, linked, staged, and packaged; PS5 test pending.
+- Runtime source: pacbrew-repo v0.39 `ps5-payload-dev.tar.gz`.
+- Runtime: `libOSMesa.so.8`, 92,405,336 bytes, SHA-256
+  `128D2AB20B980B96DECB1F20A9ED57D10CC922605259666B63EFA52963920F0A`.
+- Runtime dependencies: `libkernel_web.sprx` and
+  `libSceLibcInternal.sprx` only.
+- FFPFSC: 53,608,448 bytes, SHA-256
+  `301ED4BB24F804260E46DFAA4434EBB3789E677E5A551B11E93EBAB2DE2584AA`.
+- Changes:
+  - replaced SDL software `RenderGeometry` with an OpenGL 2 compatibility
+    renderer backed by SDL's PS5 OSMesa context;
+  - resolves all OpenGL entry points through `SDL_GL_GetProcAddress`, leaving
+    no direct GL imports in `eboot.bin`;
+  - uses straight-alpha blending through RmlUi's compatibility adapter,
+    linear font-atlas sampling, orthographic 1920x1080 projection, and proper
+    top-left scissor conversion;
+  - added hash-validated app-root runtime-file staging to the build.
+- Goal: preserve anti-aliased font atlas sampling and rounded geometry without
+  SDL software `RenderGeometry` quantization.

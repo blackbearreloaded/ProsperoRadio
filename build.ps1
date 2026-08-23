@@ -156,6 +156,28 @@ foreach ($runtimeModule in @($project.runtimeModules)) {
     }
 }
 
+foreach ($appFile in @($project.appFiles)) {
+    if ($appFile.source -notmatch '^runtime/[A-Za-z0-9._-]+$') {
+        Fail "Application file sources must be files directly under runtime."
+    }
+    if ($appFile.destination -notmatch '^[A-Za-z0-9._-]+$') {
+        Fail "Application file destinations must be plain app-root file names."
+    }
+    $appFileSource = [IO.Path]::GetFullPath((Join-Path $here $appFile.source))
+    if (-not (Test-Path -LiteralPath $appFileSource -PathType Leaf)) {
+        Fail "Required application file not found: $appFileSource"
+    }
+    if ($appFile.sha256) {
+        if ($appFile.sha256 -notmatch '^[0-9a-fA-F]{64}$') {
+            Fail "Application file sha256 must contain exactly 64 hexadecimal digits."
+        }
+        $appFileHash = (Get-FileHash -LiteralPath $appFileSource -Algorithm SHA256).Hash
+        if ($appFileHash -ne $appFile.sha256) {
+            Fail "Application file hash mismatch for $($appFile.source)."
+        }
+    }
+}
+
 if (-not $env:DOTNET_CLI_HOME) {
     $env:DOTNET_CLI_HOME = Join-Path $buildRoot "dotnet-home"
 }
@@ -297,6 +319,11 @@ foreach ($assetName in @("pic0.dds", "pic1.dds", "snd0.at9")) {
 
 if (Test-Path -LiteralPath $uiPath -PathType Container) {
     Copy-Item -LiteralPath $uiPath -Destination (Join-Path $app "ui") -Recurse -Force
+}
+
+foreach ($appFile in @($project.appFiles)) {
+    $appFileSource = [IO.Path]::GetFullPath((Join-Path $here $appFile.source))
+    [IO.File]::Copy($appFileSource, (Join-Path $app $appFile.destination), $true)
 }
 
 foreach ($runtimeModule in @($project.runtimeModules)) {
