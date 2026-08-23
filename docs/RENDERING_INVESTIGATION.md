@@ -1057,3 +1057,29 @@ isolated crash regression.
   as LVGL, and SDL copies every coverage texel without texture sampling. The
   previously malformed `K`, `P`, `9`, slash, `N`, `S`, lowercase letters, and
   lower rows are byte-exact to their LVGL source masks.
+
+## PPSA99767 - production pixel-exact UI
+
+- Commit: `71756b6`
+- Goal: package the PPSA99766 rendering path without diagnostic framebuffer
+  writes.
+- Changes:
+  - keeps the exact generated LVGL Montserrat assets, bitmap-font engine,
+    whitespace metrics, class kerning, retained-atlas CPU blitter, RmlUi
+    HTML/RCSS layout, and controller icon renderer verified in PPSA99766;
+  - removes the one-time `/download0` BMP save from the frame loop;
+  - increments the title ID and displayed title name to PPSA99767.
+- Outcome: entered `eboot`, remained stable through observation, closed
+  cleanly, and released its runtime layers. The PS5 lock was released and the
+  local Chiaki process count was zero after the cycle.
+- Evidence:
+  - `PPSA99767-20260823-182918-result.json`, lifecycle result `entered-eboot`;
+  - `PPSA99767-20260823-182918-running.png`, SHA-256
+    `9F938DAF7C7F082759E5C68010609C271491ADDDBC03CFF1170113BD025B2835`;
+  - eboot SHA-256
+    `5CD1F80144374DFD7E364FFDF82DBBDD9E7FC7BBFC50DF68605CC69869CB0D25`.
+- FFPFSC: 15,794,176 bytes, SHA-256
+  `A4AB6B71165AE4CE9F849C87BDE8D37988588F5C87A0D4952ED044D3C83B118D`.
+- Result: production pixel-exact UI milestone complete. Its renderer, font
+  assets, metrics, and layout are byte-equivalent to the zero-difference
+  PPSA99766 proof; only the diagnostic BMP write was removed.
