@@ -135,6 +135,10 @@ isolated crash regression.
 
 ## PPSA99731 - linearly sampled font atlases
 
+- Commit: `6aaea3c`
+- Outcome: entered `eboot`, displayed the complete UI, remained alive, and
+  closed cleanly.
+- Evidence: `PPSA99731-20260823-113046-running.png`.
 - Changes:
   - restored the stable PPSA99726 SDL software renderer;
   - forces `SDL_ScaleModeLinear` on every generated RmlUi texture and requests
@@ -142,3 +146,16 @@ isolated crash regression.
   - removes the 92 MB OSMesa runtime from the staged app.
 - Goal: preserve the proven native renderer while smoothing glyph alpha edges
   and texture-coordinate quantization at small sizes.
+- Result: glyph edges are smooth and solid, all controls render correctly, and
+  the complete UI is stable. Remaining work is typography scale and spacing,
+  not renderer correctness.
+
+## PPSA99732 - TV typography and layout polish
+
+- Changes:
+  - keeps Noto Sans regular/bold and raises every secondary label to at least
+    17-20 px;
+  - increases muted-text contrast and gives headings safe accent-glyph line
+    height;
+  - adds overflow protection for real Radio Browser station names and metadata;
+  - compacts the selected-station panel so its actions clear the player strip.
