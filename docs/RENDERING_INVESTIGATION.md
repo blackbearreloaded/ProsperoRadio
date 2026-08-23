@@ -197,7 +197,20 @@ isolated crash regression.
 
 ## PPSA99735 - seam-free controls
 
+- Commit: `c838014`
+- Outcome: entered `eboot`, wrote the native frame, remained alive, and closed
+  cleanly.
+- Evidence: `PPSA99735-native/PPSA99735-ui.bmp`, SHA-256
+  `FAC9F8874D8106E99390A60548D25B126D8B4934FA82820B055ADF7C320B763B`.
 - Changes:
   - sets card and interactive-control radii to zero while preserving the same
     spacing, color hierarchy, focus borders, and typography;
   - writes `/download0/PPSA99735-ui.bmp` for lossless verification.
+- Result: the 1920x1080 native frame has clean control edges, no button seams,
+  smooth font rendering, readable secondary labels, and no overlap or clipping.
+
+## PPSA99736 - production UI handoff
+
+- Changes:
+  - keeps the byte-equivalent verified rendering and RCSS paths;
+  - removes the one-time native BMP capture from the frame loop.
