@@ -168,6 +168,9 @@ isolated crash regression.
 
 ## PPSA99733 - lossless native UI capture
 
+- Commit: `7d1f805`
+- Outcome: shell launch rejected with `0x80a40087` on two attempts before
+  `eboot`; runtime mount released cleanly both times.
 - Changes:
   - saves the first complete 1920x1080 SDL surface to
     `/download0/PPSA99733-ui.bmp`;
@@ -175,3 +178,11 @@ isolated crash regression.
     UFS2 image remains quick to retrieve and inspect.
 - Goal: validate exact PS5 renderer output independently of Chiaki window and
   host-desktop scaling.
+- Result: the 32 MB download-data reservation is not accepted by this native
+  launch path. No app code ran and no BMP was written.
+
+## PPSA99734 - proven download mount and native capture
+
+- Changes:
+  - restores the hardware-proven 256 MB `/download0` reservation;
+  - writes `/download0/PPSA99734-ui.bmp` after the first complete UI frame.
