@@ -260,3 +260,14 @@ isolated crash regression.
   - keeps the byte-equivalent PPSA99737 font loading, RCSS, and SDL rendering
     paths;
   - removes the one-time `/download0` BMP capture.
+- Outcome: entered `eboot`, remained stable through observation, closed
+  cleanly, and released its runtime layers. The managed Chiaki window closed;
+  one windowless local helper was stopped explicitly before releasing the PS5
+  lock.
+- Evidence: `PPSA99738-20260823-134847-result.json` and klog. The only evidence
+  warnings concern the intentionally skipped host-video readiness check and
+  Chiaki's internal foreground window handle; hardware lifecycle classification
+  is `entered-eboot`.
+- FFPFSC: 12,451,840 bytes, SHA-256
+  `BE4A9408054408D93FA9F71696ED94AECCAF92EAF147FAAD347BD99702F804F9`.
+- Result: production typography milestone complete.
