@@ -6,6 +6,66 @@
 > remaining international-text boundary are documented in
 > [docs/LVGL_PORT.md](docs/LVGL_PORT.md).
 
+## Current codec and stream roadmap
+
+The shipped playback baseline is AAC over continuous HTTP streams. Radio
+Browser catalog requests remain restricted to formats that the player can
+actually decode; a format must pass on-device playback, stop, reconnect, and
+error-recovery checks before its stations are exposed in normal browsing.
+
+### Stage 1: MP3
+
+- introduce codec detection and a shared compressed-audio-to-PCM boundary;
+- keep the existing native AAC path unchanged behind that boundary;
+- add an open-source distributable MP3 decoder, frame synchronization, and
+  stream metadata handling;
+- expose AAC and MP3 stations only after representative MP3 streams pass the
+  PS5 investigation loop.
+
+This is the next codec milestone because it reuses the existing continuous
+HTTP, buffering, PCM, and AudioOut paths.
+
+### Stage 2: Ogg Vorbis and Ogg Opus
+
+- add the minimal Ogg demuxing needed for live radio streams;
+- integrate open-source Vorbis and Opus decoders with compatible licenses;
+- normalize decoded channel layouts and sample rates for the existing PS5
+  output path;
+- validate malformed pages, reconnects, long-running playback, and station
+  switching before enabling each codec in catalog results.
+
+Vorbis and Opus share an Ogg-container milestone but remain independently
+gated capabilities.
+
+### Stage 3: FLAC
+
+- add a small open-source FLAC decoder;
+- size compressed and PCM buffers for higher-bitrate lossless streams;
+- verify memory use, underrun behavior, and sustained playback on PS5;
+- expose FLAC stations only when their higher resource cost is acceptable.
+
+### Stage 4: HLS and playlist delivery
+
+- treat HLS as a delivery-protocol feature rather than another codec;
+- parse master and media playlists, fetch segments, and follow live playlist
+  updates;
+- support only already-validated codecs inside HLS segments;
+- add cancellation, variant selection, discontinuity, retry, and stale-segment
+  handling;
+- separately cover simple M3U/PLS playlist resolution where Radio Browser does
+  not provide a usable direct stream URL.
+
+### Completion criteria
+
+For every newly supported format:
+
+- use only dependencies whose licenses permit redistribution with the app;
+- advertise only formats enabled in the packaged build;
+- preserve responsive controller input during buffering and decoding;
+- handle unsupported containers or codec variants without crashing;
+- document and commit the decoder choice, licenses, test streams, and PS5
+  hardware results as one milestone.
+
 Detailed implementation plan for a native PS5 internet-radio application using
 the Radio Browser API, SDL2, and RmlUi RML/RCSS documents.
 
