@@ -362,18 +362,43 @@ button {
     overflow: visible;
 }
 
+.page-action .page-arrow {
+    position: absolute;
+    top: 13px;
+    width: 18px;
+    height: 18px;
+    display: none;
+}
+
+.page-action.available .page-arrow {
+    display: block;
+}
+
 #page-prev {
     left: 18px;
     width: 260px;
 }
 
+#page-prev-icon {
+    left: 0px;
+}
+
+#page-prev-label {
+    left: 28px;
+}
+
 #page-next {
-    left: 1010px;
+    left: 1013px;
     width: 300px;
 }
 
-#page-next span {
+#page-next-label {
+    right: 28px;
     text-align: right;
+}
+
+#page-next-icon {
+    left: 282px;
 }
 
 #page-label {
@@ -584,19 +609,18 @@ button {
 
 #play-icon {
     position: absolute;
-    left: 82px;
-    top: 21px;
-    width: 36px;
-    height: 36px;
-    background-color: #071218;
+    left: 94px;
+    top: 30px;
+    width: 18px;
+    height: 18px;
 }
 
 #play-icon img {
     position: absolute;
-    left: 6px;
-    top: 6px;
-    width: 24px;
-    height: 24px;
+    left: 0px;
+    top: 0px;
+    width: 18px;
+    height: 18px;
 }
 
 #play-icon .stop-glyph, #play-icon.stop .play-glyph {

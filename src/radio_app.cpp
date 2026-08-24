@@ -302,9 +302,12 @@ void RadioApp::RefreshHeading() {
             page_number, page_count, page_start_ + 1, last, visible_count_);
     }
     SetText(document_, "page-label", text);
-    SetText(document_, "page-prev", page_start_ >= CardCount ? "Previous page" : "");
-    SetText(document_, "page-next",
-        page_start_ + CardCount < visible_count_ ? "Next page" : "");
+    const bool has_previous_page = page_start_ >= CardCount;
+    const bool has_next_page = page_start_ + CardCount < visible_count_;
+    SetText(document_, "page-prev-label", has_previous_page ? "Previous page" : "");
+    SetText(document_, "page-next-label", has_next_page ? "Next page" : "");
+    SetClass(document_, "page-prev", "available", has_previous_page);
+    SetClass(document_, "page-next", "available", has_next_page);
 
     constexpr int track_width = 420;
     int thumb_width = page_count > 1 ? track_width / static_cast<int>(page_count) : track_width;

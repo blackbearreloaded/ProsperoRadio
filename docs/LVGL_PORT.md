@@ -147,3 +147,13 @@ symbol in the captured live catalog frame, remained stable for 20 seconds,
 closed cleanly, and released its runtime layers and console lock. Evidence is
 retained as `PPSA99771-20260824-010614-*`; the only evidence note is the
 explicitly skipped Chiaki readiness gate.
+
+## PPSA99772 compact playback symbols
+
+PPSA99772 removes the 36 px dark icon well from the station action. The
+project-authored play and stop shapes now render directly on the cyan button
+as clean 18 px dark glyphs, preserving the existing playback-state switch and
+leaving the controller footer's Cross prompt unchanged. The paging rail also
+matches the LVGL layout with a compact up chevron immediately before Previous
+page and a down chevron after the right-anchored Next page label. Unavailable
+actions hide both their text and icon.

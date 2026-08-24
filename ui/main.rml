@@ -60,9 +60,15 @@
                 </button>
 
                 <div id="pagination-rail">
-                    <button id="page-prev" class="page-action"><span>Previous page</span></button>
+                    <button id="page-prev" class="page-action">
+                        <img id="page-prev-icon" class="page-arrow" src="icons/page-up.tga" width="18" height="18" alt="" />
+                        <span id="page-prev-label">Previous page</span>
+                    </button>
                     <span id="page-label">Page 1 of 30  /  1-4 of 117 stations</span>
-                    <button id="page-next" class="page-action"><span>Next page  &gt;</span></button>
+                    <button id="page-next" class="page-action available">
+                        <span id="page-next-label">Next page</span>
+                        <img id="page-next-icon" class="page-arrow" src="icons/page-down.tga" width="18" height="18" alt="" />
+                    </button>
                     <span class="page-track"><span id="page-thumb"></span></span>
                 </div>
 
@@ -84,8 +90,8 @@
                     <span id="detail-status">Ready to play</span>
                     <button id="play-button">
                         <span id="play-icon" aria-hidden="true">
-                            <img class="play-glyph" src="icons/play.tga" width="24" height="24" alt="" />
-                            <img class="stop-glyph" src="icons/stop.tga" width="24" height="24" alt="" />
+                            <img class="play-glyph" src="icons/play.tga" width="18" height="18" alt="" />
+                            <img class="stop-glyph" src="icons/stop.tga" width="18" height="18" alt="" />
                         </span>
                         <span id="play-label">Play station</span>
                     </button>

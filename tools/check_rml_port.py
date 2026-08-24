@@ -11,7 +11,8 @@ from pathlib import Path
 
 CARD_FIELDS = ("card", "art", "badge", "name", "meta", "rank", "favorite", "live")
 FIXED_IDS = {
-    "heading", "subtitle", "page-prev", "page-label", "page-next", "page-thumb",
+    "heading", "subtitle", "page-prev", "page-prev-icon", "page-prev-label",
+    "page-label", "page-next", "page-next-icon", "page-next-label", "page-thumb",
     "discover-panel", "detail-art", "detail-badge", "detail-name", "detail-meta",
     "detail-codec", "detail-metric", "detail-status-dot", "detail-status",
     "play-button", "play-icon", "play-label", "now-art", "now-badge", "now-name",
@@ -39,7 +40,7 @@ def main() -> int:
     assert required <= set(ids), f"missing RML ids: {sorted(required - set(ids))}"
 
     project = json.loads((repo / "project.json").read_text(encoding="utf-8"))
-    assert project["titleId"] == "PPSA99771"
+    assert project["titleId"] == "PPSA99772"
     for source in ("src/radio_app.cpp", "src/radio_input.c", "src/radio_ime.c",
                    "src/radio_service.c", "src/radio_text.cpp"):
         assert source in project["sources"]
@@ -63,7 +64,8 @@ def main() -> int:
     for name, dimensions in {
         "cross": (40, 40), "circle": (40, 40), "square": (40, 40),
         "triangle": (40, 40), "options": (40, 40), "search": (40, 40),
-        "psradio": (64, 64), "play": (24, 24), "stop": (24, 24),
+        "psradio": (64, 64), "play": (18, 18), "stop": (18, 18),
+        "page-up": (18, 18), "page-down": (18, 18),
     }.items():
         data = (repo / "ui" / "icons" / f"{name}.tga").read_bytes()
         header = struct.unpack("<BBBHHBHHHHBB", data[:18])
@@ -77,8 +79,10 @@ def main() -> int:
     play_icon = root.find(".//*[@id='play-icon']")
     playback_sources = {image.get("src") for image in play_icon.findall("img")}
     assert playback_sources == {"icons/play.tga", "icons/stop.tga"}
+    assert root.find(".//*[@id='page-prev-icon']").get("src") == "icons/page-up.tga"
+    assert root.find(".//*[@id='page-next-icon']").get("src") == "icons/page-down.tga"
     assert root.find(".//*[@id='search-query-label']") is not None
-    print(f"validated {len(required)} RML ids, 71,416 extended glyphs, and 9 exact TGA assets")
+    print(f"validated {len(required)} RML ids, 71,416 extended glyphs, and 11 exact TGA assets")
     return 0
 
 
