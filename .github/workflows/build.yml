@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    tags:
+      - "v*"
   pull_request:
   workflow_dispatch:
 
@@ -88,3 +90,61 @@ jobs:
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
+
+  release:
+    name: GitHub release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Download verified build
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: >-
+          gh run download "$GITHUB_RUN_ID"
+          --repo "$GITHUB_REPOSITORY"
+          --name "psradio-$GITHUB_SHA"
+          --dir release
+
+      - name: Prepare release assets
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release
+          shopt -s nullglob
+          images=(PPSA*.ffpfsc)
+          app_dirs=(PPSA*/)
+          if (( ${#images[@]} != 1 || ${#app_dirs[@]} != 1 )); then
+            echo "Expected one FFPFSC image and one app folder." >&2
+            exit 1
+          fi
+          title_id="${app_dirs[0]%/}"
+          folder_archive="${title_id}-folder.zip"
+          python3 -m zipfile -c "$folder_archive" "$title_id"
+          sha256sum "${images[0]}" "$folder_archive" > SHA256SUMS
+          echo "image=${images[0]}" >> "$GITHUB_OUTPUT"
+          echo "folder=$folder_archive" >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ steps.package.outputs.image }}
+          FOLDER: ${{ steps.package.outputs.folder }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          assets=("release/$IMAGE" "release/$FOLDER" "release/SHA256SUMS")
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+              --repo "$GITHUB_REPOSITORY" \
+              --verify-tag \
+              --generate-notes \
+              --title "PSRadio $GITHUB_REF_NAME"
+          fi

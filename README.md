@@ -121,6 +121,18 @@ then builds the app folder and verified `.ffpfsc` image and keeps both in a
 downloadable GitHub Actions artifact for 14 days. The workflow can also be run
 manually from the repository's **Actions** tab.
 
+Version tags publish permanent GitHub Releases automatically. The release
+contains the verified `.ffpfsc`, a ZIP of the directory build, generated
+release notes, and `SHA256SUMS`. For example:
+
+```bash
+git tag -a v0.1.0 -m "PSRadio v0.1.0"
+git push origin v0.1.0
+```
+
+Only tags beginning with `v` publish a release; ordinary branch builds remain
+downloadable Actions artifacts and do not create release entries.
+
 For a clean machine walkthrough, SDK setup, identity customization, and the
 expected output tree, read [Getting started](docs/GETTING_STARTED.md).
 
