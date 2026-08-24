@@ -54,6 +54,9 @@ Run these checks before packaging:
 ```powershell
 python tools/check_rml_port.py
 python tools/generate_lvgl_bitmap_fonts.py --check
+python tools/generate_radio_bitmap_fonts.py --check
+wsl g++ -std=c++17 -Wall -Wextra -Werror -Isrc tools/radio_text_check.cpp src/radio_text.cpp -o /tmp/radio-text-check
+wsl /tmp/radio-text-check
 wsl clang -std=c11 -Wall -Wextra -Werror -Iinclude tools/aac_timing_check.c -o /tmp/aac-timing-check
 wsl /tmp/aac-timing-check
 ./build.ps1 -Dotnet 'C:\Program Files\dotnet\dotnet.exe' -OutputFormat Ffpfsc
@@ -62,14 +65,23 @@ wsl /tmp/aac-timing-check
 The bitmap-font check's expected combined SHA-256 is
 `c1e9b41232afd6720e04ea14c972caaea20cd839149766ada95aecd4e15ee677`.
 
-### Remaining international-text boundary
+### Multilingual parity: PPSA99770
 
-The pixel-exact bitmap faces currently cover ASCII plus the degree and bullet
-characters used by the UI. Radio Browser metadata outside that set is safely
-escaped but unsupported glyphs cannot yet be drawn. Full multilingual parity
-requires a paged or on-demand glyph source that retains the same unsampled CPU
-blit path; that is intentionally tracked separately from the PPSA99768
-functional and layout port.
+PPSA99770 extends the dynamic 20, 24, 28, and 32 px faces with the exact
+17,854 multilingual glyph masks per size used by the completed LVGL app. A
+host exporter reads the compiled LVGL font descriptors, packs the masks into
+14 deterministic 2048 x 2048 pages, and writes a lossless 4-bit `.rta` atlas
+format. RmlUi merges those pages into the existing Montserrat faces, retains
+all original ASCII metrics and kerning, and loads only atlas pages referenced
+by text that is actually rendered. The decoded pixels continue through the
+same retained SDL surface and unsampled CPU blit path.
+
+`src/radio_text.cpp` supplies the text-layout behavior that RmlUi's bitmap
+font interface does not provide itself: common Arabic and Persian letters are
+converted to connected Unicode presentation forms, and Arabic/Hebrew runs are
+placed in visual order while embedded Latin text and numbers remain forward.
+Host regressions cover unchanged ASCII, Cyrillic, and Chinese strings as well
+as Hebrew ordering and a connected Arabic lam-alef word.
 
 ## PPSA99768 hardware baseline
 

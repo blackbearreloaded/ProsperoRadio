@@ -60,6 +60,14 @@ Montserrat Medium data. Montserrat is Copyright 2011 The Montserrat Project
 Authors and is distributed under the SIL Open Font License 1.1; the complete
 license accompanies the generated files in `ui/fonts/lvgl-bitmap/OFL.txt`.
 
+The dynamic 20, 24, 28, and 32 px faces are extended with exact 4-bit masks
+exported from the completed LVGL application's compiled radio fonts. Those
+glyphs originate from Noto Sans, DejaVu Sans, Noto Sans Thai, and Source Han
+Sans SC. Their complete OFL and license texts accompany the paged atlas files
+under `ui/fonts/lvgl-bitmap/multilingual/licenses/`. The `.rta` container is a
+lossless zero-run/literal encoding authored for this project; it does not
+resample or modify the source masks.
+
 PSRadio launcher artwork and controller/interface icons were generated for
 this project with OpenAI image-generation assistance and reviewed and adapted
 by the maintainer. The generated controller images are visual control prompts,

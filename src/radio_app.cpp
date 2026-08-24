@@ -1,6 +1,7 @@
 #include "radio_app.h"
 
 #include "radio_ime.h"
+#include "radio_text.h"
 
 #include <RmlUi/Core/Element.h>
 #include <RmlUi/Core/ElementDocument.h>
@@ -23,12 +24,15 @@ Rml::Element* Find(Rml::ElementDocument* document, const char* id) {
 }
 
 void SetText(Rml::ElementDocument* document, const char* id, const char* text) {
-    if (Rml::Element* element = Find(document, id))
-        element->SetInnerRML(Rml::StringUtilities::EncodeRml(text ? text : ""));
+    if (Rml::Element* element = Find(document, id)) {
+        const std::string visual = RadioVisualText(text);
+        element->SetInnerRML(Rml::StringUtilities::EncodeRml(visual));
+    }
 }
 
 void SetMultilineText(Rml::ElementDocument* document, const char* id, const char* text) {
-    Rml::String encoded = Rml::StringUtilities::EncodeRml(text ? text : "");
+    const std::string visual = RadioVisualText(text);
+    Rml::String encoded = Rml::StringUtilities::EncodeRml(visual);
     for (std::size_t at = 0; (at = encoded.find('\n', at)) != Rml::String::npos;) {
         encoded.replace(at, 1, "<br/>");
         at += 5;

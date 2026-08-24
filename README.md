@@ -24,7 +24,10 @@ compatibility patch. No SharpProspero source is vendored here.
 - Native PS5 IME, controller input, HTTP, AAC decoding, and AudioOut.
 - Persistent favorites and stable stop/switch playback behavior.
 - RmlUi search and credits overlays plus a persistent now-playing rail.
-- Exact generated Montserrat bitmap faces copied without texture sampling.
+- Exact generated bitmap faces copied without texture sampling, including
+  extended Latin, Greek, Cyrillic, Arabic/Persian, Hebrew, Devanagari, Thai,
+  common Chinese, and Japanese kana at the dynamic metadata sizes.
+- Connected Arabic/Persian presentation forms and visual RTL run ordering.
 - One asset-preparation command for developer-supplied artwork and audio.
 - One editable [`project.json`](project.json) for title metadata and sources.
 - One-command PowerShell build: `./build.ps1`.
@@ -83,7 +86,7 @@ existing directory-based loader, such as
 [ShadowMountPlus](https://github.com/drakmor/ShadowMountPlus); do not upload
 only `eboot.bin`.
 
-The current test identity is `PPSA99769`; every future PS5 test build must
+The current test identity is `PPSA99770`; every future PS5 test build must
 increment it by one. Read [Getting started](docs/GETTING_STARTED.md) before the
 first build.
 
@@ -93,6 +96,7 @@ first build.
 project.json                App identity, sources, and build inputs
 src/main.cpp                SDL/RmlUi lifecycle and exact atlas blitter
 src/radio_app.cpp           RmlUi document and application-state controller
+src/radio_text.cpp          Arabic shaping and visual RTL metadata ordering
 src/radio_service.c         Radio Browser, cache, decoder, and audio service
 src/radio_input.c           Native PS5 controller adapter
 src/radio_ime.c             Native PS5 IME adapter
@@ -103,6 +107,7 @@ build.ps1                   Complete Windows/WSL build
 tools/doctor.ps1            Read-only prerequisite check
 tools/inspect.ps1           Static ELF/FSELF validator
 tools/prepare-assets.ps1     Presentation conversion and validation
+tools/generate_radio_bitmap_fonts.py  Exact multilingual atlas exporter
 tools/setup-ffpkg-tooling.ps1  Optional pinned UFS2Tool bootstrap
 tools/setup-mkpfs-tooling.ps1  Optional pinned MkPFS bootstrap
 tooling/NativeAppBuilder/   C# command-line build frontend

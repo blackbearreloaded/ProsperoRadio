@@ -39,10 +39,26 @@ def main() -> int:
     assert required <= set(ids), f"missing RML ids: {sorted(required - set(ids))}"
 
     project = json.loads((repo / "project.json").read_text(encoding="utf-8"))
-    assert project["titleId"] == "PPSA99769"
+    assert project["titleId"] == "PPSA99770"
     for source in ("src/radio_app.cpp", "src/radio_input.c", "src/radio_ime.c",
-                   "src/radio_service.c"):
+                   "src/radio_service.c", "src/radio_text.cpp"):
         assert source in project["sources"]
+
+    multilingual = repo / "ui" / "fonts" / "lvgl-bitmap" / "multilingual"
+    expected_pages = {20: 2, 24: 3, 28: 4, 32: 5}
+    for size, page_count in expected_pages.items():
+        font = ET.parse(multilingual / f"Radio-{size}.fnt").getroot()
+        pages = font.findall("./pages/page")
+        glyphs = font.findall("./chars/char")
+        assert len(pages) == page_count and len(glyphs) == 17854
+        for page in pages:
+            data = (multilingual / page.get("file")).read_bytes()
+            width, height, pixels, payload = struct.unpack_from("<HHII", data, 4)
+            assert data[:4] == b"RTA1" and (width, height) == (2048, 2048)
+            assert pixels == width * height and payload == len(data) - 16
+    for license_name in ("DejaVuSans-LICENSE.txt", "NotoSans-OFL.txt",
+                         "SourceHanSansSC-OFL.txt"):
+        assert (multilingual / "licenses" / license_name).stat().st_size > 4000
 
     for name, dimensions in {
         "cross": (40, 40), "circle": (40, 40), "square": (40, 40),
@@ -60,7 +76,7 @@ def main() -> int:
     assert "#credit-button.focused" in css and "#play-button.focused" in css
     play_icon = root.find(".//*[@id='play-icon']/img")
     assert play_icon is not None and play_icon.get("src") == "icons/cross.tga"
-    print(f"validated {len(required)} RML ids, project wiring, and 7 exact TGA assets")
+    print(f"validated {len(required)} RML ids, 71,416 extended glyphs, and 7 exact TGA assets")
     return 0
 
 

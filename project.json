@@ -1,8 +1,8 @@
 {
-  "titleName": "PSRadio PPSA99769",
-  "titleId": "PPSA99769",
-  "conceptId": "99769",
-  "contentId": "UP9000-PPSA99769_00-PSRADIOAPP000001",
+  "titleName": "PSRadio PPSA99770",
+  "titleId": "PPSA99770",
+  "conceptId": "99770",
+  "contentId": "UP9000-PPSA99770_00-PSRADIOAPP000001",
   "moduleSdkVersion": "0x02000009",
   "companionSdkVersion": "0x08050001",
   "fselfMagic": "0x1D3D154F",
@@ -11,6 +11,7 @@
     "src/main.cpp",
     "src/bitmap_font_engine.cpp",
     "src/radio_app.cpp",
+    "src/radio_text.cpp",
     "src/radio_input.c",
     "src/radio_ime.c",
     "src/radio_service.c"

@@ -14,6 +14,7 @@ namespace {
 
 struct BitmapGlyph {
     int advance = 0;
+    int page = 0;
     Rml::Vector2f offset{};
     Rml::Vector2f position{};
     Rml::Vector2f dimension{};
@@ -22,17 +23,41 @@ struct BitmapGlyph {
 using FontGlyphs = Rml::UnorderedMap<Rml::Character, BitmapGlyph>;
 using FontKerning = Rml::UnorderedMap<std::uint64_t, int>;
 
+struct BitmapPage {
+    BitmapPage(Rml::String texture_name, Rml::String texture_path,
+        Rml::Vector2f dimensions) :
+        source(Rml::MakeUnique<Rml::TextureSource>(
+            std::move(texture_name), std::move(texture_path))),
+        dimensions(dimensions) {}
+
+    Rml::UniquePtr<Rml::TextureSource> source;
+    Rml::Vector2f dimensions{};
+};
+
+using FontPages = Rml::Vector<BitmapPage>;
+
 class BitmapFontFace {
 public:
     BitmapFontFace(Rml::String family, Rml::Style::FontStyle style,
         Rml::Style::FontWeight weight, Rml::FontMetrics metrics,
-        Rml::String texture_name, Rml::String texture_path,
-        Rml::Vector2f texture_dimensions, FontGlyphs&& glyphs,
+        FontPages&& pages, FontGlyphs&& glyphs,
         FontKerning&& kerning) :
         family_(std::move(family)), style_(style), weight_(weight), metrics_(metrics),
-        texture_source_(std::move(texture_name), std::move(texture_path)),
-        texture_dimensions_(texture_dimensions), glyphs_(std::move(glyphs)),
+        pages_(std::move(pages)), glyphs_(std::move(glyphs)),
         kerning_(std::move(kerning)) {}
+
+    void Merge(FontPages&& pages, FontGlyphs&& glyphs, FontKerning&& kerning) {
+        const int page_offset = static_cast<int>(pages_.size());
+        for (BitmapPage& page : pages) pages_.push_back(std::move(page));
+        for (auto& pair : glyphs) {
+            if (glyphs_.find(pair.first) != glyphs_.end()) continue;
+            pair.second.page += page_offset;
+            glyphs_.emplace(pair.first, pair.second);
+        }
+        for (const auto& pair : kerning)
+            if (kerning_.find(pair.first) == kerning_.end())
+                kerning_.emplace(pair.first, pair.second);
+    }
 
     int GetStringWidth(Rml::StringView string, Rml::Character previous_character,
         bool kerning_enabled, int letter_spacing) const {
@@ -52,12 +77,8 @@ public:
         Rml::Vector2f string_position, Rml::ColourbPremultiplied colour,
         bool kerning_enabled, int letter_spacing, Rml::TexturedMeshList& mesh_list) {
         int width = 0;
-        mesh_list.resize(1);
-        mesh_list[0].texture = texture_source_.GetTexture(render_manager);
-
-        Rml::Mesh& mesh = mesh_list[0].mesh;
-        mesh.vertices.reserve(string.size() * 4);
-        mesh.indices.reserve(string.size() * 6);
+        mesh_list.clear();
+        Rml::Vector<int> page_meshes(pages_.size(), -1);
 
         Rml::Vector2f position = string_position.Round();
         Rml::Character previous_character = Rml::Character::Null;
@@ -72,10 +93,21 @@ public:
             position.x += pair_kerning;
 
             const BitmapGlyph& glyph = glyph_it->second;
-            if (glyph.dimension.x > 0 && glyph.dimension.y > 0) {
-                const Rml::Vector2f uv_top_left = glyph.position / texture_dimensions_;
+            if (glyph.dimension.x > 0 && glyph.dimension.y > 0 &&
+                glyph.page >= 0 && static_cast<std::size_t>(glyph.page) < pages_.size()) {
+                int mesh_index = page_meshes[glyph.page];
+                if (mesh_index < 0) {
+                    mesh_index = static_cast<int>(mesh_list.size());
+                    page_meshes[glyph.page] = mesh_index;
+                    mesh_list.resize(mesh_list.size() + 1);
+                    mesh_list[mesh_index].texture =
+                        pages_[glyph.page].source->GetTexture(render_manager);
+                }
+                Rml::Mesh& mesh = mesh_list[mesh_index].mesh;
+                const Rml::Vector2f dimensions = pages_[glyph.page].dimensions;
+                const Rml::Vector2f uv_top_left = glyph.position / dimensions;
                 const Rml::Vector2f uv_bottom_right =
-                    (glyph.position + glyph.dimension) / texture_dimensions_;
+                    (glyph.position + glyph.dimension) / dimensions;
                 Rml::MeshUtilities::GenerateQuad(mesh,
                     (position + glyph.offset).Round(), glyph.dimension, colour,
                     uv_top_left, uv_bottom_right);
@@ -105,8 +137,7 @@ private:
     Rml::Style::FontStyle style_ = Rml::Style::FontStyle::Normal;
     Rml::Style::FontWeight weight_ = Rml::Style::FontWeight::Normal;
     Rml::FontMetrics metrics_{};
-    Rml::TextureSource texture_source_;
-    Rml::Vector2f texture_dimensions_{};
+    FontPages pages_;
     FontGlyphs glyphs_;
     FontKerning kerning_;
 };
@@ -131,13 +162,14 @@ public:
             texture_dimensions.x = Get(attributes, "scaleW", 0.f);
             texture_dimensions.y = Get(attributes, "scaleH", 0.f);
         } else if (name == "page") {
-            if (Get(attributes, "id", -1) == 0)
-                texture_name = Get(attributes, "file", Rml::String());
+            const int id = Get(attributes, "id", -1);
+            if (id >= 0) page_names[id] = Get(attributes, "file", Rml::String());
         } else if (name == "char") {
             const Rml::Character character =
                 static_cast<Rml::Character>(Get(attributes, "id", 0));
             if (character == Rml::Character::Null) return;
             BitmapGlyph& glyph = glyphs[character];
+            glyph.page = Get(attributes, "page", 0);
             glyph.offset.x = Get(attributes, "xoffset", 0.f);
             glyph.offset.y = Get(attributes, "yoffset", 0.f) - metrics.ascent;
             glyph.advance = Get(attributes, "xadvance", 0);
@@ -164,7 +196,7 @@ public:
     Rml::String family;
     Rml::Style::FontStyle style = Rml::Style::FontStyle::Normal;
     Rml::Style::FontWeight weight = static_cast<Rml::Style::FontWeight>(500);
-    Rml::String texture_name;
+    Rml::UnorderedMap<int, Rml::String> page_names;
     Rml::Vector2f texture_dimensions{};
     Rml::FontMetrics metrics{};
     FontGlyphs glyphs;
@@ -189,14 +221,33 @@ bool LoadBitmapFont(const Rml::String& file_name) {
     stream->SetSourceURL(file_name);
     parser.Parse(stream.get());
     if (parser.family.empty() || parser.glyphs.empty() ||
-        parser.texture_name.empty() || parser.metrics.size == 0)
+        parser.page_names.empty() || parser.metrics.size == 0)
         return false;
+
+    int maximum_page = -1;
+    for (const auto& page : parser.page_names)
+        if (page.first > maximum_page) maximum_page = page.first;
+    FontPages pages;
+    pages.reserve(static_cast<std::size_t>(maximum_page + 1));
+    for (int page = 0; page <= maximum_page; ++page) {
+        const auto name = parser.page_names.find(page);
+        if (name == parser.page_names.end() || name->second.empty()) return false;
+        pages.emplace_back(name->second, file_name, parser.texture_dimensions);
+    }
 
     parser.metrics.underline_position = 3.f;
     parser.metrics.underline_thickness = 1.f;
+    for (const auto& font : fonts) {
+        if (font->Family() == parser.family && font->Style() == parser.style &&
+            font->Weight() == parser.weight &&
+            font->Metrics().size == parser.metrics.size) {
+            font->Merge(std::move(pages), std::move(parser.glyphs),
+                std::move(parser.kerning));
+            return true;
+        }
+    }
     fonts.push_back(Rml::MakeUnique<BitmapFontFace>(parser.family, parser.style,
-        parser.weight, parser.metrics, parser.texture_name, file_name,
-        parser.texture_dimensions, std::move(parser.glyphs),
+        parser.weight, parser.metrics, std::move(pages), std::move(parser.glyphs),
         std::move(parser.kerning)));
     return true;
 }

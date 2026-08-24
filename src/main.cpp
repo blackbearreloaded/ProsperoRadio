@@ -268,23 +268,42 @@ public:
 
         unsigned char header[18]{};
         const bool header_read = std::fread(header, 1, sizeof(header), file) == sizeof(header);
-        const int width = header[12] | (header[13] << 8);
-        const int height = header[14] | (header[15] << 8);
-        const bool supported = header_read && header[0] == 0 && header[1] == 0 &&
-            header[2] == 2 && width > 0 && height > 0 && header[16] == 32 &&
-            (header[17] & 0x0f) == 8 && (header[17] & 0x30) == 0x20;
-        if (!supported || static_cast<std::size_t>(width) >
-                std::numeric_limits<std::size_t>::max() /
-                    (static_cast<std::size_t>(height) * 4)) {
-            std::fclose(file);
-            return false;
-        }
+        int width = 0;
+        int height = 0;
+        std::vector<unsigned char> pixels;
+        bool decoded = false;
 
-        std::vector<unsigned char> pixels(
-            static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4);
-        const bool pixels_read = std::fread(pixels.data(), 1, pixels.size(), file) == pixels.size();
+        if (header_read && std::memcmp(header, "RTA1", 4) == 0) {
+            width = ReadLe16(header + 4);
+            height = ReadLe16(header + 6);
+            const std::uint32_t pixel_count = ReadLe32(header + 8);
+            const std::uint32_t payload_length = ReadLe32(header + 12);
+            const std::size_t expected_pixels = static_cast<std::size_t>(width) *
+                static_cast<std::size_t>(height);
+            if (width > 0 && height > 0 && pixel_count == expected_pixels &&
+                expected_pixels <= std::numeric_limits<std::size_t>::max() / 4 &&
+                payload_length <= expected_pixels * 2 &&
+                fseeko(file, 16, SEEK_SET) == 0) {
+                std::vector<unsigned char> payload(payload_length);
+                if (std::fread(payload.data(), 1, payload.size(), file) == payload.size())
+                    decoded = DecodeRadioAtlas(payload, expected_pixels, pixels);
+            }
+        } else {
+            width = header[12] | (header[13] << 8);
+            height = header[14] | (header[15] << 8);
+            const bool supported = header_read && header[0] == 0 && header[1] == 0 &&
+                header[2] == 2 && width > 0 && height > 0 && header[16] == 32 &&
+                (header[17] & 0x0f) == 8 && (header[17] & 0x30) == 0x20;
+            if (supported && static_cast<std::size_t>(width) <=
+                    std::numeric_limits<std::size_t>::max() /
+                        (static_cast<std::size_t>(height) * 4)) {
+                pixels.resize(static_cast<std::size_t>(width) *
+                    static_cast<std::size_t>(height) * 4);
+                decoded = std::fread(pixels.data(), 1, pixels.size(), file) == pixels.size();
+            }
+        }
         std::fclose(file);
-        if (!pixels_read) return false;
+        if (!decoded) return false;
 
         SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(pixels.data(), width, height,
             32, width * 4, SDL_PIXELFORMAT_BGRA32);
@@ -382,6 +401,47 @@ private:
         bool exact_pixels = false;
         std::vector<Rml::byte> rgba;
     };
+
+    static std::uint16_t ReadLe16(const unsigned char* value) {
+        return static_cast<std::uint16_t>(value[0]) |
+            (static_cast<std::uint16_t>(value[1]) << 8);
+    }
+
+    static std::uint32_t ReadLe32(const unsigned char* value) {
+        return static_cast<std::uint32_t>(value[0]) |
+            (static_cast<std::uint32_t>(value[1]) << 8) |
+            (static_cast<std::uint32_t>(value[2]) << 16) |
+            (static_cast<std::uint32_t>(value[3]) << 24);
+    }
+
+    static bool DecodeRadioAtlas(const std::vector<unsigned char>& payload,
+        std::size_t pixel_count, std::vector<unsigned char>& pixels) {
+        pixels.assign(pixel_count * 4, 255);
+        std::size_t input = 0;
+        std::size_t output = 0;
+        while (input < payload.size() && output < pixel_count) {
+            const unsigned char token = payload[input++];
+            const std::size_t length = static_cast<std::size_t>(token & 0x7f) + 1;
+            if (length > pixel_count - output) return false;
+            if ((token & 0x80) == 0) {
+                for (std::size_t index = 0; index < length; ++index)
+                    pixels[(output + index) * 4 + 3] = 0;
+            } else {
+                const std::size_t bytes = (length + 1) / 2;
+                if (bytes > payload.size() - input) return false;
+                for (std::size_t index = 0; index < length; ++index) {
+                    const unsigned char packed = payload[input + index / 2];
+                    const unsigned char alpha = (index & 1) != 0
+                        ? static_cast<unsigned char>((packed & 0x0f) * 17)
+                        : static_cast<unsigned char>((packed >> 4) * 17);
+                    pixels[(output + index) * 4 + 3] = alpha;
+                }
+                input += bytes;
+            }
+            output += length;
+        }
+        return input == payload.size() && output == pixel_count;
+    }
 
     struct PixelCopy {
         SDL_Rect source;
@@ -507,6 +567,15 @@ bool LoadFonts() {
     for (const char* font : kBitmapFonts) {
         if (!Rml::LoadFontFace(font)) return false;
     }
+    static constexpr const char* kMultilingualFonts[] = {
+        "ui/fonts/lvgl-bitmap/multilingual/Radio-20.fnt",
+        "ui/fonts/lvgl-bitmap/multilingual/Radio-24.fnt",
+        "ui/fonts/lvgl-bitmap/multilingual/Radio-28.fnt",
+        "ui/fonts/lvgl-bitmap/multilingual/Radio-32.fnt",
+    };
+    for (const char* font : kMultilingualFonts) {
+        if (!Rml::LoadFontFace(font)) return false;
+    }
     return true;
 }
 
@@ -532,7 +601,7 @@ bool RunApp() {
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window* window = SDL_CreateWindow("PSRadio PPSA99769", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("PSRadio PPSA99770", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
