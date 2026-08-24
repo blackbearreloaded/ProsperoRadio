@@ -1,7 +1,7 @@
 # Clean-room runtime shim
 
-`libc.prx` was independently authored by BlackBearReloaded for
-`ps5-native-app-boilerplate` and is distributed under GPL-3.0-or-later. It
+`libc.prx` was independently authored by BlackBearReloaded for the native PS5
+build foundation used by PSRadio and is distributed under GPL-3.0-or-later. It
 contains no Sony runtime implementation, proprietary SDK binary, or game file.
 
 The release artifact has SHA-256:

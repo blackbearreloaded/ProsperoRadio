@@ -4,6 +4,12 @@ tooling/prospero-clang18 text eol=lf
 *.ps1 text eol=crlf
 *.png binary
 *.dds binary
+*.tga binary
+*.rta binary
 *.at9 binary
+*.a binary
+*.so binary
 *.prx binary
 *.bin binary
+*.ffpkg binary
+*.ffpfsc binary

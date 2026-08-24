@@ -22,7 +22,7 @@ Confirm the expected compiler exists:
 
 ## 2. Install the PS5 payload SDK in WSL
 
-This template expects the SDK at `/opt/ps5-payload-sdk`, matching the official
+PSRadio expects the SDK at `/opt/ps5-payload-sdk`, matching the official
 [ps5-payload-dev/sdk quick start](https://github.com/ps5-payload-dev/sdk):
 
 ```bash
@@ -67,9 +67,13 @@ No proprietary runtime module is required. The repository includes a
 [Clean-room runtime shim](RUNTIME_SHIM.md) for its scope and reproduction
 procedure.
 
-## 5. Choose a unique app identity
+## 5. Review the app identity
 
-Edit [`project.json`](../project.json). Change these fields together:
+The repository builds as PSRadio with title ID `PPSA99600`. Keep that identity
+for an ordinary source build or release update.
+
+If you maintain a fork or need a second independently installed test title,
+edit [`project.json`](../project.json) and change these fields together:
 
 ```json
 {
@@ -80,12 +84,12 @@ Edit [`project.json`](../project.json). Change these fields together:
 }
 ```
 
-The title ID must be unique among applications already registered on your
-console. `contentId` must contain the same title ID and end with exactly 16
-uppercase letters or digits.
+The alternate title ID must be unique among applications already registered on
+your console. `contentId` must contain the same title ID and end with exactly
+16 uppercase letters or digits. Do not change the official PSRadio identity for
+every release; a stable title ID allows an installed copy to be updated.
 
-The template includes an original BlackBear presentation set. The easiest way
-to give the app its own identity is:
+PSRadio includes its release presentation assets. A fork can replace them with:
 
 ```powershell
 ./tools/prepare-assets.ps1 `
@@ -99,9 +103,8 @@ The generated console files are:
 - `sce_sys/pic0.dds`: 3840x2160 BC7 selection background.
 - `sce_sys/pic1.dds`: 3840x2160 BC7 selection-background fallback.
 
-`sce_sys/background-source.png`, `pic0.png`, and `pic1.png` are editable
-previews; the build deploys only the DDS files. A PNG renamed to `.dds` is not
-sufficient.
+`sce_sys/background-source.png` is the editable preview; the build deploys only
+the DDS files. A PNG renamed to `.dds` is not sufficient.
 
 The normal directory-promotion path displays `titleName` as Shell-rendered text
 over this artwork. Retail custom-font Game Hub logos and descriptions are
@@ -137,7 +140,7 @@ Pass `-Dotnet` to either command if .NET is installed in a nonstandard place:
 Successful output ends with an app directory such as:
 
 ```text
-dist/PPSA99999/
+dist/<TITLE_ID>/
   eboot.bin
   sce_module/libc.prx
   sce_sys/icon0.png

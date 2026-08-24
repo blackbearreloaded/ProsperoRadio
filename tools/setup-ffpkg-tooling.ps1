@@ -1,5 +1,5 @@
 <#
-  ps5-native-app-boilerplate - Optional UFS2 packaging bootstrapper.
+  PSRadio - Optional UFS2 packaging bootstrapper.
   Copyright (C) 2026 BlackBearReloaded
   SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -20,7 +20,7 @@ $repository = "https://github.com/SvenGDK/UFS2Tool.git"
 $revision = "b5307a60d5b4e3a68ba680e0e33cfadf05017c77"
 
 function Fail([string]$Message) {
-    throw "ps5-native-app-boilerplate: $Message"
+    throw "PSRadio: $Message"
 }
 
 function Invoke-Git([string[]]$Arguments) {

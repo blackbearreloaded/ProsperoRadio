@@ -1,5 +1,5 @@
 /*
- * ps5-native-app-boilerplate - Clean-room loader-companion emitter.
+ * PSRadio - Clean-room loader-companion emitter.
  * Copyright (C) 2026 BlackBearReloaded
  * SPDX-License-Identifier: GPL-3.0-or-later
  *

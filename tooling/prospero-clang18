@@ -1,5 +1,5 @@
 #!/bin/sh
-# ps5-native-app-boilerplate - PS5 Clang target wrapper.
+# PSRadio - PS5 Clang target wrapper.
 # Copyright (C) 2026 BlackBearReloaded
 # SPDX-License-Identifier: GPL-3.0-or-later
 #

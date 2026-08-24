@@ -1,5 +1,5 @@
 <#
-  ps5-native-app-boilerplate - Clean-room runtime-shim reproducer.
+  PSRadio - Clean-room runtime-shim reproducer.
   Copyright (C) 2026 BlackBearReloaded
   SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -28,7 +28,7 @@ $expectedRaw = "1F176192C7E55CDD6477D11B2290D05FAD63E803DAB057216F6F92F4B4B37867
 $expectedSigned = "CD961EE6ED3D08117459B0FE70D86FE322672EBE0103678EE7C3F15AF7E00504"
 
 function Fail([string]$Message) {
-    throw "ps5-native-app-boilerplate: $Message"
+    throw "PSRadio: $Message"
 }
 
 function Invoke-Dotnet([string[]]$Arguments) {

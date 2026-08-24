@@ -1,5 +1,5 @@
 <#
-  ps5-native-app-boilerplate - Read-only prerequisite checker.
+  PSRadio - Read-only prerequisite checker.
   Copyright (C) 2026 BlackBearReloaded
   SPDX-License-Identifier: GPL-3.0-or-later
 

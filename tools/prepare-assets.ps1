@@ -1,5 +1,5 @@
 <#
-  ps5-native-app-boilerplate - Presentation asset preparation.
+  PSRadio - Presentation asset preparation.
   Copyright (C) 2026 BlackBearReloaded
   SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -263,9 +263,7 @@ try {
         if (-not $dds) {
             Fail "texconv did not produce the BC7 DDS."
         }
-        foreach ($name in @("background-source.png", "pic0.png", "pic1.png")) {
-            [IO.File]::Copy($preview.FullName, (Join-Path $OutputDirectory $name), $true)
-        }
+        [IO.File]::Copy($preview.FullName, (Join-Path $OutputDirectory "background-source.png"), $true)
         foreach ($name in @("pic0.dds", "pic1.dds")) {
             [IO.File]::Copy($dds.FullName, (Join-Path $OutputDirectory $name), $true)
         }

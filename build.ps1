@@ -1,5 +1,5 @@
 <#
-  ps5-native-app-boilerplate - Native application build orchestrator.
+  PSRadio - Native application build orchestrator.
   Copyright (C) 2026 BlackBearReloaded
   SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -36,7 +36,7 @@ $ProjectDirectory = [IO.Path]::GetFullPath($ProjectDirectory).TrimEnd('\', '/')
 $repoPrefix = $repoRoot + [IO.Path]::DirectorySeparatorChar
 if ($ProjectDirectory -ne $repoRoot -and
     -not $ProjectDirectory.StartsWith($repoPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-    throw "ps5-native-app-boilerplate: ProjectDirectory must stay inside the repository."
+    throw "PSRadio: ProjectDirectory must stay inside the repository."
 }
 $projectRelative = if ($ProjectDirectory -eq $repoRoot) {
     ""
@@ -55,7 +55,7 @@ $uiPath = Join-Path $ProjectDirectory "ui"
 $buildRoot = Join-Path $here "build"
 
 function Fail([string]$Message) {
-    throw "ps5-native-app-boilerplate: $Message"
+    throw "PSRadio: $Message"
 }
 
 function Invoke-Dotnet([string[]]$Arguments) {

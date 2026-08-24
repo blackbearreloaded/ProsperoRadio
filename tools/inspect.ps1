@@ -1,5 +1,5 @@
 <#
-  ps5-native-app-boilerplate - Static ELF/FSELF validator.
+  PSRadio - Static ELF/FSELF validator.
   Copyright (C) 2026 BlackBearReloaded
   SPDX-License-Identifier: GPL-3.0-or-later
 

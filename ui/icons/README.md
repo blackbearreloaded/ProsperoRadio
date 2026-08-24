@@ -16,6 +16,8 @@ ImageGen prompt:
 files are reusable masters; the corresponding TGA files are the PS5 runtime
 assets.
 
+![Controller icon preview](controller-preview.png)
+
 Runtime palette:
 
 - Cross: `#70E1DC`

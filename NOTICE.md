@@ -46,6 +46,29 @@ Original ps5-native-app-boilerplate code is Copyright (C) 2026
 BlackBearReloaded and licensed under GPL-3.0-or-later. Source and script files
 carry matching SPDX identifiers.
 
+## Bundled open-source PS5 dependencies
+
+The checked-in `vendor/ps5` snapshot contains the application-facing headers,
+static archives, and public import stubs used by the validated build:
+
+- [SDL2](https://github.com/libsdl-org/SDL/tree/SDL2), Copyright 1997-2025
+  Sam Lantinga and contributors, is distributed under the zlib license retained
+  in `vendor/ps5/sdl/include/SDL2/SDL_copying.h`.
+- [RmlUi 6.2](https://github.com/mikke89/RmlUi/tree/6.2), Copyright CodePoint
+  Ltd, Shift Technology Ltd, the RmlUi Team, and contributors, is distributed
+  under the MIT license retained in `vendor/ps5/rmlui/LICENSE.txt`.
+- [FreeType 2.13.2](https://freetype.org/), Copyright the FreeType Project
+  authors, is distributed under the FreeType Project License retained in
+  `vendor/ps5/freetype/LICENSE.txt`.
+- PS5 target runtime archives, unwind support, and public import stubs originate
+  from the open-source [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk)
+  toolchain. The SDK repository is GPL-3.0; LLVM runtime components retain the
+  Apache-2.0 license with LLVM exceptions.
+
+The installed PS5 Payload SDK remains a build prerequisite. No proprietary Sony
+SDK library, firmware module, encryption key, or extracted game file is
+distributed in the dependency snapshot.
+
 ## Radio Browser
 
 Station discovery, metadata, and stream URLs are provided by the free and open

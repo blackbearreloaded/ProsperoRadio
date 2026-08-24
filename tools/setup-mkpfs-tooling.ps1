@@ -1,5 +1,5 @@
 <#
-  ps5-native-app-boilerplate - Optional MkPFS packaging bootstrapper.
+  PSRadio - Optional MkPFS packaging bootstrapper.
   Copyright (C) 2026 BlackBearReloaded
   SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -19,7 +19,7 @@ $repository = "https://github.com/PSBrew/MkPFS.git"
 $revision = "6cb8313dfe0c988ac52617794553f343243d3a56"
 
 function Fail([string]$Message) {
-    throw "ps5-native-app-boilerplate: $Message"
+    throw "PSRadio: $Message"
 }
 
 function Invoke-Git([string[]]$Arguments) {
@@ -77,7 +77,7 @@ foreach ($required in @("pyproject.toml", "LICENSE", "mkpfs/__main__.py")) {
 
 $venv = Join-Path $checkout ".venv"
 $venvPython = Join-Path $venv "Scripts/python.exe"
-$stamp = Join-Path $venv ".boilerplate-revision"
+$stamp = Join-Path $venv ".psradio-revision"
 if (-not (Test-Path -LiteralPath $venvPython -PathType Leaf)) {
     & $Python -m venv $venv
     if ($LASTEXITCODE -ne 0) {

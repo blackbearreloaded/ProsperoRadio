@@ -1,5 +1,5 @@
 <#
-  ps5-native-app-boilerplate - SharpProspero dependency bootstrapper.
+  PSRadio - SharpProspero dependency bootstrapper.
   Copyright (C) 2026 BlackBearReloaded
   SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -17,7 +17,7 @@ $repository = "https://github.com/SvenGDK/SharpProspero.git"
 $revision = "e36e610fa5b4be23ad38b9c8429f11f11750cc0c"
 
 function Fail([string]$Message) {
-    throw "ps5-native-app-boilerplate: $Message"
+    throw "PSRadio: $Message"
 }
 
 function Invoke-Git([string[]]$Arguments) {

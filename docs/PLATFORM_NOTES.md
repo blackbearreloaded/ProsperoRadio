@@ -1,7 +1,7 @@
 # Platform constraints
 
-These notes describe the compatibility baseline used by the template. PS5
-firmware and homebrew loaders vary, so applications must verify their target
+These notes describe PSRadio's validated compatibility baseline. PS5 firmware
+and homebrew loaders vary, so changes must be verified in their target
 environment.
 
 ## Loader and runtime
@@ -9,14 +9,14 @@ environment.
 - The application is a native PS5 ELF of type `0xFE10` inside a development
   FSELF.
 - FSELF magic `0x1D3D154F` and SDK pair
-  `0x02000009 / 0x08050001` are the template defaults.
+  `0x02000009 / 0x08050001` are the validated project defaults.
 - The supported title layout includes `sce_module/libc.prx`. The bundled
   clean-room shim supplies its minimal loader contract and contains no Sony
   implementation code.
 - The shim is not a C library. Application imports bind to platform modules
   selected by the linker.
-- The examples keep `main` alive and rely on the host application lifecycle
-  for process closure.
+- PSRadio keeps `main` alive and relies on the host application lifecycle for
+  process closure.
 
 ## Filesystem
 
@@ -49,9 +49,7 @@ environment.
 
 ## Application capabilities
 
-The template includes notification and basic lifecycle code. The graphical
-example adds CPU-rendered VideoOut output. Filesystem, networking, controller
-input, AudioOut, and third-party libraries can be added through the public SDK
-interfaces and explicit build inputs.
-
-GPU decoding is outside this repository's scope.
+PSRadio uses SDL's CPU-rendered presentation path, native controller input and
+IME, native HTTP/TLS, `/download0` persistence, native AAC decoding, and
+AudioOut. GPU rendering and GPU decode are outside this repository's scope.
+See [Architecture](ARCHITECTURE.md) for the runtime boundaries.

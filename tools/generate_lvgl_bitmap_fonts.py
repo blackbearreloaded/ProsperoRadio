@@ -347,7 +347,7 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        outputs, summaries = generated_files(args.source_dir.resolve(), repo / "ui" / "fonts" / "Montserrat-OFL.txt")
+        outputs, summaries = generated_files(args.source_dir.resolve(), repo / "ui" / "fonts" / "lvgl-bitmap" / "OFL.txt")
         if args.check:
             mismatches = [name for name, data in outputs.items() if not (args.output_dir / name).is_file() or (args.output_dir / name).read_bytes() != data]
             if mismatches:

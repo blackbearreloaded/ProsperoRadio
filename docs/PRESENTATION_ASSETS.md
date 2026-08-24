@@ -1,7 +1,7 @@
 # Presentation assets
 
 This repository can turn ordinary developer-owned artwork and audio into the
-launcher formats supported by this template. Conversion changes only the
+launcher formats supported by PSRadio. Conversion changes only the
 repository's `sce_sys` files; it does not connect to or configure a console.
 
 ## What you can customize
@@ -16,7 +16,7 @@ repository's `sce_sys` files; it does not connect to or configure a console.
 Retail-style custom-font logos and descriptions are catalog metadata, not
 package assets. A synthetic homebrew concept has no retail catalog record, and
 the supported `param.json` and image fields cannot create one. Catalog-database
-modification is outside this portable template.
+modification is outside this project.
 
 If desired, make a graphical logo part of the background. The Shell-rendered
 `titleName` will still be present, so compose around it. Keep the main subject
@@ -49,12 +49,12 @@ From the repository root:
 
 The command normalizes the icon to 512x512 and the background to 3840x2160,
 then produces the single-surface `DXGI_FORMAT_BC7_UNORM` (98), DX10 DDS
-profile required by the template. It deliberately creates no
+profile required by the project. It deliberately creates no
 mipmaps. Supply artwork with the correct 1:1 and 16:9 aspect ratios; resizing
 does not invent a good crop.
 
-Editable background previews are kept as `background-source.png`, `pic0.png`,
-and `pic1.png`. Only `icon0.png`, `pic0.dds`, and `pic1.dds` are deployed.
+The editable background preview is kept as `background-source.png`. Only
+`icon0.png`, `pic0.dds`, and `pic1.dds` are deployed.
 
 ## Prepare selection music
 

@@ -1,195 +1,217 @@
-# PSRadio for PS5
+<p align="center">
+  <img src="sce_sys/icon0.png" width="128" alt="PSRadio icon">
+</p>
 
-A native PS5 internet-radio application using SDL2 and RmlUi. It browses the
-Radio Browser catalog, searches and filters stations, saves favorites, and
-decodes supported AAC streams through native PS5 audio output.
+<h1 align="center">PSRadio</h1>
 
-The complete behavior and fixed 1920 x 1080 design were ported from the
-finished LVGL implementation. The UI itself is RML/RCSS, while a custom bitmap
-font engine and retained SDL surface blitter preserve the pixel-exact LVGL text
-masks already validated on PS5 hardware. See the
-[port milestone](docs/LVGL_PORT.md) and the full
-[rendering investigation](docs/RENDERING_INVESTIGATION.md).
+<p align="center">
+  <strong>A controller-first internet radio application for PlayStation 5 homebrew</strong><br>
+  Browse, search, favorite, and play Radio Browser stations in a native RmlUi interface.
+</p>
 
-The application itself is native C/C++. C# and .NET are used only on the
-development PC during the build. On the first build, the bootstrapper fetches
-a pinned [SharpProspero](https://github.com/SvenGDK/SharpProspero) revision into
-the ignored `.deps/` cache and applies this repository's focused native-app
-compatibility patch. No SharpProspero source is vendored here.
+<p align="center">
+  <img src="https://img.shields.io/badge/platform-PlayStation%205-003791?logo=playstation&amp;logoColor=white" alt="PlayStation 5">
+  <img src="https://img.shields.io/badge/UI-RmlUi%20%2B%20SDL2-70E1DC" alt="RmlUi and SDL2">
+  <img src="https://img.shields.io/badge/audio-AAC-5DDFA4" alt="AAC audio">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="GPL-3.0-or-later"></a>
+</p>
 
-## Application features
+PSRadio is a native C/C++ application for compatible PS5 homebrew environments.
+It queries the community-run [Radio Browser](https://www.radio-browser.info/)
+service, keeps a local station cache and favorites list, and decodes supported
+AAC streams through the console's native audio facilities.
 
-- Popular, Trending, Top rated, Favorites, and Discover views.
-- Radio Browser station cache, local search, and four faceted filters.
-- Native PS5 IME, controller input, HTTP, AAC decoding, and AudioOut.
-- Persistent favorites and stable stop/switch playback behavior.
-- RmlUi search and credits overlays plus a persistent now-playing rail.
-- Exact generated bitmap faces copied without texture sampling, including
-  extended Latin, Greek, Cyrillic, Arabic/Persian, Hebrew, Devanagari, Thai,
-  common Chinese, and Japanese kana at the dynamic metadata sizes.
-- Connected Arabic/Persian presentation forms and visual RTL run ordering.
-- One asset-preparation command for developer-supplied artwork and audio.
-- One editable [`project.json`](project.json) for title metadata and sources.
-- One-command PowerShell build: `./build.ps1`.
-- Selectable folder, UFS2 `.ffpkg`, and compressed `.ffpfsc` outputs.
-- A small local C# frontend for the on-demand SharpProspero linker and FSELF
-  writer.
-- A source-reproducible clean-room `libc.prx` loader shim.
-- Static ELF/FSELF validation before an artifact is accepted.
-- A ready-to-stage output directory under `dist/<TITLE_ID>/`.
-- Documentation for setup, configuration, C# tooling, deployment, and known
-  platform constraints.
+The television interface is authored in RML and RCSS. SDL2 provides the native
+window and software presentation path, while a custom RmlUi bitmap-font backend
+preserves crisp, deterministic text rendering at 1920 x 1080.
 
-PS5 firmware and homebrew loaders vary. Validate the generated application on
-the target environment before distributing it.
+> [!IMPORTANT]
+> PSRadio does not run on an unmodified retail console. It is intended for
+> consoles you own with an already configured, compatible homebrew loader.
+> Firmware and loader behavior varies; no exploit or console-modification
+> procedure is included here.
 
-## Quick start
+## Features
 
-1. Install [Git for Windows](https://git-scm.com/download/win),
-   [WSL](https://learn.microsoft.com/windows/wsl/install), Clang 18,
-   the [PS5 payload SDK](https://github.com/ps5-payload-dev/sdk), and the
-   [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0).
-2. Give the app a unique title ID and name in [`project.json`](project.json).
-3. Optionally replace the presentation assets:
+- Popular, Trending, Top rated, Favorites, and Discover station views.
+- Cached catalog search with country, genre, language, and bitrate filters.
+- DualSense-friendly navigation using the D-pad or left analog stick.
+- Native PS5 on-screen keyboard for text search.
+- AAC and HE-AAC playback with buffering, reconnect, resampling, and AudioOut.
+- Persistent favorites and cached catalog data under `/download0`.
+- Responsive play, stop, station switching, paging, and refresh actions.
+- RmlUi overlays, fixed television safe area, and a persistent now-playing rail.
+- Deterministic multilingual bitmap atlases covering extended Latin, Greek,
+  Cyrillic, Arabic/Persian, Hebrew, Devanagari, Thai, common Chinese characters,
+  and Japanese kana at metadata sizes.
+- Folder, UFS2 `.ffpkg`, and compressed `.ffpfsc` build outputs.
 
-   ```powershell
-   ./tools/prepare-assets.ps1 -Icon C:\art\icon.png -Background C:\art\background.png
-   ```
+## Current status
 
-4. Check the host:
+The complete browse, search, favorite, cache, and AAC playback loop has been
+validated on PS5 hardware with ShadowMountPlus. The checked-in application
+identity is `PPSA99600`.
 
-   ```powershell
-   ./tools/doctor.ps1
-   ```
+Current playback intentionally requests AAC stations only. MP3, Ogg Vorbis,
+Ogg Opus, FLAC, and HLS delivery are planned and will be exposed only after
+their decoder and recovery paths pass hardware validation. See the
+[roadmap](ROADMAP.md).
 
-5. Build:
+## Requirements
 
-   ```powershell
-   ./build.ps1
-   ```
+Builds run from PowerShell on Windows and invoke Clang inside WSL. The generated
+PS5 application contains no .NET or managed runtime.
 
-   Or select a package format:
+| Requirement | Purpose |
+| --- | --- |
+| Windows PowerShell 5.1 or newer | Build orchestration and asset validation |
+| WSL with `/usr/bin/clang-18` | C11/C++20 cross-compilation |
+| [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk) at `/opt/ps5-payload-sdk` in WSL | PS5 headers and compiler target support |
+| [Git for Windows](https://git-scm.com/download/win) | Fetching the pinned SharpProspero build dependency |
+| [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0) | Host-side linker and FSELF tooling |
+| Python 3.9 or newer | Required only for compressed `.ffpfsc` output |
 
-   ```powershell
-   ./build.ps1 -OutputFormat Ffpfsc
-   ./build.ps1 -OutputFormat All
-   ```
+The repository includes the PS5 SDL2, RmlUi, FreeType, C++ runtime, and stub
+artifacts used by the validated build. The first build downloads a pinned
+[SharpProspero](https://github.com/SvenGDK/SharpProspero) revision into the
+ignored `.deps/` cache and applies the tracked compatibility patch.
 
-If `dotnet` is not on `PATH`, pass it explicitly:
+## Build from source
+
+Open PowerShell in the repository root and verify the host first:
+
+```powershell
+./tools/doctor.ps1
+```
+
+Build the default directory form:
+
+```powershell
+./build.ps1
+```
+
+Or request a mountable filesystem image:
+
+```powershell
+./build.ps1 -OutputFormat Ffpkg
+./build.ps1 -OutputFormat Ffpfsc
+./build.ps1 -OutputFormat All
+```
+
+Successful builds are written under `dist/`:
+
+| Command | Output |
+| --- | --- |
+| `./build.ps1` | `dist/PPSA99600/` |
+| `./build.ps1 -OutputFormat Ffpkg` | App folder plus `dist/PPSA99600.ffpkg` |
+| `./build.ps1 -OutputFormat Ffpfsc` | App folder plus `dist/PPSA99600.ffpfsc` |
+| `./build.ps1 -OutputFormat All` | App folder and both image formats |
+
+If `dotnet` or Python is installed outside `PATH`, pass the executable directly:
 
 ```powershell
 ./build.ps1 -Dotnet C:\path\to\dotnet.exe
+./build.ps1 -OutputFormat Ffpfsc -Python C:\path\to\python.exe
 ```
 
-The finished app is `dist/<TITLE_ID>/`. Stage that entire directory with your
-existing directory-based loader, such as
-[ShadowMountPlus](https://github.com/drakmor/ShadowMountPlus); do not upload
-only `eboot.bin`.
+For a clean machine walkthrough, SDK setup, identity customization, and the
+expected output tree, read [Getting started](docs/GETTING_STARTED.md).
 
-The current test identity is `PPSA99600`; every future PS5 test build must
-increment it by one. Read [Getting started](docs/GETTING_STARTED.md) before the
-first build.
+## Deploy
+
+Stage exactly one complete build output using a loader that supports it. For
+directory deployment, copy the entire `dist/PPSA99600/` directory; uploading
+only `eboot.bin` is insufficient. Filesystem-image users can deploy the
+matching `.ffpkg` or `.ffpfsc` instead.
+
+Detailed safety notes and smoke-test expectations are in
+[Deployment](docs/DEPLOYMENT.md). PSRadio does not configure the console,
+install a loader, or transfer files automatically.
+
+## Controls
+
+| Input | Action |
+| --- | --- |
+| D-pad / left analog stick | Move focus; Left/Right changes a focused filter |
+| Cross | Activate, play, stop, or open text entry |
+| Circle | Close an overlay or return to Popular |
+| Square | Add or remove the selected station from Favorites |
+| Triangle | Open search and filters |
+| L1 / R1 | Change the main station view |
+| Options | Refresh Radio Browser data |
 
 ## Repository layout
 
 ```text
-project.json                App identity, sources, and build inputs
-src/main.cpp                SDL/RmlUi lifecycle and exact atlas blitter
-src/radio_app.cpp           RmlUi document and application-state controller
-src/radio_text.cpp          Arabic shaping and visual RTL metadata ordering
-src/radio_service.c         Radio Browser, cache, decoder, and audio service
-src/radio_input.c           Native PS5 controller adapter
-src/radio_ime.c             Native PS5 IME adapter
-ui/main.rml                 Complete 1920 x 1080 application document
-ui/styles/app.rcss          Fixed-layout PS5 stylesheet
-sce_sys/                    Param, icon, BC7 selection art, and optional snd0.at9
-build.ps1                   Complete Windows/WSL build
-tools/doctor.ps1            Read-only prerequisite check
-tools/inspect.ps1           Static ELF/FSELF validator
-tools/prepare-assets.ps1     Presentation conversion and validation
-tools/generate_radio_bitmap_fonts.py  Exact multilingual atlas exporter
-tools/setup-ffpkg-tooling.ps1  Optional pinned UFS2Tool bootstrap
-tools/setup-mkpfs-tooling.ps1  Optional pinned MkPFS bootstrap
-tooling/NativeAppBuilder/   C# command-line build frontend
-tooling/MinimalLibcBuilder/ Clean-room runtime-shim emitter
-tooling/patches/             Native-app compatibility delta
-tools/setup-tooling.ps1     Pinned SharpProspero fetch/bootstrap
-.deps/SharpProspero/        Generated upstream checkout; ignored
-runtime/libc.prx            Bundled clean-room loader shim
-tools/rebuild-libc.ps1      Deterministic shim reproduction check
-build/                      Generated intermediates; ignored
-dist/                       Generated title directory; ignored
-.local/runtime/             Optional private extra modules; ignored
+project.json                 App identity and explicit build inputs
+build.ps1                    Windows/WSL build orchestrator
+include/                     Native application interfaces
+src/main.cpp                 SDL, RmlUi, renderer, and application lifecycle
+src/radio_app.cpp            UI state, navigation, search, and station actions
+src/radio_service.c          Radio Browser, persistence, AAC decode, and AudioOut
+src/radio_input.c            Native controller adapter
+src/radio_ime.c              Native on-screen keyboard adapter
+src/radio_text.cpp           Arabic shaping and visual RTL ordering
+ui/main.rml                  Complete application document
+ui/styles/app.rcss           Fixed 1920 x 1080 television layout
+ui/fonts/lvgl-bitmap/        Deterministic runtime font atlases
+ui/icons/                    Controller and playback assets
+sce_sys/                     Launcher metadata, artwork, and selection audio
+runtime/libc.prx             Reproducible clean-room loader shim
+tooling/                     Host-side C# build tools
+tools/                       Validation, asset, and dependency scripts
+vendor/ps5/                  Pinned PS5 dependency snapshot
 ```
+
+Generated `.deps/`, `build/`, and `dist/` directories are intentionally ignored
+and can be removed at any time.
 
 ## Documentation
 
-- [Getting started](docs/GETTING_STARTED.md)
-- [Presentation assets](docs/PRESENTATION_ASSETS.md)
-- [Project configuration](docs/CONFIGURATION.md)
-- [Build output formats](docs/FFPKG.md)
-- [C# build tooling](docs/CSHARP_TOOLING.md)
-- [Clean-room runtime shim](docs/RUNTIME_SHIM.md)
-- [Deployment and smoke test](docs/DEPLOYMENT.md)
-- [Platform findings](docs/PLATFORM_NOTES.md)
-- [Troubleshooting](docs/TROUBLESHOOTING.md)
-- [LVGL-to-RmlUi port](docs/LVGL_PORT.md)
-- [Rendering investigation](docs/RENDERING_INVESTIGATION.md)
-- [Contributing](CONTRIBUTING.md)
+| Document | Purpose |
+| --- | --- |
+| [Getting started](docs/GETTING_STARTED.md) | Clean-machine prerequisites and first build |
+| [Architecture](docs/ARCHITECTURE.md) | Runtime components, rendering, data flow, and persistence |
+| [Project configuration](docs/CONFIGURATION.md) | `project.json`, source lists, identity, and runtime modules |
+| [Build output formats](docs/FFPKG.md) | Folder, `.ffpkg`, and `.ffpfsc` artifacts |
+| [Deployment](docs/DEPLOYMENT.md) | Staging and PS5 smoke-test expectations |
+| [Troubleshooting](docs/TROUBLESHOOTING.md) | Common host, build, launcher, and runtime failures |
+| [Presentation assets](docs/PRESENTATION_ASSETS.md) | Launcher icon, background, and selection audio |
+| [C# build tooling](docs/CSHARP_TOOLING.md) | SharpProspero integration and host tools |
+| [Runtime shim](docs/RUNTIME_SHIM.md) | Clean-room `libc.prx` scope and reproduction |
+| [Platform constraints](docs/PLATFORM_NOTES.md) | Loader, filesystem, and presentation boundaries |
+| [Roadmap](ROADMAP.md) | Planned codec and streaming support |
+| [Contributing](CONTRIBUTING.md) | Development workflow and validation checklist |
+| [Notices](NOTICE.md) | Dependencies, fonts, artwork, and attribution |
 
-## External projects and tools
+## Development checks
 
-This repository builds on or interoperates with the following projects. Their
-source and licenses remain with their respective maintainers; see
-[NOTICE.md](NOTICE.md) for pinned dependency details.
+Run the lightweight repository checks before a full PS5 build:
 
-- [ps5-payload-dev/sdk](https://github.com/ps5-payload-dev/sdk) provides the
-  public PS5 headers, sysroot, and Clang target support.
-- [SvenGDK/SharpProspero](https://github.com/SvenGDK/SharpProspero) provides
-  the linker, import catalog, ELF inspection, and development FSELF writer. A
-  pinned revision is fetched into `.deps/` and patched at build time.
-- [LLVM/Clang](https://github.com/llvm/llvm-project),
-  [.NET SDK](https://github.com/dotnet/sdk),
-  [WSL](https://github.com/microsoft/WSL), and
-  [Git for Windows](https://github.com/git-for-windows/git) provide the host
-  compiler and build environment.
-- [SvenGDK/UFS2Tool](https://github.com/SvenGDK/UFS2Tool) creates and checks
-  optional uncompressed UFS2 `.ffpkg` images.
-- [PSBrew/MkPFS](https://github.com/PSBrew/MkPFS), running on
-  [Python](https://github.com/python/cpython), creates and verifies optional
-  compressed `.ffpfsc` images.
-- [sinajet/PSFFPKG](https://github.com/sinajet/PSFFPKG) documents the public
-  `.ffpkg` packaging procedure used as a format reference; its source is not
-  fetched or copied.
-- [Microsoft DirectXTex](https://github.com/microsoft/DirectXTex) supplies
-  `texconv` for launcher and BC7 background preparation.
-- [FFmpeg](https://ffmpeg.org/) prepares developer-supplied selection audio
-  before ATRAC9 encoding.
-- [ShadowMountPlus](https://github.com/drakmor/ShadowMountPlus) is the
-  directory-style loader used for deployment and hardware validation.
-- GitHub's [checkout](https://github.com/actions/checkout) and
-  [setup-dotnet](https://github.com/actions/setup-dotnet) actions run the host
-  tooling build check.
+```powershell
+python tools/check_ui.py
+wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/aac_timing_check.c -o /tmp/aac-timing-check
+wsl /tmp/aac-timing-check
+wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_input_check.c -o /tmp/radio-input-check
+wsl /tmp/radio-input-check
+wsl --exec clang++-18 -std=c++20 -Wall -Wextra -Werror -Isrc tools/radio_text_check.cpp src/radio_text.cpp -o /tmp/radio-text-check
+wsl /tmp/radio-text-check
+```
 
-## Scope
-
-This template produces a directory-style homebrew application and, optionally,
-a mountable UFS2 `.ffpkg` image or compressed `.ffpfsc` image. It deliberately
-does not create a signed retail PKG/FPKG container, automate an exploit, alter
-console configuration, or bundle Sony files. GPU decode is outside this
-foundation.
+Then run `./tools/doctor.ps1` and `./build.ps1`. Hardware-specific changes
+should also be tested on the intended firmware and loader before a release.
 
 ## License and attribution
 
-Code authored for this repository is distributed under GPL-3.0-or-later.
-The build fetches [SvenGDK/SharpProspero](https://github.com/SvenGDK/SharpProspero)
-at the pinned commit
-[`e36e610`](https://github.com/SvenGDK/SharpProspero/commit/e36e610fa5b4be23ad38b9c8429f11f11750cc0c)
-and applies the tracked compatibility patch. The fetched dependency remains
-under its upstream GPL-3.0 license. See [NOTICE.md](NOTICE.md).
+PSRadio code is distributed under
+[GPL-3.0-or-later](LICENSE). Bundled and fetched third-party components retain
+their own licenses; see [NOTICE.md](NOTICE.md) and the license files beside the
+relevant assets.
 
-This project was developed with assistance from OpenAI Codex. Project
-maintainers reviewed and validated the resulting code and documentation.
+This project uses the public PS5 Payload SDK ecosystem, SDL2, RmlUi, FreeType,
+SharpProspero, and the community Radio Browser service. It was developed with
+assistance from OpenAI Codex and reviewed and validated by the maintainer.
 
-PlayStation and PS5 are trademarks of Sony Interactive Entertainment. This
-project is independent and is not affiliated with or endorsed by Sony.
+PlayStation and PS5 are trademarks of Sony Interactive Entertainment. PSRadio
+is an independent homebrew project and is not affiliated with or endorsed by
+Sony Interactive Entertainment.

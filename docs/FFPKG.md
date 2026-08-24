@@ -17,12 +17,6 @@ package output with `-OutputFormat`:
 ./build.ps1 -OutputFormat All
 ```
 
-The Hello World wrapper accepts the same option:
-
-```powershell
-./examples/hello-world/build.ps1 -OutputFormat Ffpfsc
-```
-
 `-Ffpkg` remains accepted as a compatibility alias for
 `-OutputFormat Ffpkg`.
 

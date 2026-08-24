@@ -1,20 +1,20 @@
 # PS5 dependency snapshot
 
-This directory contains the small set of PS5 build artifacts needed by the
-first RmlUi + SDL smoke target.
+This directory contains the PS5 headers, static archives, and import stubs used
+by the validated PSRadio build. They are checked in so a repository clone uses
+the same application-facing dependency set.
 
-- SDL2 headers and `libSDL2.a` come from the local PS5 SDL build.
-- RmlUi headers and `librmlui.a` come from the local RmlUi 6.2 build with
-  its FreeType font engine enabled, Lua bindings disabled, and
-  `-fno-exceptions` to remove unused exception metadata.
-- FreeType 2.13.2 is built as a static PS5 archive without optional
-  compression or image libraries. Its FreeType Project License is retained
-  next to the archive.
-- The PS5 compiler emits `.ctors`; the checked-in SharpProspero compatibility
-  patch handles constructor arrays and COMDAT section symbols.
-- C++ runtime archives and libc/kernel stub catalogs come from the installed
-  PS5 Payload SDK in WSL.
+- SDL2 headers and `libSDL2.a` provide the PS5 window, software renderer, and
+  synchronization primitives. The SDL license is retained in
+  `sdl/include/SDL2/SDL_copying.h`.
+- RmlUi 6.2 headers and `librmlui.a` provide document parsing, layout, and
+  rendering. Lua bindings are disabled. Its MIT license is retained in
+  `rmlui/LICENSE.txt`.
+- FreeType 2.13.2 is retained as a static link dependency of the RmlUi build;
+  its license is in `freetype/LICENSE.txt`.
+- C++ runtime archives, unwind support, and public libc/kernel import stubs come
+  from the open-source PS5 Payload SDK toolchain.
 
-The bundled Lato and Noto Emoji font faces are distributed under the SIL Open
-Font License retained in `ui/fonts/LICENSE.txt`. DejaVu Sans provides the
-symbol fallback and retains its license in `ui/fonts/DejaVuSans-LICENSE.txt`.
+The compiler and PS5 target support still come from the SDK installed at
+`/opt/ps5-payload-sdk` inside WSL. Do not add proprietary Sony SDK files,
+firmware modules, extracted game libraries, keys, or credentials here.
