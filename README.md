@@ -66,7 +66,7 @@ PS5 application contains no .NET or managed runtime.
 | Requirement | Purpose |
 | --- | --- |
 | Windows PowerShell 5.1 or newer | Build orchestration and asset validation |
-| WSL with `/usr/bin/clang-18` | C11/C++20 cross-compilation |
+| WSL with `/usr/bin/clang-18` and `/usr/bin/llvm-config-18` | C11/C++20 cross-compilation |
 | [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk) at `/opt/ps5-payload-sdk` in WSL | PS5 headers and compiler target support |
 | [Git for Windows](https://git-scm.com/download/win) | Fetching the pinned SharpProspero build dependency |
 | [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0) | Host-side linker and FSELF tooling |
@@ -208,16 +208,60 @@ wsl /tmp/radio-text-check
 Then run `./tools/doctor.ps1` and `./build.ps1`. Hardware-specific changes
 should also be tested on the intended firmware and loader before a release.
 
-## License and attribution
+## Acknowledgements
 
-PSRadio code is distributed under
-[GPL-3.0-or-later](LICENSE). Bundled and fetched third-party components retain
-their own licenses; see [NOTICE.md](NOTICE.md) and the license files beside the
-relevant assets.
+PSRadio exists thanks to the maintainers and contributors behind these
+open-source projects and public services:
 
-This project uses the public PS5 Payload SDK ecosystem, SDL2, RmlUi, FreeType,
-SharpProspero, and the community Radio Browser service. It was developed with
-assistance from OpenAI Codex and reviewed and validated by the maintainer.
+- **PS5 platform and runtime:**
+  [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk) provides the public
+  target headers, compiler wrappers, runtime archives, and import stubs used by
+  the native build.
+- **Interface and rendering:**
+  [SDL2](https://github.com/libsdl-org/SDL/tree/SDL2) provides presentation and
+  synchronization, [RmlUi](https://github.com/mikke89/RmlUi) provides the RML
+  and RCSS document engine, and [FreeType](https://freetype.org/) underpins
+  RmlUi's font facilities.
+- **Linking and FSELF tooling:**
+  [SharpProspero](https://github.com/SvenGDK/SharpProspero), by SvenGDK and its
+  contributors, provides the host-side ELF linker, import catalog, and FSELF
+  reader/writer extended by this project's tracked compatibility patch.
+- **Filesystem-image packaging:**
+  [UFS2Tool](https://github.com/SvenGDK/UFS2Tool) creates optional `.ffpkg`
+  images, with the command profile informed by
+  [PSFFPKG](https://github.com/sinajet/PSFFPKG). [MkPFS](https://github.com/PSBrew/MkPFS)
+  creates and verifies compressed `.ffpfsc` images.
+- **Station catalog:**
+  the volunteer-run [Radio Browser](https://www.radio-browser.info/) service
+  supplies station discovery, metadata, and stream URLs. Individual stations
+  host and control their own streams and content.
+- **Typography:**
+  [LVGL](https://github.com/lvgl/lvgl) supplied the deterministic Montserrat
+  bitmap-font source and the reference rendering used to resolve PS5 texture
+  sampling differences. Extended metadata coverage uses glyphs from
+  [Montserrat](https://github.com/JulietaUla/Montserrat),
+  [Noto](https://github.com/notofonts/noto-fonts),
+  [DejaVu Sans](https://dejavu-fonts.github.io/), and
+  [Source Han Sans](https://github.com/adobe-fonts/source-han-sans).
+- **Host toolchain:**
+  [LLVM/Clang](https://llvm.org/), [PowerShell](https://github.com/PowerShell/PowerShell),
+  [WSL](https://learn.microsoft.com/windows/wsl/),
+  [.NET](https://dotnet.microsoft.com/), [Python](https://www.python.org/), and
+  [Git](https://git-scm.com/) power the reproducible build, dependency, and
+  validation scripts. [GitHub Actions](https://github.com/features/actions)
+  runs the clean-machine build. [DirectXTex](https://github.com/microsoft/DirectXTex)
+  and [FFmpeg](https://ffmpeg.org/) are supported for optional presentation
+  image and audio preparation.
+- **Project assets and development:**
+  controller artwork was created with OpenAI image-generation assistance, and
+  implementation and investigation were assisted by OpenAI Codex. Every
+  generated asset and code change was reviewed and validated by the maintainer.
+
+PSRadio code is distributed under [GPL-3.0-or-later](LICENSE). Bundled and
+fetched components retain their respective licenses. Versions, pinned
+revisions, copyright notices, redistribution terms, font licenses, and asset
+provenance for distributed and on-demand project components are recorded in
+[NOTICE.md](NOTICE.md).
 
 PlayStation and PS5 are trademarks of Sony Interactive Entertainment. PSRadio
 is an independent homebrew project and is not affiliated with or endorsed by
