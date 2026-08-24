@@ -163,3 +163,19 @@ The optional packaging tools are fetched only on first use. See
 [Build output formats](FFPKG.md).
 
 Continue with [Deployment](DEPLOYMENT.md).
+
+## GitHub Actions builds
+
+The repository's [Build workflow](../.github/workflows/build.yml) provisions
+the public toolchain on a GitHub-hosted Windows runner, validates the pinned PS5
+Payload SDK archive, runs the host regression checks, and builds both the app
+folder and a verified `.ffpfsc` image.
+
+It runs automatically for pushes to `main` and pull requests. Maintainers can
+also start it with **Actions > Build > Run workflow**. When the job completes,
+download the `psradio-<commit>` artifact from the workflow summary. Artifacts
+are retained for 14 days and contain the complete `dist/` output.
+
+The automated build verifies compilation and packaging only. Changes that
+affect console behavior still require the hardware validation described in
+[Deployment](DEPLOYMENT.md).

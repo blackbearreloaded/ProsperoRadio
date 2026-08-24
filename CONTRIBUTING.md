@@ -35,6 +35,10 @@ Changes to the SharpProspero compatibility patch should include a deterministic
 output comparison or a narrowly scoped regression check. Do not silently
 change its pinned upstream revision.
 
+Pull requests run the [Build workflow](.github/workflows/build.yml), including
+the host regressions and a complete `.ffpfsc` package build. A passing workflow
+does not replace PS5 hardware validation for platform-facing changes.
+
 ## Pull requests
 
 Describe the user-visible change, host checks, PS5 test environment when

@@ -1,0 +1,90 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: PS5 application
+    runs-on: windows-2025
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+
+      - name: Set up WSL toolchain
+        uses: Vampire/setup-wsl@d1da7f2c0322a5ee4f24975344f67fc0f5baf364 # v7.0.0
+        with:
+          distribution: Ubuntu-24.04
+          wsl-version: "1"
+          additional-packages: >-
+            ca-certificates clang-18 lld-18 unzip wget
+
+      - name: Install pinned PS5 Payload SDK
+        shell: pwsh
+        run: |
+          $url = "https://github.com/ps5-payload-dev/sdk/releases/download/v0.42/ps5-payload-sdk.zip"
+          $hash = "8cfbc7cd5811e719eb4f0c47eea668d3dc7b40bc8ab11c4a5031d40c23ec02da"
+          wsl.exe --user root --exec bash -lc "wget -q '$url' -O /tmp/ps5-payload-sdk.zip"
+          if ($LASTEXITCODE -ne 0) { throw "PS5 Payload SDK download failed." }
+          wsl.exe --user root --exec bash -lc "echo '$hash  /tmp/ps5-payload-sdk.zip' | sha256sum --check --strict"
+          if ($LASTEXITCODE -ne 0) { throw "PS5 Payload SDK checksum failed." }
+          wsl.exe --user root --exec bash -lc "unzip -q /tmp/ps5-payload-sdk.zip -d /opt && test -d /opt/ps5-payload-sdk/target/include"
+          if ($LASTEXITCODE -ne 0) { throw "PS5 Payload SDK installation failed." }
+
+      - name: Verify prerequisites
+        shell: pwsh
+        run: ./tools/doctor.ps1
+
+      - name: Run host regressions
+        shell: pwsh
+        run: |
+          python tools/check_ui.py
+          if ($LASTEXITCODE -ne 0) { throw "UI validation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/aac_timing_check.c -o /tmp/aac-timing-check
+          if ($LASTEXITCODE -ne 0) { throw "AAC timing check compilation failed." }
+          wsl.exe --exec /tmp/aac-timing-check
+          if ($LASTEXITCODE -ne 0) { throw "AAC timing check failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_input_check.c -o /tmp/radio-input-check
+          if ($LASTEXITCODE -ne 0) { throw "Input check compilation failed." }
+          wsl.exe --exec /tmp/radio-input-check
+          if ($LASTEXITCODE -ne 0) { throw "Input check failed." }
+          wsl.exe --exec clang++-18 -std=c++20 -Wall -Wextra -Werror -Isrc tools/radio_text_check.cpp src/radio_text.cpp -o /tmp/radio-text-check
+          if ($LASTEXITCODE -ne 0) { throw "Text check compilation failed." }
+          wsl.exe --exec /tmp/radio-text-check
+          if ($LASTEXITCODE -ne 0) { throw "Text check failed." }
+
+      - name: Build folder and FFPFSC image
+        shell: pwsh
+        run: ./build.ps1 -OutputFormat Ffpfsc
+
+      - name: Upload build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: psradio-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14

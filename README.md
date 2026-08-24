@@ -13,6 +13,7 @@
   <img src="https://img.shields.io/badge/platform-PlayStation%205-003791?logo=playstation&amp;logoColor=white" alt="PlayStation 5">
   <img src="https://img.shields.io/badge/UI-RmlUi%20%2B%20SDL2-70E1DC" alt="RmlUi and SDL2">
   <img src="https://img.shields.io/badge/audio-AAC-5DDFA4" alt="AAC audio">
+  <a href="https://github.com/blackbearreloaded/ps5-psradio/actions/workflows/build.yml"><img src="https://github.com/blackbearreloaded/ps5-psradio/actions/workflows/build.yml/badge.svg" alt="Build status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="GPL-3.0-or-later"></a>
 </p>
 
@@ -113,6 +114,12 @@ If `dotnet` or Python is installed outside `PATH`, pass the executable directly:
 ./build.ps1 -Dotnet C:\path\to\dotnet.exe
 ./build.ps1 -OutputFormat Ffpfsc -Python C:\path\to\python.exe
 ```
+
+The [Build workflow](.github/workflows/build.yml) performs the same prerequisite
+checks and host regressions on every push to `main` and every pull request. It
+then builds the app folder and verified `.ffpfsc` image and keeps both in a
+downloadable GitHub Actions artifact for 14 days. The workflow can also be run
+manually from the repository's **Actions** tab.
 
 For a clean machine walkthrough, SDK setup, identity customization, and the
 expected output tree, read [Getting started](docs/GETTING_STARTED.md).
