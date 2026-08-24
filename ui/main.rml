@@ -90,8 +90,8 @@
                     <span id="detail-status">Ready to play</span>
                     <button id="play-button">
                         <span id="play-icon" aria-hidden="true">
-                            <img class="play-glyph" src="icons/play.tga" width="18" height="18" alt="" />
-                            <img class="stop-glyph" src="icons/stop.tga" width="18" height="18" alt="" />
+                            <img class="play-glyph" src="icons/play.tga" width="24" height="24" alt="" />
+                            <img class="stop-glyph" src="icons/stop.tga" width="24" height="24" alt="" />
                         </span>
                         <span id="play-label">Play station</span>
                     </button>

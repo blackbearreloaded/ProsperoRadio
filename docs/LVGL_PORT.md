@@ -176,3 +176,9 @@ process, and released the console lock. Evidence is retained as
 run, `PPSA99772-20260824-012046-*`, also entered `eboot` but its screenshot
 caught Chiaki's loading spinner because video readiness was explicitly
 skipped; it is transport evidence rather than the visual acceptance frame.
+
+## PPSA99773 balanced playback symbols
+
+PPSA99773 increases the unboxed play and stop runtime assets from 18 x 18 to
+24 x 24 pixels and expands their shapes within that canvas. The paging
+chevrons and the rest of the PPSA99772 layout remain unchanged.

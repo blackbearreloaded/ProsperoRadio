@@ -86,7 +86,7 @@ existing directory-based loader, such as
 [ShadowMountPlus](https://github.com/drakmor/ShadowMountPlus); do not upload
 only `eboot.bin`.
 
-The current test identity is `PPSA99772`; every future PS5 test build must
+The current test identity is `PPSA99773`; every future PS5 test build must
 increment it by one. Read [Getting started](docs/GETTING_STARTED.md) before the
 first build.
 

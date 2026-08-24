@@ -40,7 +40,7 @@ def main() -> int:
     assert required <= set(ids), f"missing RML ids: {sorted(required - set(ids))}"
 
     project = json.loads((repo / "project.json").read_text(encoding="utf-8"))
-    assert project["titleId"] == "PPSA99772"
+    assert project["titleId"] == "PPSA99773"
     for source in ("src/radio_app.cpp", "src/radio_input.c", "src/radio_ime.c",
                    "src/radio_service.c", "src/radio_text.cpp"):
         assert source in project["sources"]
@@ -64,7 +64,7 @@ def main() -> int:
     for name, dimensions in {
         "cross": (40, 40), "circle": (40, 40), "square": (40, 40),
         "triangle": (40, 40), "options": (40, 40), "search": (40, 40),
-        "psradio": (64, 64), "play": (18, 18), "stop": (18, 18),
+        "psradio": (64, 64), "play": (24, 24), "stop": (24, 24),
         "page-up": (18, 18), "page-down": (18, 18),
     }.items():
         data = (repo / "ui" / "icons" / f"{name}.tga").read_bytes()

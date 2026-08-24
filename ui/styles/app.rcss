@@ -609,18 +609,18 @@ button {
 
 #play-icon {
     position: absolute;
-    left: 94px;
-    top: 30px;
-    width: 18px;
-    height: 18px;
+    left: 90px;
+    top: 27px;
+    width: 24px;
+    height: 24px;
 }
 
 #play-icon img {
     position: absolute;
     left: 0px;
     top: 0px;
-    width: 18px;
-    height: 18px;
+    width: 24px;
+    height: 24px;
 }
 
 #play-icon .stop-glyph, #play-icon.stop .play-glyph {
