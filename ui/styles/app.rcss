@@ -584,47 +584,19 @@ button {
 
 #play-icon {
     position: absolute;
-    left: 88px;
-    top: 25px;
-    width: 20px;
-    height: 26px;
-}
-
-.play-step {
-    position: absolute;
+    left: 70px;
+    top: 15px;
+    width: 48px;
+    height: 48px;
     background-color: #071218;
 }
 
-.play-step-0 {
-    left: 0px;
-    top: 2px;
-    width: 7px;
-    height: 22px;
-}
-
-.play-step-1 {
-    left: 7px;
-    top: 6px;
-    width: 7px;
-    height: 14px;
-}
-
-.play-step-2 {
-    left: 14px;
-    top: 10px;
-    width: 6px;
-    height: 6px;
-}
-
-#play-icon.stop .play-step-0 {
-    left: 0px;
-    top: 3px;
-    width: 20px;
-    height: 20px;
-}
-
-#play-icon.stop .play-step-1, #play-icon.stop .play-step-2 {
-    display: none;
+#play-icon img {
+    position: absolute;
+    left: 4px;
+    top: 4px;
+    width: 40px;
+    height: 40px;
 }
 
 #play-label {
@@ -870,10 +842,10 @@ button {
 
 .search-panel {
     position: absolute;
-    left: 96px;
-    top: 70px;
-    width: 1728px;
-    height: 900px;
+    left: 240px;
+    top: 140px;
+    width: 1440px;
+    height: 800px;
     overflow: hidden;
     border: 2px #6cdbd9;
     background-color: #10252e;
@@ -883,7 +855,7 @@ button {
     position: absolute;
     left: 48px;
     top: 26px;
-    width: 600px;
+    width: 760px;
     height: 62px;
     overflow: visible;
     color: #f1f5f7;
@@ -894,8 +866,8 @@ button {
 .overlay-subtitle {
     position: absolute;
     left: 48px;
-    top: 84px;
-    width: 1050px;
+    top: 78px;
+    width: 900px;
     height: 40px;
     overflow: visible;
     color: #b8c8cf;
@@ -912,22 +884,22 @@ button {
 }
 
 .search-help-title {
-    left: 1340px;
-    top: 39px;
-    width: 300px;
+    left: 1010px;
+    top: 29px;
+    width: 360px;
     color: #6cdbd9;
 }
 
 .search-help-copy {
-    left: 1195px;
-    top: 69px;
+    left: 925px;
+    top: 61px;
     width: 445px;
     color: #b8c8cf;
 }
 
 .search-help-filter {
-    left: 1250px;
-    top: 99px;
+    left: 980px;
+    top: 93px;
     width: 390px;
     color: #6cdbd9;
 }
@@ -935,9 +907,9 @@ button {
 #search-query {
     position: absolute;
     left: 48px;
-    top: 138px;
-    width: 1090px;
-    height: 72px;
+    top: 140px;
+    width: 1344px;
+    height: 76px;
     border: 2px #345866;
     background-color: #071218;
     color: #b8c8cf;
@@ -946,8 +918,8 @@ button {
 #search-query span {
     position: absolute;
     left: 14px;
-    top: 12px;
-    width: 1058px;
+    top: 14px;
+    width: 1312px;
     height: 48px;
     overflow: hidden;
     font-size: 28px;
@@ -957,14 +929,7 @@ button {
 }
 
 .quick-title, .browse-title {
-    position: absolute;
-    left: 48px;
-    width: 400px;
-    height: 48px;
-    overflow: visible;
-    color: #6cdbd9;
-    font-size: 28px;
-    line-height: 44px;
+    display: none;
 }
 
 .quick-title {
@@ -976,13 +941,7 @@ button {
 }
 
 .quick-copy, .browse-copy, .browse-note {
-    position: absolute;
-    left: 48px;
-    width: 1020px;
-    height: 40px;
-    overflow: visible;
-    font-size: 24px;
-    line-height: 38px;
+    display: none;
 }
 
 .quick-copy {
@@ -1002,9 +961,8 @@ button {
 
 .filter-button {
     position: absolute;
-    left: 1180px;
-    width: 500px;
-    height: 122px;
+    width: 648px;
+    height: 140px;
     border: 2px #345866;
     background-color: #071218;
     color: #f1f5f7;
@@ -1013,9 +971,9 @@ button {
 .filter-button span {
     position: absolute;
     left: 16px;
-    top: 21px;
-    width: 464px;
-    height: 80px;
+    top: 30px;
+    width: 612px;
+    height: 82px;
     overflow: hidden;
     font-size: 24px;
     line-height: 38px;
@@ -1023,26 +981,30 @@ button {
 }
 
 .filter-button-0 {
-    top: 138px;
+    left: 48px;
+    top: 252px;
 }
 
 .filter-button-1 {
-    top: 292px;
+    left: 744px;
+    top: 252px;
 }
 
 .filter-button-2 {
-    top: 446px;
+    left: 48px;
+    top: 426px;
 }
 
 .filter-button-3 {
-    top: 600px;
+    left: 744px;
+    top: 426px;
 }
 
 .search-action {
     position: absolute;
-    top: 754px;
-    width: 236px;
-    height: 74px;
+    top: 632px;
+    width: 300px;
+    height: 80px;
 }
 
 .search-action span {
@@ -1056,7 +1018,7 @@ button {
 }
 
 .search-reset {
-    left: 1180px;
+    left: 396px;
     border: 1px #345866;
     background-color: #1b414c;
     color: #f1f5f7;
@@ -1065,7 +1027,7 @@ button {
 }
 
 .search-apply {
-    left: 1444px;
+    left: 744px;
     border: 1px #6cdbd9;
     background-color: #6cdbd9;
     color: #071218;
@@ -1165,6 +1127,26 @@ button {
 
 .focused, button:focus {
     border-color: #6cdbd9;
+}
+
+#play-button.focused, #credit-button.focused, #credits-close.focused {
+    border: 4px #f1f5f7;
+}
+
+#credit-button.focused {
+    background-color: #1b414c;
+    color: #f1f5f7;
+}
+
+#search-query.focused, #filter-0.focused, #filter-1.focused,
+#filter-2.focused, #filter-3.focused, #search-reset.focused {
+    border: 4px #6cdbd9;
+    background-color: #1b414c;
+}
+
+#search-apply.focused {
+    border: 4px #f1f5f7;
+    background-color: #64e6e3;
 }
 
 .selected {

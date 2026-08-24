@@ -70,3 +70,30 @@ escaped but unsupported glyphs cannot yet be drawn. Full multilingual parity
 requires a paged or on-demand glyph source that retains the same unsampled CPU
 blit path; that is intentionally tracked separately from the PPSA99768
 functional and layout port.
+
+## PPSA99768 hardware baseline
+
+The first complete RmlUi port entered `eboot`, loaded live Radio Browser data,
+remained stable through observation, and closed cleanly in the automated PS5
+cycle. Evidence is retained by the shared investigation loop as
+`PPSA99768-20260824-000459-result.json`, its klog, running screenshot, and
+after-close screenshot. The captured frame confirmed the fixed card, detail,
+paging, tab, and now-playing geometry on hardware.
+
+## PPSA99769 interaction correction
+
+PPSA99769 addresses the first hands-on review of the complete port:
+
+- equalizer bars keep a fixed lower edge and grow upward;
+- the play/stop action uses the approved generated Cross image in a dark icon
+  well instead of a stepped text-like shape;
+- explicit ID-specific focus styles make the query, all filters, Reset, Show
+  results, Play, attribution, and credits-close controls unmistakable;
+- the search panel is centered and simplified to a query, symmetric 2 x 2
+  filter grid, and centered action row;
+- Left or Right from Reset/Show results moves between the two actions, and
+  Cross on Show results applies the search;
+- Right or Down from Play reaches `Data by Radio Browser`, with a visible focus
+  border;
+- either analog stick now mirrors D-pad navigation with a 50% dead zone,
+  dominant-axis selection, a 350 ms initial repeat delay, and 110 ms repeat.

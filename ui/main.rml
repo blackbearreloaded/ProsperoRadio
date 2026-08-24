@@ -84,9 +84,7 @@
                     <span id="detail-status">Ready to play</span>
                     <button id="play-button">
                         <span id="play-icon" aria-hidden="true">
-                            <span class="play-step play-step-0"></span>
-                            <span class="play-step play-step-1"></span>
-                            <span class="play-step play-step-2"></span>
+                            <img src="icons/cross.tga" width="40" height="40" alt="" />
                         </span>
                         <span id="play-label">Play station</span>
                     </button>
@@ -123,7 +121,7 @@
                 <div class="search-panel">
                     <span class="overlay-title">EXPLORE &amp; SEARCH</span>
                     <span class="overlay-subtitle">Search the cached catalog or browse by country, genre, and language</span>
-                    <span class="search-help-title">D-PAD UP / DOWN</span>
+                    <span class="search-help-title">D-PAD / EITHER STICK</span>
                     <span class="search-help-copy">Move between search, filters, and actions</span>
                     <span class="search-help-filter">D-pad Left / Right changes a filter</span>
 

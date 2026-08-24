@@ -555,6 +555,7 @@ void RadioApp::UpdateEqualizer(const radio_service_status_t& status) {
         char id[12];
         std::snprintf(id, sizeof(id), "eq-%u", i);
         SetPixelProperty(document_, id, "height", height);
+        SetPixelProperty(document_, id, "top", 91 - height);
         SetClass(document_, id, "playing", playing);
     }
 }
@@ -747,6 +748,8 @@ void RadioApp::HandleSearchKey(radio_input_key_t key) {
     if (key == RADIO_INPUT_OPTIONS) { radio_service_refresh(); return; }
     if (key == RADIO_INPUT_UP) search_focus_ = search_focus_ ? search_focus_ - 1 : 6;
     else if (key == RADIO_INPUT_DOWN) search_focus_ = search_focus_ < 6 ? search_focus_ + 1 : 0;
+    else if ((key == RADIO_INPUT_LEFT || key == RADIO_INPUT_RIGHT) && search_focus_ >= 5)
+        search_focus_ = search_focus_ == 5 ? 6 : 5;
     else if ((key == RADIO_INPUT_LEFT || key == RADIO_INPUT_RIGHT) &&
         search_focus_ >= 1 && search_focus_ <= 4) {
         CycleFilter(search_focus_ - 1, key == RADIO_INPUT_LEFT ? -1 : 1);
@@ -819,11 +822,12 @@ void RadioApp::HandleMainKey(radio_input_key_t key) {
     else if (focus_ == kFocusPlay) {
         if (key == RADIO_INPUT_CROSS) TogglePlayback();
         else if (key == RADIO_INPUT_LEFT || key == RADIO_INPUT_UP) focus_ = selected_slot_;
-        else if (key == RADIO_INPUT_DOWN) focus_ = kFocusCredits;
+        else if (key == RADIO_INPUT_RIGHT || key == RADIO_INPUT_DOWN) focus_ = kFocusCredits;
     }
     else if (focus_ == kFocusCredits) {
         if (key == RADIO_INPUT_CROSS) OpenCredits();
-        else if (key == RADIO_INPUT_UP || key == RADIO_INPUT_LEFT) focus_ = kFocusPlay;
+        else if (key == RADIO_INPUT_UP || key == RADIO_INPUT_LEFT || key == RADIO_INPUT_RIGHT)
+            focus_ = kFocusPlay;
     }
     UpdateFocus();
 }

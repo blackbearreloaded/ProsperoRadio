@@ -8,6 +8,10 @@
 #define PAD_SAMPLE_SIZE 120U
 #define PAD_SAMPLE_CAPACITY 64
 #define PAD_BUTTON_INTERCEPTED UINT32_C(0x80000000)
+#define STICK_LOW 64U
+#define STICK_HIGH 192U
+#define STICK_REPEAT_DELAY_MS UINT64_C(350)
+#define STICK_REPEAT_MS UINT64_C(110)
 
 typedef struct {
     uint32_t button;
@@ -22,6 +26,7 @@ extern int scePadRead(int32_t handle, void * data, int32_t num);
 extern int sceUserServiceInitialize(void * init_params);
 extern int sceUserServiceGetInitialUser(int32_t * user_id);
 extern int sceUserServiceTerminate(void);
+extern uint64_t SDL_GetTicks64(void);
 
 static const button_map_t buttons[] = {
     {UINT32_C(0x00004000), RADIO_INPUT_CROSS},
@@ -42,8 +47,29 @@ static unsigned char samples[PAD_SAMPLE_CAPACITY][PAD_SAMPLE_SIZE];
 static unsigned queue_read;
 static unsigned queue_write;
 static uint32_t button_state;
+static int analog_key = -1;
+static uint64_t analog_repeat_at;
 static int32_t pad_handle = -1;
 static bool owns_user_service;
+
+static uint64_t monotonic_milliseconds(void)
+{
+    return SDL_GetTicks64();
+}
+
+static int stick_direction(uint8_t x, uint8_t y)
+{
+    const int horizontal = (int)x - 128;
+    const int vertical = (int)y - 128;
+    const int horizontal_size = horizontal < 0 ? -horizontal : horizontal;
+    const int vertical_size = vertical < 0 ? -vertical : vertical;
+    if(horizontal_size < 64 && vertical_size < 64) return -1;
+    if(horizontal_size > vertical_size)
+        return x < STICK_LOW ? RADIO_INPUT_LEFT :
+            x > STICK_HIGH ? RADIO_INPUT_RIGHT : -1;
+    return y < STICK_LOW ? RADIO_INPUT_UP :
+        y > STICK_HIGH ? RADIO_INPUT_DOWN : -1;
+}
 
 static void queue_push(radio_input_key_t key, bool pressed)
 {
@@ -60,7 +86,9 @@ static void process_sample(const unsigned char * sample)
 {
     uint32_t current;
     memcpy(&current, sample, sizeof(current));
-    if(sample[76] == 0 || (current & PAD_BUTTON_INTERCEPTED) != 0) current = 0;
+    const bool neutral = sample[76] == 0 ||
+        (current & PAD_BUTTON_INTERCEPTED) != 0;
+    if(neutral) current = 0;
 
     const uint32_t changed = button_state ^ current;
     for(unsigned i = 0; i < sizeof(buttons) / sizeof(buttons[0]); ++i) {
@@ -69,6 +97,18 @@ static void process_sample(const unsigned char * sample)
         }
     }
     button_state = current;
+
+    int current_analog = neutral ? -1 : stick_direction(sample[4], sample[5]);
+    if(current_analog < 0 && !neutral)
+        current_analog = stick_direction(sample[6], sample[7]);
+    if(current_analog != analog_key) {
+        if(analog_key >= 0) queue_push((radio_input_key_t)analog_key, false);
+        analog_key = current_analog;
+        if(analog_key >= 0) {
+            queue_push((radio_input_key_t)analog_key, true);
+            analog_repeat_at = monotonic_milliseconds() + STICK_REPEAT_DELAY_MS;
+        }
+    }
 }
 
 bool radio_input_init(void)
@@ -88,6 +128,8 @@ bool radio_input_init(void)
     }
     queue_read = queue_write = 0;
     button_state = 0;
+    analog_key = -1;
+    analog_repeat_at = 0;
     return true;
 }
 
@@ -96,6 +138,13 @@ void radio_input_poll(void)
     if(pad_handle < 0) return;
     const int count = scePadRead(pad_handle, samples, PAD_SAMPLE_CAPACITY);
     for(int i = 0; i < count; ++i) process_sample(samples[i]);
+    if(analog_key >= 0) {
+        const uint64_t now = monotonic_milliseconds();
+        if(now >= analog_repeat_at) {
+            queue_push((radio_input_key_t)analog_key, true);
+            analog_repeat_at = now + STICK_REPEAT_MS;
+        }
+    }
 }
 
 bool radio_input_next(radio_input_event_t * event)
@@ -127,4 +176,6 @@ void radio_input_shutdown(void)
     }
     queue_read = queue_write = 0;
     button_state = 0;
+    analog_key = -1;
+    analog_repeat_at = 0;
 }
