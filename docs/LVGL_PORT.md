@@ -189,3 +189,21 @@ registration. PPSA99774 was built but not deployed. At the operator's request,
 PPSA99600 moves the identical visual change to a clean 600-series title range;
 future builds increment from PPSA99601. No UI or runtime behavior changed
 between these artifacts.
+
+The 32,768,000-byte PPSA99600 FFPFSC has SHA-256
+`BA816C37B0AC54234CEE8078605A3BC3B733DFBDA9A341335C14BDF5D15411A8`;
+MkPFS reported data CRC32 `0x8B98A857`, manifest SHA-256
+`4a3fc0520e23b28907f9d5fd2021b05e937ee6225fcc28910f7d9a2949163389`,
+and zero warnings or errors. Its eboot SHA-256 is
+`ED1408B16E5148C58B16FF1F54680F1C3CE15328AC109DE7FD9DFF50FCA08E78`
+and its libc SHA-256 is
+`CD961EE6ED3D08117459B0FE70D86FE322672EBE0103678EE7C3F15AF7E00504`.
+The image is deployed as `/data/homebrew/PPSA99600.ffpfsc`.
+
+Two shared investigation-loop passes entered `eboot`, remained stable for 20
+seconds, closed cleanly, stopped their managed Chiaki processes, and released
+the console lock. `PPSA99600-20260824-072940-*` captures the larger Play
+symbol. `PPSA99600-20260824-073126-*` presses Cross, starts native playback,
+and captures the matching Stop symbol. Klog contains no app crash or fatal
+signal. The evidence warnings only report Chiaki's internal foreground window
+handle and do not affect the full-frame captures.
