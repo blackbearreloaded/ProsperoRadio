@@ -15,7 +15,8 @@
   <img src="https://img.shields.io/badge/platform-PlayStation%205-003791?logo=playstation&amp;logoColor=white" alt="PlayStation 5">
   <img src="https://img.shields.io/badge/UI-RmlUi%20%2B%20SDL2-70E1DC" alt="RmlUi and SDL2">
   <img src="https://img.shields.io/badge/audio-AAC-5DDFA4" alt="AAC audio">
-  <a href="https://github.com/blackbearreloaded/ps5-psradio/actions/workflows/build.yml"><img src="https://github.com/blackbearreloaded/ps5-psradio/actions/workflows/build.yml/badge.svg" alt="Build status"></a>
+  <a href="https://github.com/blackbearreloaded/psradio/releases/latest"><img src="https://img.shields.io/github/v/release/blackbearreloaded/psradio?display_name=tag&amp;sort=semver&amp;label=latest%20release" alt="Latest release"></a>
+  <a href="https://github.com/blackbearreloaded/psradio/actions/workflows/build.yml"><img src="https://github.com/blackbearreloaded/psradio/actions/workflows/build.yml/badge.svg" alt="Build status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="GPL-3.0-or-later"></a>
 </p>
 
