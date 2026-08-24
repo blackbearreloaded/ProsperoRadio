@@ -26,3 +26,7 @@ Runtime palette:
 
 The generated imagery is a project asset. The PlayStation name and controller
 symbol conventions remain trademarks of their respective owner.
+
+`play.svg` and `stop.svg` are deterministic project-authored playback symbols,
+with matching 24 x 24 straight-alpha TGA runtime assets. They are deliberately
+smaller than the controller prompts and are not PlayStation button symbols.

@@ -68,10 +68,11 @@ under `ui/fonts/lvgl-bitmap/multilingual/licenses/`. The `.rta` container is a
 lossless zero-run/literal encoding authored for this project; it does not
 resample or modify the source masks.
 
-PSRadio launcher artwork and controller/interface icons were generated for
-this project with OpenAI image-generation assistance and reviewed and adapted
-by the maintainer. The generated controller images are visual control prompts,
-not official Sony artwork.
+PSRadio launcher artwork and controller prompts were generated for this
+project with OpenAI image-generation assistance and reviewed and adapted by
+the maintainer. The generated controller images are visual control prompts,
+not official Sony artwork. The play and stop symbols are independently
+authored geometric vector assets with deterministic TGA runtime exports.
 
 ## Original selection audio
 

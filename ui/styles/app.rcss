@@ -584,19 +584,27 @@ button {
 
 #play-icon {
     position: absolute;
-    left: 70px;
-    top: 15px;
-    width: 48px;
-    height: 48px;
+    left: 82px;
+    top: 21px;
+    width: 36px;
+    height: 36px;
     background-color: #071218;
 }
 
 #play-icon img {
     position: absolute;
-    left: 4px;
-    top: 4px;
-    width: 40px;
-    height: 40px;
+    left: 6px;
+    top: 6px;
+    width: 24px;
+    height: 24px;
+}
+
+#play-icon .stop-glyph, #play-icon.stop .play-glyph {
+    display: none;
+}
+
+#play-icon.stop .stop-glyph {
+    display: block;
 }
 
 #play-label {
@@ -918,9 +926,9 @@ button {
 #search-query span {
     position: absolute;
     left: 14px;
-    top: 14px;
+    top: 16px;
     width: 1312px;
-    height: 48px;
+    height: 44px;
     overflow: hidden;
     font-size: 28px;
     line-height: 44px;
@@ -971,12 +979,12 @@ button {
 .filter-button span {
     position: absolute;
     left: 16px;
-    top: 30px;
+    top: 26px;
     width: 612px;
-    height: 82px;
+    height: 88px;
     overflow: hidden;
-    font-size: 24px;
-    line-height: 38px;
+    font-size: 28px;
+    line-height: 44px;
     text-align: center;
 }
 
@@ -1011,10 +1019,12 @@ button {
     position: absolute;
     left: 0px;
     right: 0px;
-    top: 13px;
-    height: 48px;
+    top: 18px;
+    height: 44px;
     overflow: visible;
     text-align: center;
+    font-size: 28px;
+    line-height: 44px;
 }
 
 .search-reset {
@@ -1031,8 +1041,6 @@ button {
     border: 1px #6cdbd9;
     background-color: #6cdbd9;
     color: #071218;
-    font-size: 24px;
-    line-height: 38px;
 }
 
 .credits-panel {

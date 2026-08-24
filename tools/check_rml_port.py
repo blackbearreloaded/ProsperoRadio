@@ -16,7 +16,7 @@ FIXED_IDS = {
     "detail-codec", "detail-metric", "detail-status-dot", "detail-status",
     "play-button", "play-icon", "play-label", "now-art", "now-badge", "now-name",
     "now-meta", "now-state", "credit-button", "connection-dot", "connection-label",
-    "search-overlay", "search-query", "search-reset", "search-apply",
+    "search-overlay", "search-query", "search-query-label", "search-reset", "search-apply",
     "credits-overlay", "credits-close", "brand-mark",
 }
 
@@ -39,7 +39,7 @@ def main() -> int:
     assert required <= set(ids), f"missing RML ids: {sorted(required - set(ids))}"
 
     project = json.loads((repo / "project.json").read_text(encoding="utf-8"))
-    assert project["titleId"] == "PPSA99770"
+    assert project["titleId"] == "PPSA99771"
     for source in ("src/radio_app.cpp", "src/radio_input.c", "src/radio_ime.c",
                    "src/radio_service.c", "src/radio_text.cpp"):
         assert source in project["sources"]
@@ -63,7 +63,7 @@ def main() -> int:
     for name, dimensions in {
         "cross": (40, 40), "circle": (40, 40), "square": (40, 40),
         "triangle": (40, 40), "options": (40, 40), "search": (40, 40),
-        "psradio": (64, 64),
+        "psradio": (64, 64), "play": (24, 24), "stop": (24, 24),
     }.items():
         data = (repo / "ui" / "icons" / f"{name}.tga").read_bytes()
         header = struct.unpack("<BBBHHBHHHHBB", data[:18])
@@ -74,9 +74,11 @@ def main() -> int:
     assert "left: 240px;" in css and "width: 1440px;" in css
     assert "#search-query.focused" in css and "#search-apply.focused" in css
     assert "#credit-button.focused" in css and "#play-button.focused" in css
-    play_icon = root.find(".//*[@id='play-icon']/img")
-    assert play_icon is not None and play_icon.get("src") == "icons/cross.tga"
-    print(f"validated {len(required)} RML ids, 71,416 extended glyphs, and 7 exact TGA assets")
+    play_icon = root.find(".//*[@id='play-icon']")
+    playback_sources = {image.get("src") for image in play_icon.findall("img")}
+    assert playback_sources == {"icons/play.tga", "icons/stop.tga"}
+    assert root.find(".//*[@id='search-query-label']") is not None
+    print(f"validated {len(required)} RML ids, 71,416 extended glyphs, and 9 exact TGA assets")
     return 0
 
 

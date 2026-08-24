@@ -53,10 +53,14 @@ int main(void)
     process_sample(sample);
     event = next_event();
     assert(event.key == RADIO_INPUT_UP && !event.pressed);
-    event = next_event();
-    assert(event.key == RADIO_INPUT_RIGHT && event.pressed);
+    assert(!radio_input_next(&event));
 
     sample[6] = 128;
+    sample[4] = 230;
+    process_sample(sample);
+    event = next_event();
+    assert(event.key == RADIO_INPUT_RIGHT && event.pressed);
+    sample[4] = 128;
     process_sample(sample);
     event = next_event();
     assert(event.key == RADIO_INPUT_RIGHT && !event.pressed);

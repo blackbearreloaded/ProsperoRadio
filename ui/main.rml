@@ -84,7 +84,8 @@
                     <span id="detail-status">Ready to play</span>
                     <button id="play-button">
                         <span id="play-icon" aria-hidden="true">
-                            <img src="icons/cross.tga" width="40" height="40" alt="" />
+                            <img class="play-glyph" src="icons/play.tga" width="24" height="24" alt="" />
+                            <img class="stop-glyph" src="icons/stop.tga" width="24" height="24" alt="" />
                         </span>
                         <span id="play-label">Play station</span>
                     </button>
@@ -121,11 +122,11 @@
                 <div class="search-panel">
                     <span class="overlay-title">EXPLORE &amp; SEARCH</span>
                     <span class="overlay-subtitle">Search the cached catalog or browse by country, genre, and language</span>
-                    <span class="search-help-title">D-PAD / EITHER STICK</span>
+                    <span class="search-help-title">D-PAD / LEFT STICK</span>
                     <span class="search-help-copy">Move between search, filters, and actions</span>
                     <span class="search-help-filter">D-pad Left / Right changes a filter</span>
 
-                    <button id="search-query"><span>Press Cross to type a station, genre, language, or country...</span></button>
+                    <button id="search-query"><span id="search-query-label">Press Cross to type a station, genre, language, or country...</span></button>
                     <span class="quick-title">QUICK SEARCH</span>
                     <span class="quick-copy">Use the PS5 system keyboard for names and free-form terms.</span>
                     <span class="browse-title">BROWSE</span>

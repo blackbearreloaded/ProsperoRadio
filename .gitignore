@@ -9,6 +9,7 @@ dist/
 *.user
 *.suo
 *.log
+__pycache__/
 *.elf
 *.self
 *.sprx

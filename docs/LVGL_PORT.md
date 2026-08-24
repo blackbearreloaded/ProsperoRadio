@@ -124,3 +124,13 @@ PPSA99769 addresses the first hands-on review of the complete port:
   border;
 - either analog stick now mirrors D-pad navigation with a 50% dead zone,
   dominant-axis selection, a 350 ms initial repeat delay, and 110 ms repeat.
+
+## PPSA99771 search and playback polish
+
+PPSA99771 keeps a persistent styled child inside the search-query button so
+runtime text updates no longer replace its centered 28 px label with the
+button's small top-left fallback text. Filter labels and both search actions
+use explicit centered 28 px line boxes. Navigation now reads only the left
+analog stick; the D-pad remains unchanged. The station action uses smaller,
+project-authored 24 px play and stop TGA symbols and switches them with the
+existing playback-state class instead of presenting Cross as a media icon.

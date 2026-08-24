@@ -592,7 +592,7 @@ void RadioApp::UpdateFocus() {
 }
 
 void RadioApp::UpdateSearch() {
-    SetText(document_, "search-query", *search_edit_ ? search_edit_ :
+    SetText(document_, "search-query-label", *search_edit_ ? search_edit_ :
         "Press Cross to type a station, genre, language, or country...");
 
     auto selected_count = [](const Facet* facets, unsigned count,

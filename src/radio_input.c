@@ -99,8 +99,6 @@ static void process_sample(const unsigned char * sample)
     button_state = current;
 
     int current_analog = neutral ? -1 : stick_direction(sample[4], sample[5]);
-    if(current_analog < 0 && !neutral)
-        current_analog = stick_direction(sample[6], sample[7]);
     if(current_analog != analog_key) {
         if(analog_key >= 0) queue_push((radio_input_key_t)analog_key, false);
         analog_key = current_analog;
