@@ -117,11 +117,12 @@ If `dotnet` or Python is installed outside `PATH`, pass the executable directly:
 ./build.ps1 -OutputFormat Ffpfsc -Python C:\path\to\python.exe
 ```
 
-The [Build workflow](.github/workflows/build.yml) performs the same prerequisite
-checks and host regressions on every push to `main` and every pull request. It
-then builds the app folder and verified `.ffpfsc` image and keeps both in a
-downloadable GitHub Actions artifact for 14 days. The workflow can also be run
-manually from the repository's **Actions** tab.
+The [Build workflow](.github/workflows/build.yml) verifies prerequisites, lints
+the UI and metadata, compiles all project-owned C and C++ with warnings treated
+as errors, and runs the host regressions on every push to `main` and every pull
+request. It then builds the app folder and verified `.ffpfsc` image and keeps
+both in a downloadable GitHub Actions artifact for 14 days. The workflow can
+also be run manually from the repository's **Actions** tab.
 
 Version tags publish permanent GitHub Releases automatically. The release
 contains the verified `.ffpfsc`, a ZIP of the directory build, generated

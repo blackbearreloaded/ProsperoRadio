@@ -169,8 +169,9 @@ Continue with [Deployment](DEPLOYMENT.md).
 
 The repository's [Build workflow](../.github/workflows/build.yml) provisions
 the public toolchain on a GitHub-hosted Windows runner, validates the pinned PS5
-Payload SDK archive, runs the host regression checks, and builds both the app
-folder and a verified `.ffpfsc` image.
+Payload SDK archive, lints the UI and metadata, compiles project-owned C and C++
+with warnings treated as errors, runs the host regression checks, and builds
+both the app folder and a verified `.ffpfsc` image.
 
 It runs automatically for pushes to `main` and pull requests. Maintainers can
 also start it with **Actions > Build > Run workflow**. When the job completes,
