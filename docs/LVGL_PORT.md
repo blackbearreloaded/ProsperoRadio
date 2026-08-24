@@ -134,3 +134,16 @@ use explicit centered 28 px line boxes. Navigation now reads only the left
 analog stick; the D-pad remains unchanged. The station action uses smaller,
 project-authored 24 px play and stop TGA symbols and switches them with the
 existing playback-state class instead of presenting Cross as a media icon.
+
+The 32,768,000-byte FFPFSC has SHA-256
+`E164211DE169B53CDD86EAD6E482E644AF81CC048D7A6638EE84CB239176ED77`;
+MkPFS reported data CRC32 `0xC838E490`, manifest SHA-256
+`d849674e70c0bf5ca7467a2124910bbd112616c28d36e86c56dc53d547e29a82`,
+and zero warnings or errors. ShadowMount ignored two directory-only staging
+attempts, so the identical image was uploaded as
+`/data/homebrew/PPSA99771.ffpfsc`, matching the project's deployment protocol.
+That image registered immediately, entered `eboot`, rendered the smaller play
+symbol in the captured live catalog frame, remained stable for 20 seconds,
+closed cleanly, and released its runtime layers and console lock. Evidence is
+retained as `PPSA99771-20260824-010614-*`; the only evidence note is the
+explicitly skipped Chiaki readiness gate.
