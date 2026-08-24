@@ -157,3 +157,22 @@ leaving the controller footer's Cross prompt unchanged. The paging rail also
 matches the LVGL layout with a compact up chevron immediately before Previous
 page and a down chevron after the right-anchored Next page label. Unavailable
 actions hide both their text and icon.
+
+The 32,768,000-byte FFPFSC has SHA-256
+`2EFB4180160819DD213DE295A2F876C31C92D897832E0E41D6F66116BABB7C16`;
+MkPFS reported data CRC32 `0xD1DAFC23`, manifest SHA-256
+`0ec97f2214706cebb79642ae56234680472cea4dba81fe69c497c0c487143211`,
+and zero warnings or errors. Its eboot SHA-256 is
+`518E1AD7CC635597DD521EF9D16B07577BE1427F1CB36B66C6F06607F9B29B26`
+and its libc SHA-256 is
+`CD961EE6ED3D08117459B0FE70D86FE322672EBE0103678EE7C3F15AF7E00504`.
+The image was deployed as `/data/homebrew/PPSA99772.ffpfsc`.
+
+The shared investigation loop entered `eboot`, sent two Down inputs to reach
+page 2, and captured both paging chevrons with Next page at the right edge. The
+title remained stable for 20 seconds, closed cleanly, left no managed Chiaki
+process, and released the console lock. Evidence is retained as
+`PPSA99772-20260824-012244-*` with no evidence warnings. An earlier identical
+run, `PPSA99772-20260824-012046-*`, also entered `eboot` but its screenshot
+caught Chiaki's loading spinner because video readiness was explicitly
+skipped; it is transport evidence rather than the visual acceptance frame.
