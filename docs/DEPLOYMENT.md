@@ -36,7 +36,7 @@ is not mistaken for the current application.
 
 ## Title ID allocation
 
-The current app identity is `PPSA99773`. Allocate the next app as `PPSA99774`
+The current app identity is `PPSA99774`. Allocate the next app as `PPSA99775`
 and increment the five-digit numeric suffix by one for each future app. Keep
 the `conceptId` and the title-ID portion of `contentId` synchronized.
 

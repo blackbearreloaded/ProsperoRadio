@@ -182,3 +182,8 @@ skipped; it is transport evidence rather than the visual acceptance frame.
 PPSA99773 increases the unboxed play and stop runtime assets from 18 x 18 to
 24 x 24 pixels and expands their shapes within that canvas. The paging
 chevrons and the rest of the PPSA99772 layout remain unchanged.
+
+PPSA99773 was retired before an app launch after a partial directory-staging
+attempt produced a duplicate-title error and contaminated its ShadowMount
+registration. PPSA99774 carries the identical visual change under the next
+required title ID; no UI or runtime behavior changed between those artifacts.
