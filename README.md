@@ -271,6 +271,8 @@ open-source projects and public services:
   implementation and investigation were assisted by OpenAI Codex. Every
   generated asset and code change was reviewed and validated by the maintainer.
 
+## License
+
 PSRadio code is distributed under [GPL-3.0-or-later](LICENSE). Bundled and
 fetched components retain their respective licenses. Versions, pinned
 revisions, copyright notices, redistribution terms, font licenses, and asset
