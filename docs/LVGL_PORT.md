@@ -83,6 +83,21 @@ placed in visual order while embedded Latin text and numbers remain forward.
 Host regressions cover unchanged ASCII, Cyrillic, and Chinese strings as well
 as Hebrew ordering and a connected Arabic lam-alef word.
 
+The production build compiled 340 objects with 7,637 defined symbols, 289
+imports, and zero unresolved symbols. Its 32,768,000-byte FFPFSC has SHA-256
+`1904C2CE204559F247E95AACAAD3C78AD54CBC864F10260E8C3525F8BE3C7C63`;
+MkPFS reported data CRC32 `0x45405EB3`, manifest SHA-256
+`3f6ea47bb44a1c1db2f72b239fb4aebe2a8316ace232cc11ce3dc791c0ea17f2`,
+and zero warnings or errors.
+
+The shared investigation loop deployed PPSA99770, entered `eboot`, captured a
+fully populated live Radio Browser frame, observed the title for 20 seconds,
+closed it cleanly, confirmed runtime release, stopped its managed Chiaki
+process, and released the console lock. Evidence is retained as
+`PPSA99770-20260824-004033-*`. Klog contains the expected native executable
+entry and no app fatal signal; the recorded evidence notes only the explicitly
+skipped Chiaki readiness gate and internal-window foreground fallback.
+
 ## PPSA99768 hardware baseline
 
 The first complete RmlUi port entered `eboot`, loaded live Radio Browser data,
