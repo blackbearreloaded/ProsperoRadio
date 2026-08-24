@@ -49,6 +49,8 @@ Report "WSL" $wslExists $(if ($wslExists) { "wsl.exe found" } else { "wsl.exe no
 if ($wslExists) {
     & wsl.exe --exec sh -lc "test -x /usr/bin/clang-18"
     Report "Clang 18 in WSL" ($LASTEXITCODE -eq 0) "/usr/bin/clang-18"
+    & wsl.exe --exec sh -lc "test -x /usr/bin/llvm-config-18"
+    Report "LLVM 18 config in WSL" ($LASTEXITCODE -eq 0) "/usr/bin/llvm-config-18"
     & wsl.exe --exec sh -lc "test -d /opt/ps5-payload-sdk/target/include"
     Report "PS5 payload SDK" ($LASTEXITCODE -eq 0) "/opt/ps5-payload-sdk"
 }

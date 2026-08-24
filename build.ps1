@@ -127,9 +127,9 @@ $Dotnet = (Resolve-Path -LiteralPath $Dotnet).Path
 if (-not (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
     Fail "WSL was not found. Install WSL and a Linux distribution first."
 }
-& wsl.exe --exec sh -lc "test -x /usr/bin/clang-18 && test -d /opt/ps5-payload-sdk/target/include"
+& wsl.exe --exec sh -lc "test -x /usr/bin/clang-18 && test -x /usr/bin/llvm-config-18 && test -d /opt/ps5-payload-sdk/target/include"
 if ($LASTEXITCODE -ne 0) {
-    Fail "WSL needs /usr/bin/clang-18 and /opt/ps5-payload-sdk/target/include."
+    Fail "WSL needs /usr/bin/clang-18, /usr/bin/llvm-config-18, and /opt/ps5-payload-sdk/target/include."
 }
 
 & $setupTooling
@@ -257,7 +257,7 @@ foreach ($source in @($project.sources)) {
     }
     $definitionFlags = ($compileDefinitions | ForEach-Object { "-D$_" }) -join " "
     $includeFlags = ($includePaths | ForEach-Object { "-I$_" }) -join " "
-    $compile = "cd '$wslRoot' && $compiler $languageFlags -O2 -g -Wall -Wextra -ffunction-sections -fdata-sections $definitionFlags $includeFlags -c '$sourceFromRepo' -o '$wslObject'"
+    $compile = "cd '$wslRoot' && LLVM_CONFIG=/usr/bin/llvm-config-18 $compiler $languageFlags -O2 -g -Wall -Wextra -ffunction-sections -fdata-sections $definitionFlags $includeFlags -c '$sourceFromRepo' -o '$wslObject'"
     & wsl.exe --exec bash -lc $compile
     if ($LASTEXITCODE -ne 0) {
         Fail "PS5 compilation failed for $source."

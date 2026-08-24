@@ -40,7 +40,7 @@ jobs:
           distribution: Ubuntu-24.04
           wsl-version: "1"
           additional-packages: >-
-            ca-certificates clang-18 lld-18 unzip wget
+            ca-certificates clang-18 lld-18 llvm-18 unzip wget
 
       - name: Install pinned PS5 Payload SDK
         shell: pwsh

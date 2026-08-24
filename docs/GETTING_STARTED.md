@@ -11,13 +11,14 @@ audio-preparation tools:
 
 ```bash
 sudo apt update
-sudo apt install clang-18 lld-18 unzip wget ffmpeg
+sudo apt install clang-18 lld-18 llvm-18 unzip wget ffmpeg
 ```
 
 Confirm the expected compiler exists:
 
 ```bash
 /usr/bin/clang-18 --version
+/usr/bin/llvm-config-18 --version
 ```
 
 ## 2. Install the PS5 payload SDK in WSL

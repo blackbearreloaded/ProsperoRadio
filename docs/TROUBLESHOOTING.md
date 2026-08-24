@@ -9,7 +9,7 @@ open a new PowerShell window, or pass the executable directly:
 ./build.ps1 -Dotnet C:\path\to\dotnet.exe
 ```
 
-## WSL, Clang 18, or the SDK is missing
+## WSL, Clang/LLVM 18, or the SDK is missing
 
 Run:
 
@@ -17,10 +17,11 @@ Run:
 ./tools/doctor.ps1
 ```
 
-Inside WSL, confirm both paths:
+Inside WSL, confirm all three paths:
 
 ```bash
 test -x /usr/bin/clang-18
+test -x /usr/bin/llvm-config-18
 test -d /opt/ps5-payload-sdk/target/include
 ```
 

@@ -20,7 +20,8 @@
     "SDL_MAIN_HANDLED",
     "SDL_STATIC_LIB",
     "USING_GENERATED_CONFIG_H",
-    "RMLUI_STATIC_LIB"
+    "RMLUI_STATIC_LIB",
+    "ITLIB_FLAT_MAP_NO_THROW"
   ],
   "includePaths": [
     "vendor/ps5/sdl/include",
