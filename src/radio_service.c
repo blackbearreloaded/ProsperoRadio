@@ -1,0 +1,1154 @@
+#include "radio_service.h"
+
+#include "aac_timing.h"
+
+#include "SDL.h"
+
+#include <limits.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define CACHE_MAGIC UINT32_C(0x52424331)
+#define FAVORITES_MAGIC UINT32_C(0x52424631)
+#define CATALOG_CACHE_VERSION 2U
+#define FAVORITES_VERSION 2U
+#define FAVORITES_LEGACY_VERSION 1U
+#define FAVORITES_LEGACY_CAPACITY 100U
+#define CACHE_PATH "/download0/radio-browser-cache.bin"
+#define CACHE_TEMP_PATH "/download0/radio-browser-cache.tmp"
+#define FAVORITES_PATH "/download0/radio-browser-favorites.bin"
+#define FAVORITES_TEMP_PATH "/download0/radio-browser-favorites.tmp"
+#define CATALOG_FEED_LIMIT 160U
+#define CATALOG_URL_POPULAR "https://all.api.radio-browser.info/json/stations/search?codec=AAC&hidebroken=true&order=clickcount&reverse=true&limit=160"
+#define CATALOG_URL_TRENDING "https://all.api.radio-browser.info/json/stations/search?codec=AAC&hidebroken=true&order=clicktrend&reverse=true&limit=160"
+#define CATALOG_URL_VOTED "https://all.api.radio-browser.info/json/stations/search?codec=AAC&hidebroken=true&order=votes&reverse=true&limit=160"
+#define CLICK_URL_PREFIX "https://all.api.radio-browser.info/json/url/"
+#define USER_AGENT "PSRadio/1.0 (+https://www.radio-browser.info/)"
+#define JSON_CAPACITY (1024U * 1024U)
+#define STREAM_BUFFER_SIZE (64U * 1024U)
+#define PCM_BUFFER_SIZE (2048U * 2U * 2U)
+#define OPEN_READ_ONLY 0x0000
+#define OPEN_WRITE_CREATE_TRUNCATE 0x0601
+#define FILE_MODE_0666 0x01b6
+#define HTTP_VERSION_11 2
+#define HTTP_METHOD_GET 0
+#define HTTP_HEADER_OVERWRITE 0U
+#define AUDIODEC_AAC 3U
+#define AUDIODEC_WORD_S16 1
+#define AUDIO_OUT_GRAIN 256U
+#define AUDIO_OUT_RATE 48000U
+#define AUDIO_OUT_STEREO_S16 1U
+#define AUDIO_OUT_VOLUME_0DB 0x8000
+
+typedef struct {
+    uint32_t magic;
+    uint32_t version;
+    uint32_t count;
+    uint32_t checksum;
+} file_header_t;
+
+typedef struct {
+    file_header_t header;
+    radio_station_t stations[RADIO_MAX_STATIONS];
+} cache_file_t;
+
+typedef struct {
+    file_header_t header;
+    char uuids[RADIO_MAX_STATIONS][40];
+} favorites_file_t;
+
+typedef struct {
+    file_header_t header;
+    char uuids[FAVORITES_LEGACY_CAPACITY][40];
+} favorites_legacy_file_t;
+
+typedef struct {
+    uint32_t size;
+    void * address;
+    uint32_t length;
+} sce_audiodec_au_info_t;
+
+typedef struct {
+    uint32_t size;
+    void * address;
+    uint32_t length;
+} sce_audiodec_pcm_item_t;
+
+typedef struct {
+    void * param;
+    void * stream_info;
+    sce_audiodec_au_info_t * au_info;
+    sce_audiodec_pcm_item_t * pcm_item;
+} sce_audiodec_ctrl_t;
+
+typedef struct {
+    uint32_t size;
+    int32_t word_size;
+    uint32_t config_number;
+    uint32_t sampling_frequency_index;
+    uint32_t max_channels;
+    uint32_t enable_he_aac;
+} sce_audiodec_param_aac_t;
+
+typedef struct {
+    uint32_t size;
+    uint32_t sampling_frequency;
+    uint32_t channel_count;
+    uint32_t he_aac;
+    int32_t result;
+} sce_audiodec_aac_info_t;
+
+typedef struct {
+    int handle;
+    uint32_t input_rate;
+    uint32_t channels;
+    uint64_t input_index;
+    uint64_t next_output_position;
+    int16_t previous_left;
+    int16_t previous_right;
+    bool have_previous;
+    bool announced_playing;
+    unsigned pending;
+    int16_t block[AUDIO_OUT_GRAIN * 2U];
+} audio_sink_t;
+
+typedef enum {
+    FEED_POPULAR,
+    FEED_TRENDING,
+    FEED_VOTED
+} catalog_feed_t;
+
+typedef struct {
+    const char * url;
+    catalog_feed_t kind;
+} catalog_feed_source_t;
+
+static const catalog_feed_source_t CATALOG_FEEDS[] = {
+    {CATALOG_URL_POPULAR, FEED_POPULAR},
+    {CATALOG_URL_TRENDING, FEED_TRENDING},
+    {CATALOG_URL_VOTED, FEED_VOTED},
+};
+
+extern int sceKernelOpen(const char * path, int flags, uint16_t mode);
+extern int sceKernelClose(int descriptor);
+extern int64_t sceKernelRead(int descriptor, void * buffer, size_t length);
+extern int64_t sceKernelWrite(int descriptor, const void * buffer, size_t length);
+extern int sceKernelRename(const char * from, const char * to);
+extern int sceKernelUnlink(const char * path);
+extern int scePthreadCreate(void ** thread, const void * attributes,
+                            void * (*entry)(void *), void * argument,
+                            const char * name);
+extern int scePthreadDetach(void * thread);
+
+extern int sceNetPoolCreate(const char * name, int size, int flags);
+extern int sceNetPoolDestroy(int mem_id);
+extern int sceSslInit(size_t pool_size);
+extern int sceSslTerm(int ssl_context_id);
+extern int sceHttpInit(int net_mem_id, int ssl_context_id, size_t pool_size);
+extern int sceHttpTerm(int http_context_id);
+extern int sceHttpCreateTemplate(int http_context_id, const char * user_agent,
+                                 int version, int auto_proxy);
+extern int sceHttpDeleteTemplate(int template_id);
+extern int sceHttpCreateConnectionWithURL(int template_id, const char * url,
+                                          int keep_alive);
+extern int sceHttpDeleteConnection(int connection_id);
+extern int sceHttpCreateRequestWithURL(int connection_id, int method,
+                                       const char * url, uint64_t content_length);
+extern int sceHttpDeleteRequest(int request_id);
+extern int sceHttpAddRequestHeader(int request_id, const char * name,
+                                   const char * value, uint32_t mode);
+extern int sceHttpSetAutoRedirect(int id, int enabled);
+extern int sceHttpSetConnectTimeOut(int id, uint32_t usec);
+extern int sceHttpSetRecvTimeOut(int id, uint32_t usec);
+extern int sceHttpSetSendTimeOut(int id, uint32_t usec);
+extern int sceHttpSetResolveTimeOut(int id, uint32_t usec);
+extern int sceHttpSendRequest(int request_id, const void * data, size_t size);
+extern int sceHttpGetStatusCode(int request_id, int * status_code);
+extern int sceHttpGetAllResponseHeaders(int request_id, char ** headers, size_t * size);
+extern int sceHttpReadData(int request_id, void * data, size_t size);
+
+extern int sceSysmoduleLoadModule(uint16_t id);
+extern int sceSysmoduleUnloadModule(uint16_t id);
+extern int sceAudiodecInitLibrary(uint32_t codec_type);
+extern int sceAudiodecTermLibrary(uint32_t codec_type);
+extern int sceAudiodecCreateDecoder(sce_audiodec_ctrl_t * ctrl, uint32_t codec_type);
+extern int sceAudiodecDeleteDecoder(int handle);
+extern int sceAudiodecDecode(int handle, sce_audiodec_ctrl_t * ctrl);
+extern int sceAudioOutInit(void);
+extern int sceAudioOutOpen(int user_id, int type, int index, uint32_t length,
+                           uint32_t frequency, uint32_t format);
+extern int sceAudioOutClose(int handle);
+extern int sceAudioOutOutput(int handle, const void * samples);
+extern int sceAudioOutSetVolume(int handle, int flags, const int * volumes);
+
+static radio_station_t g_stations[RADIO_MAX_STATIONS];
+static char g_favorites[RADIO_MAX_STATIONS][40];
+static unsigned g_station_count;
+static unsigned g_favorite_count;
+static radio_service_status_t g_status;
+static SDL_mutex * g_state_mutex;
+static SDL_atomic_t g_refresh_running;
+static SDL_atomic_t g_playback_running;
+static SDL_atomic_t g_stop_playback;
+static SDL_atomic_t g_shutting_down;
+static int g_net_pool = -1;
+static int g_ssl_context = -1;
+static int g_http_context = -1;
+static int g_http_template = -1;
+
+static uint32_t checksum(const void * data, size_t size)
+{
+    const uint8_t * bytes = data;
+    uint32_t value = UINT32_C(2166136261);
+    for(size_t i = 0; i < size; ++i) {
+        value = (value ^ bytes[i]) * UINT32_C(16777619);
+    }
+    return value;
+}
+
+static bool read_exact(const char * path, void * data, size_t size)
+{
+    const int fd = sceKernelOpen(path, OPEN_READ_ONLY, 0);
+    if(fd < 0) return false;
+
+    size_t done = 0;
+    while(done < size) {
+        const int64_t count = sceKernelRead(fd, (uint8_t *)data + done, size - done);
+        if(count <= 0) break;
+        done += (size_t)count;
+    }
+    sceKernelClose(fd);
+    return done == size;
+}
+
+static bool write_atomic(const char * temporary, const char * path,
+                         const void * data, size_t size)
+{
+    const int fd = sceKernelOpen(temporary, OPEN_WRITE_CREATE_TRUNCATE, FILE_MODE_0666);
+    if(fd < 0) return false;
+
+    size_t done = 0;
+    while(done < size) {
+        const int64_t count = sceKernelWrite(fd, (const uint8_t *)data + done, size - done);
+        if(count <= 0) break;
+        done += (size_t)count;
+    }
+    sceKernelClose(fd);
+    if(done != size) {
+        sceKernelUnlink(temporary);
+        return false;
+    }
+    if(sceKernelRename(temporary, path) < 0) {
+        sceKernelUnlink(path);
+        if(sceKernelRename(temporary, path) < 0) {
+            sceKernelUnlink(temporary);
+            return false;
+        }
+    }
+    return true;
+}
+
+static bool favorite_unlocked(const char * uuid)
+{
+    for(unsigned i = 0; i < g_favorite_count; ++i) {
+        if(strcmp(g_favorites[i], uuid) == 0) return true;
+    }
+    return false;
+}
+
+static bool save_favorites_unlocked(void);
+
+static void load_favorites(void)
+{
+    favorites_file_t file;
+    if(read_exact(FAVORITES_PATH, &file, sizeof(file)) &&
+       file.header.magic == FAVORITES_MAGIC &&
+       file.header.version == FAVORITES_VERSION &&
+       file.header.count <= RADIO_MAX_STATIONS &&
+       file.header.checksum == checksum(file.uuids, sizeof(file.uuids))) {
+        g_favorite_count = file.header.count;
+        memcpy(g_favorites, file.uuids, sizeof(g_favorites));
+        return;
+    }
+
+    favorites_legacy_file_t legacy;
+    if(read_exact(FAVORITES_PATH, &legacy, sizeof(legacy)) &&
+       legacy.header.magic == FAVORITES_MAGIC &&
+       legacy.header.version == FAVORITES_LEGACY_VERSION &&
+       legacy.header.count <= FAVORITES_LEGACY_CAPACITY &&
+       legacy.header.checksum == checksum(legacy.uuids, sizeof(legacy.uuids))) {
+        g_favorite_count = legacy.header.count;
+        memcpy(g_favorites, legacy.uuids, sizeof(legacy.uuids));
+        save_favorites_unlocked();
+    }
+}
+
+static bool save_favorites_unlocked(void)
+{
+    favorites_file_t file;
+    memset(&file, 0, sizeof(file));
+    file.header.magic = FAVORITES_MAGIC;
+    file.header.version = FAVORITES_VERSION;
+    file.header.count = g_favorite_count;
+    memcpy(file.uuids, g_favorites, sizeof(g_favorites));
+    file.header.checksum = checksum(file.uuids, sizeof(file.uuids));
+    return write_atomic(FAVORITES_TEMP_PATH, FAVORITES_PATH, &file, sizeof(file));
+}
+
+static bool load_cache(void)
+{
+    cache_file_t * file = malloc(sizeof(*file));
+    if(file == NULL) return false;
+    const bool valid = read_exact(CACHE_PATH, file, sizeof(*file)) &&
+        file->header.magic == CACHE_MAGIC &&
+        file->header.version == CATALOG_CACHE_VERSION &&
+        file->header.count <= RADIO_MAX_STATIONS &&
+        file->header.checksum == checksum(file->stations, sizeof(file->stations));
+    if(valid) {
+        g_station_count = file->header.count;
+        memcpy(g_stations, file->stations, sizeof(g_stations));
+    }
+    free(file);
+    return valid && g_station_count != 0;
+}
+
+static void save_cache(const radio_station_t * stations, unsigned count)
+{
+    cache_file_t * file = calloc(1, sizeof(*file));
+    if(file == NULL) return;
+    file->header.magic = CACHE_MAGIC;
+    file->header.version = CATALOG_CACHE_VERSION;
+    file->header.count = count;
+    memcpy(file->stations, stations, count * sizeof(*stations));
+    file->header.checksum = checksum(file->stations, sizeof(file->stations));
+    write_atomic(CACHE_TEMP_PATH, CACHE_PATH, file, sizeof(*file));
+    free(file);
+}
+
+static int network_init(void)
+{
+    g_net_pool = sceNetPoolCreate("ps5_radio_http", 0x4000, 0);
+    if(g_net_pool < 0) return g_net_pool;
+    g_ssl_context = sceSslInit(304U * 1024U);
+    if(g_ssl_context < 0) return g_ssl_context;
+    g_http_context = sceHttpInit(g_net_pool, g_ssl_context, 0x10000);
+    if(g_http_context < 0) return g_http_context;
+    g_http_template = sceHttpCreateTemplate(g_http_context, USER_AGENT,
+                                             HTTP_VERSION_11, 1);
+    if(g_http_template < 0) return g_http_template;
+    sceHttpSetAutoRedirect(g_http_template, 1);
+    sceHttpSetResolveTimeOut(g_http_template, 5000000U);
+    sceHttpSetConnectTimeOut(g_http_template, 5000000U);
+    sceHttpSetSendTimeOut(g_http_template, 5000000U);
+    sceHttpSetRecvTimeOut(g_http_template, 5000000U);
+    return 0;
+}
+
+static void network_shutdown(void)
+{
+    if(g_http_template >= 0) sceHttpDeleteTemplate(g_http_template);
+    if(g_http_context >= 0) sceHttpTerm(g_http_context);
+    if(g_ssl_context >= 0) sceSslTerm(g_ssl_context);
+    if(g_net_pool >= 0) sceNetPoolDestroy(g_net_pool);
+    g_http_template = -1;
+    g_http_context = -1;
+    g_ssl_context = -1;
+    g_net_pool = -1;
+}
+
+static int http_open(const char * url, bool streaming, int * connection,
+                     int * request)
+{
+    *connection = sceHttpCreateConnectionWithURL(g_http_template, url, streaming ? 0 : 1);
+    if(*connection < 0) return *connection;
+    *request = sceHttpCreateRequestWithURL(*connection, HTTP_METHOD_GET, url, 0);
+    if(*request < 0) {
+        const int error = *request;
+        sceHttpDeleteConnection(*connection);
+        *connection = -1;
+        return error;
+    }
+    sceHttpSetAutoRedirect(*request, 1);
+    sceHttpSetResolveTimeOut(*request, 5000000U);
+    sceHttpSetConnectTimeOut(*request, 5000000U);
+    sceHttpSetSendTimeOut(*request, 5000000U);
+    sceHttpSetRecvTimeOut(*request, streaming ? 2000000U : 5000000U);
+    sceHttpAddRequestHeader(*request, "Accept", streaming ? "audio/aac, audio/aacp, */*" : "application/json",
+                            HTTP_HEADER_OVERWRITE);
+    if(streaming) {
+        sceHttpAddRequestHeader(*request, "Icy-MetaData", "0", HTTP_HEADER_OVERWRITE);
+    }
+    int result = sceHttpSendRequest(*request, NULL, 0);
+    if(result >= 0) {
+        int status = 0;
+        result = sceHttpGetStatusCode(*request, &status);
+        if(result >= 0 && (status < 200 || status >= 300)) result = -status;
+    }
+    if(result < 0) {
+        sceHttpDeleteRequest(*request);
+        sceHttpDeleteConnection(*connection);
+        *request = -1;
+        *connection = -1;
+    }
+    return result;
+}
+
+static void http_close(int connection, int request)
+{
+    if(request >= 0) sceHttpDeleteRequest(request);
+    if(connection >= 0) sceHttpDeleteConnection(connection);
+}
+
+static unsigned http_audio_channels(int request)
+{
+    char * headers = NULL;
+    size_t size = 0;
+    if(sceHttpGetAllResponseHeaders(request, &headers, &size) < 0 || headers == NULL) return 0;
+    static const char key[] = "channels=";
+    for(size_t i = 0; i + sizeof(key) < size; ++i) {
+        size_t match = 0;
+        while(match + 1U < sizeof(key)) {
+            char value = headers[i + match];
+            if(value >= 'A' && value <= 'Z') value = (char)(value + ('a' - 'A'));
+            if(value != key[match]) break;
+            ++match;
+        }
+        if(match + 1U == sizeof(key)) {
+            const char value = headers[i + match];
+            return value == '1' || value == '2' ? (unsigned)(value - '0') : 0U;
+        }
+    }
+    return 0;
+}
+
+static int hex_value(char value)
+{
+    if(value >= '0' && value <= '9') return value - '0';
+    if(value >= 'a' && value <= 'f') return value - 'a' + 10;
+    if(value >= 'A' && value <= 'F') return value - 'A' + 10;
+    return -1;
+}
+
+static void append_utf8(char * output, size_t capacity, size_t * written,
+                        unsigned codepoint)
+{
+    uint8_t bytes[3];
+    unsigned count;
+    if(codepoint < 0x80U) {
+        bytes[0] = (uint8_t)codepoint;
+        count = 1;
+    }
+    else if(codepoint < 0x800U) {
+        bytes[0] = (uint8_t)(0xc0U | (codepoint >> 6));
+        bytes[1] = (uint8_t)(0x80U | (codepoint & 0x3fU));
+        count = 2;
+    }
+    else {
+        bytes[0] = (uint8_t)(0xe0U | (codepoint >> 12));
+        bytes[1] = (uint8_t)(0x80U | ((codepoint >> 6) & 0x3fU));
+        bytes[2] = (uint8_t)(0x80U | (codepoint & 0x3fU));
+        count = 3;
+    }
+    for(unsigned i = 0; i < count && *written + 1 < capacity; ++i) {
+        output[(*written)++] = (char)bytes[i];
+    }
+}
+
+static bool json_string_field(const char * begin, const char * end,
+                              const char * field, char * output, size_t capacity)
+{
+    const size_t field_length = strlen(field);
+    for(const char * at = begin; at + field_length + 2 < end; ++at) {
+        if(*at != '"' || memcmp(at + 1, field, field_length) != 0 ||
+           at[1 + field_length] != '"') continue;
+        const char * value = at + field_length + 2;
+        while(value < end && (*value == ' ' || *value == '\t' || *value == ':')) ++value;
+        if(value >= end || *value != '"') return false;
+        ++value;
+        size_t written = 0;
+        while(value < end && *value != '"') {
+            unsigned codepoint = (uint8_t)*value++;
+            if(codepoint == '\\' && value < end) {
+                const char escape = *value++;
+                if(escape == 'u' && value + 4 <= end) {
+                    codepoint = 0;
+                    bool valid = true;
+                    for(unsigned i = 0; i < 4; ++i) {
+                        const int hex = hex_value(value[i]);
+                        if(hex < 0) valid = false;
+                        codepoint = (codepoint << 4) | (unsigned)(hex < 0 ? 0 : hex);
+                    }
+                    value += 4;
+                    if(!valid || (codepoint >= 0xd800U && codepoint <= 0xdfffU)) codepoint = '?';
+                }
+                else if(escape == 'n' || escape == 'r' || escape == 't') codepoint = ' ';
+                else if(escape == 'b' || escape == 'f') continue;
+                else codepoint = (uint8_t)escape;
+            }
+            append_utf8(output, capacity, &written, codepoint);
+        }
+        if(capacity != 0) output[written] = '\0';
+        return true;
+    }
+    if(capacity != 0) output[0] = '\0';
+    return false;
+}
+
+static int json_integer_field(const char * begin, const char * end,
+                              const char * field, int fallback)
+{
+    const size_t field_length = strlen(field);
+    for(const char * at = begin; at + field_length + 2 < end; ++at) {
+        if(*at != '"' || memcmp(at + 1, field, field_length) != 0 ||
+           at[1 + field_length] != '"') continue;
+        const char * value = at + field_length + 2;
+        while(value < end && (*value == ' ' || *value == '\t' || *value == ':')) ++value;
+        const bool negative = value < end && *value == '-';
+        if(negative) ++value;
+        int result = 0;
+        bool found = false;
+        while(value < end && *value >= '0' && *value <= '9') {
+            found = true;
+            if(result <= (INT_MAX - 9) / 10) result = result * 10 + (*value - '0');
+            ++value;
+        }
+        return found ? (negative ? -result : result) : fallback;
+    }
+    return fallback;
+}
+
+static unsigned parse_catalog(const char * json, size_t length,
+                              radio_station_t * stations, unsigned capacity)
+{
+    const char * end = json + length;
+    const char * at = json;
+    unsigned count = 0;
+    while(at < end && count < capacity) {
+        while(at < end && *at != '{') ++at;
+        if(at == end) break;
+        const char * object = at++;
+        bool in_string = false;
+        bool escaped = false;
+        unsigned depth = 1;
+        while(at < end && depth != 0) {
+            const char value = *at++;
+            if(in_string) {
+                if(escaped) escaped = false;
+                else if(value == '\\') escaped = true;
+                else if(value == '"') in_string = false;
+            }
+            else if(value == '"') in_string = true;
+            else if(value == '{') ++depth;
+            else if(value == '}') --depth;
+        }
+        if(depth != 0) break;
+        const char * object_end = at;
+        radio_station_t station;
+        memset(&station, 0, sizeof(station));
+        station.popular_rank = RADIO_RANK_NONE;
+        station.trending_rank = RADIO_RANK_NONE;
+        station.voted_rank = RADIO_RANK_NONE;
+        json_string_field(object, object_end, "stationuuid", station.uuid, sizeof(station.uuid));
+        json_string_field(object, object_end, "name", station.name, sizeof(station.name));
+        json_string_field(object, object_end, "url_resolved", station.url, sizeof(station.url));
+        if(station.url[0] == '\0') {
+            json_string_field(object, object_end, "url", station.url, sizeof(station.url));
+        }
+        json_string_field(object, object_end, "country", station.country, sizeof(station.country));
+        json_string_field(object, object_end, "countrycode", station.country_code, sizeof(station.country_code));
+        json_string_field(object, object_end, "state", station.state, sizeof(station.state));
+        json_string_field(object, object_end, "language", station.language, sizeof(station.language));
+        json_string_field(object, object_end, "tags", station.tags, sizeof(station.tags));
+        json_string_field(object, object_end, "codec", station.codec, sizeof(station.codec));
+        station.bitrate = (uint32_t)json_integer_field(object, object_end, "bitrate", 0);
+        station.votes = (uint32_t)json_integer_field(object, object_end, "votes", 0);
+        station.click_count = (uint32_t)json_integer_field(object, object_end, "clickcount", 0);
+        station.click_trend = json_integer_field(object, object_end, "clicktrend", 0);
+        const int hls = json_integer_field(object, object_end, "hls", 0);
+        const int healthy = json_integer_field(object, object_end, "lastcheckok", 1);
+        if(station.uuid[0] != '\0' && station.name[0] != '\0' && station.url[0] != '\0' &&
+           hls == 0 && healthy != 0) {
+            stations[count++] = station;
+        }
+    }
+    return count;
+}
+
+static int station_index(const radio_station_t * stations, unsigned count,
+                         const char * uuid)
+{
+    for(unsigned i = 0; i < count; ++i) {
+        if(strcmp(stations[i].uuid, uuid) == 0) return (int)i;
+    }
+    return -1;
+}
+
+static void merge_feed(radio_station_t * catalog, unsigned * catalog_count,
+                       const radio_station_t * feed, unsigned feed_count,
+                       catalog_feed_t kind)
+{
+    for(unsigned rank = 0; rank < feed_count; ++rank) {
+        int index = station_index(catalog, *catalog_count, feed[rank].uuid);
+        if(index < 0) {
+            if(*catalog_count >= RADIO_MAX_STATIONS) break;
+            index = (int)(*catalog_count)++;
+            catalog[index] = feed[rank];
+        }
+        else {
+            catalog[index].votes = feed[rank].votes;
+            catalog[index].click_count = feed[rank].click_count;
+            catalog[index].click_trend = feed[rank].click_trend;
+        }
+        if(kind == FEED_POPULAR) catalog[index].popular_rank = (uint16_t)rank;
+        else if(kind == FEED_TRENDING) catalog[index].trending_rank = (uint16_t)rank;
+        else catalog[index].voted_rank = (uint16_t)rank;
+    }
+}
+
+static int fetch_catalog_feed(const catalog_feed_source_t * source,
+                              radio_station_t * catalog, unsigned * catalog_count)
+{
+    char * json = malloc(JSON_CAPACITY);
+    radio_station_t * feed = calloc(CATALOG_FEED_LIMIT, sizeof(*feed));
+    if(json == NULL || feed == NULL) {
+        free(feed);
+        free(json);
+        return -1;
+    }
+
+    size_t used = 0;
+    int connection = -1;
+    int request = -1;
+    int error = http_open(source->url, false, &connection, &request);
+    while(error == 0 && used < JSON_CAPACITY && !SDL_AtomicGet(&g_shutting_down)) {
+        const int received = sceHttpReadData(request, json + used, JSON_CAPACITY - used);
+        if(received < 0) error = received;
+        else if(received == 0) break;
+        else used += (size_t)received;
+    }
+    http_close(connection, request);
+
+    if(error == 0 && used != 0 && used < JSON_CAPACITY) {
+        const unsigned count = parse_catalog(json, used, feed, CATALOG_FEED_LIMIT);
+        if(count != 0) merge_feed(catalog, catalog_count, feed, count, source->kind);
+        else error = -2;
+    }
+    else if(error == 0) error = -2;
+    free(feed);
+    free(json);
+    return error;
+}
+
+static void retain_local_stations(radio_station_t * catalog, unsigned * count)
+{
+    SDL_LockMutex(g_state_mutex);
+    for(unsigned i = 0; i < g_station_count && *count < RADIO_MAX_STATIONS; ++i) {
+        const bool currently_playing = SDL_AtomicGet(&g_playback_running) &&
+                                       g_status.playing_index == i;
+        if((favorite_unlocked(g_stations[i].uuid) || currently_playing) &&
+           station_index(catalog, *count, g_stations[i].uuid) < 0) {
+            catalog[(*count)++] = g_stations[i];
+        }
+    }
+    SDL_UnlockMutex(g_state_mutex);
+}
+
+static void * refresh_thread(void * unused)
+{
+    (void)unused;
+    radio_station_t * parsed = calloc(RADIO_MAX_STATIONS, sizeof(*parsed));
+    unsigned count = 0;
+    int error = parsed == NULL ? -1 : 0;
+    unsigned successful_feeds = 0;
+    if(parsed != NULL) {
+        for(unsigned i = 0; i < sizeof(CATALOG_FEEDS) / sizeof(CATALOG_FEEDS[0]); ++i) {
+            if(SDL_AtomicGet(&g_shutting_down)) break;
+            const int feed_error = fetch_catalog_feed(&CATALOG_FEEDS[i], parsed, &count);
+            if(feed_error == 0) ++successful_feeds;
+            else error = feed_error;
+        }
+    }
+
+    if(successful_feeds != 0 && count != 0 && !SDL_AtomicGet(&g_shutting_down)) {
+        retain_local_stations(parsed, &count);
+        save_cache(parsed, count);
+        SDL_LockMutex(g_state_mutex);
+        char playing_uuid[40] = {0};
+        if(SDL_AtomicGet(&g_playback_running) && g_status.playing_index < g_station_count) {
+            SDL_strlcpy(playing_uuid, g_stations[g_status.playing_index].uuid,
+                        sizeof(playing_uuid));
+        }
+        memcpy(g_stations, parsed, count * sizeof(*parsed));
+        if(count < RADIO_MAX_STATIONS) {
+            memset(g_stations + count, 0,
+                   (RADIO_MAX_STATIONS - count) * sizeof(*parsed));
+        }
+        g_station_count = count;
+        g_status.station_count = count;
+        if(playing_uuid[0] != '\0') {
+            const int playing = station_index(g_stations, count, playing_uuid);
+            if(playing >= 0) g_status.playing_index = (unsigned)playing;
+        }
+        g_status.catalog_state = RADIO_CATALOG_READY;
+        ++g_status.catalog_generation;
+        g_status.error_code = 0;
+        g_status.refreshing = false;
+        SDL_UnlockMutex(g_state_mutex);
+    }
+    else if(!SDL_AtomicGet(&g_shutting_down)) {
+        SDL_LockMutex(g_state_mutex);
+        g_status.catalog_state = RADIO_CATALOG_ERROR;
+        g_status.error_code = error != 0 ? error : -2;
+        ++g_status.catalog_generation;
+        g_status.refreshing = false;
+        SDL_UnlockMutex(g_state_mutex);
+    }
+    free(parsed);
+    SDL_AtomicSet(&g_refresh_running, 0);
+    return NULL;
+}
+
+static void set_playback_state(radio_playback_state_t state, int error,
+                               unsigned sample_rate, unsigned channels)
+{
+    SDL_LockMutex(g_state_mutex);
+    g_status.playback_state = state;
+    g_status.error_code = error;
+    g_status.sample_rate = sample_rate;
+    g_status.channels = channels;
+    SDL_UnlockMutex(g_state_mutex);
+}
+
+static int sink_open(audio_sink_t * sink, uint32_t input_rate, uint32_t channels)
+{
+    memset(sink, 0, sizeof(*sink));
+    sink->handle = -1;
+    sink->input_rate = input_rate;
+    sink->channels = channels;
+    if(input_rate < 8000U || input_rate > 192000U || channels < 1U || channels > 2U) return -1;
+    sceAudioOutInit();
+    sink->handle = sceAudioOutOpen(0xff, 0, 0, AUDIO_OUT_GRAIN,
+                                   AUDIO_OUT_RATE, AUDIO_OUT_STEREO_S16);
+    if(sink->handle < 0) return sink->handle;
+    int volumes[8];
+    for(unsigned i = 0; i < 8; ++i) volumes[i] = AUDIO_OUT_VOLUME_0DB;
+    sceAudioOutSetVolume(sink->handle, 3, volumes);
+    return 0;
+}
+
+static int sink_output_frame(audio_sink_t * sink, int16_t left, int16_t right)
+{
+    sink->block[sink->pending++] = left;
+    sink->block[sink->pending++] = right;
+    if(sink->pending == AUDIO_OUT_GRAIN * 2U) {
+        const int result = sceAudioOutOutput(sink->handle, sink->block);
+        if(result < 0) return result;
+        sink->pending = 0;
+        if(!sink->announced_playing) {
+            sink->announced_playing = true;
+            set_playback_state(RADIO_PLAYBACK_PLAYING, 0,
+                               sink->input_rate, sink->channels);
+        }
+    }
+    return 0;
+}
+
+static int sink_push_pcm(audio_sink_t * sink, const int16_t * samples,
+                         unsigned sample_count)
+{
+    const unsigned frames = sample_count / sink->channels;
+    for(unsigned i = 0; i < frames; ++i) {
+        const int16_t left = samples[i * sink->channels];
+        const int16_t right = sink->channels == 2U ? samples[i * 2U + 1U] : left;
+        if(!sink->have_previous) {
+            sink->previous_left = left;
+            sink->previous_right = right;
+            sink->have_previous = true;
+            sink->input_index = 0;
+            continue;
+        }
+
+        ++sink->input_index;
+        const uint64_t interval_end = sink->input_index * AUDIO_OUT_RATE;
+        const uint64_t interval_start = (sink->input_index - 1U) * AUDIO_OUT_RATE;
+        while(sink->next_output_position < interval_end) {
+            const uint64_t fraction = sink->next_output_position - interval_start;
+            const int32_t out_left = sink->previous_left +
+                (int32_t)(((int64_t)(left - sink->previous_left) * (int64_t)fraction) /
+                          (int64_t)AUDIO_OUT_RATE);
+            const int32_t out_right = sink->previous_right +
+                (int32_t)(((int64_t)(right - sink->previous_right) * (int64_t)fraction) /
+                          (int64_t)AUDIO_OUT_RATE);
+            const int result = sink_output_frame(sink, (int16_t)out_left, (int16_t)out_right);
+            if(result < 0) return result;
+            sink->next_output_position += sink->input_rate;
+        }
+        sink->previous_left = left;
+        sink->previous_right = right;
+    }
+    return 0;
+}
+
+static void sink_close(audio_sink_t * sink)
+{
+    if(sink->handle < 0) return;
+    if(sink->pending != 0) {
+        memset(sink->block + sink->pending, 0,
+               (AUDIO_OUT_GRAIN * 2U - sink->pending) * sizeof(sink->block[0]));
+        sceAudioOutOutput(sink->handle, sink->block);
+    }
+    sceAudioOutOutput(sink->handle, NULL);
+    sceAudioOutClose(sink->handle);
+    sink->handle = -1;
+}
+
+static size_t find_adts(const uint8_t * data, size_t size)
+{
+    for(size_t i = 0; i + 1U < size; ++i) {
+        if(data[i] == 0xffU && (data[i + 1U] & 0xf6U) == 0xf0U) return i;
+    }
+    return size;
+}
+
+static int play_stream(const radio_station_t * station)
+{
+    char click_url[sizeof(CLICK_URL_PREFIX) + sizeof(station->uuid)];
+    SDL_snprintf(click_url, sizeof(click_url), "%s%s", CLICK_URL_PREFIX, station->uuid);
+    int click_connection = -1;
+    int click_request = -1;
+    if(http_open(click_url, false, &click_connection, &click_request) >= 0) {
+        uint8_t discard[256];
+        while(sceHttpReadData(click_request, discard, sizeof(discard)) > 0) {}
+    }
+    http_close(click_connection, click_request);
+    if(SDL_AtomicGet(&g_stop_playback)) return 0;
+
+    int connection = -1;
+    int request = -1;
+    int result = http_open(station->url, true, &connection, &request);
+    if(result < 0) return result;
+    const unsigned source_channels = http_audio_channels(request);
+    set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 0, 0);
+
+    uint8_t * stream = malloc(STREAM_BUFFER_SIZE);
+    uint8_t * pcm = malloc(PCM_BUFFER_SIZE);
+    if(stream == NULL || pcm == NULL) {
+        free(stream);
+        free(pcm);
+        http_close(connection, request);
+        return -1;
+    }
+
+    result = sceSysmoduleLoadModule(0x0088);
+    const bool module_loaded = result >= 0;
+    if(module_loaded) result = sceAudiodecInitLibrary(AUDIODEC_AAC);
+    const bool library_initialized = result >= 0;
+    sce_audiodec_param_aac_t param = {
+        sizeof(param), AUDIODEC_WORD_S16, 1, 4, 2, 1
+    };
+    sce_audiodec_aac_info_t info;
+    memset(&info, 0, sizeof(info));
+    info.size = sizeof(info);
+    sce_audiodec_au_info_t au;
+    memset(&au, 0, sizeof(au));
+    au.size = sizeof(au);
+    sce_audiodec_pcm_item_t pcm_item;
+    memset(&pcm_item, 0, sizeof(pcm_item));
+    pcm_item.size = sizeof(pcm_item);
+    sce_audiodec_ctrl_t ctrl = {&param, &info, &au, &pcm_item};
+    int decoder = -1;
+    if(result >= 0) {
+        decoder = sceAudiodecCreateDecoder(&ctrl, AUDIODEC_AAC);
+        if(decoder < 0) result = decoder;
+    }
+
+    audio_sink_t sink;
+    memset(&sink, 0, sizeof(sink));
+    sink.handle = -1;
+    size_t buffered = 0;
+    size_t scanned = 0;
+    while(result >= 0 && !SDL_AtomicGet(&g_stop_playback)) {
+        if(buffered < 7U) {
+            const int read = sceHttpReadData(request, stream + buffered,
+                                             STREAM_BUFFER_SIZE - buffered);
+            if(read < 0) {
+                result = read;
+                break;
+            }
+            if(read == 0) {
+                result = -3;
+                break;
+            }
+            buffered += (size_t)read;
+        }
+
+        const size_t sync = find_adts(stream, buffered);
+        if(sync != 0) {
+            const size_t remove = sync == buffered ? (buffered > 6U ? buffered - 6U : 0U) : sync;
+            if(remove != 0) {
+                memmove(stream, stream + remove, buffered - remove);
+                buffered -= remove;
+                scanned += remove;
+                if(scanned > 256U * 1024U) {
+                    result = -4;
+                    break;
+                }
+            }
+            continue;
+        }
+
+        const size_t frame_length = ((size_t)(stream[3] & 0x03U) << 11) |
+                                    ((size_t)stream[4] << 3) |
+                                    ((size_t)stream[5] >> 5);
+        if(frame_length < 7U || frame_length > 4608U) {
+            memmove(stream, stream + 1, --buffered);
+            continue;
+        }
+        while(buffered < frame_length && buffered < STREAM_BUFFER_SIZE &&
+              !SDL_AtomicGet(&g_stop_playback)) {
+            const int read = sceHttpReadData(request, stream + buffered,
+                                             STREAM_BUFFER_SIZE - buffered);
+            if(read < 0) {
+                result = read;
+                break;
+            }
+            if(read == 0) {
+                result = -3;
+                break;
+            }
+            buffered += (size_t)read;
+        }
+        if(result < 0 || buffered < frame_length) break;
+
+        au.address = stream;
+        au.length = (uint32_t)frame_length;
+        pcm_item.address = pcm;
+        pcm_item.length = PCM_BUFFER_SIZE;
+        result = sceAudiodecDecode(decoder, &ctrl);
+        if(result >= 0 && aac_should_disable_he(
+                stream, frame_length, source_channels, info.sampling_frequency,
+                info.channel_count, info.he_aac)) {
+            sceAudiodecDeleteDecoder(decoder);
+            decoder = -1;
+            param.enable_he_aac = 0;
+            memset(&info, 0, sizeof(info));
+            info.size = sizeof(info);
+            decoder = sceAudiodecCreateDecoder(&ctrl, AUDIODEC_AAC);
+            if(decoder < 0) result = decoder;
+            else {
+                au.address = stream;
+                au.length = (uint32_t)frame_length;
+                pcm_item.address = pcm;
+                pcm_item.length = PCM_BUFFER_SIZE;
+                result = sceAudiodecDecode(decoder, &ctrl);
+            }
+        }
+        if(result >= 0 && pcm_item.length != 0) {
+            if(sink.handle < 0) {
+                const uint32_t pcm_rate = aac_pcm_rate(
+                    stream, frame_length, info.channel_count, pcm_item.length,
+                    info.sampling_frequency);
+                result = sink_open(&sink, pcm_rate, info.channel_count);
+                if(result >= 0) {
+                    set_playback_state(RADIO_PLAYBACK_BUFFERING, 0,
+                                       pcm_rate, info.channel_count);
+                }
+            }
+            if(result >= 0) {
+                result = sink_push_pcm(&sink, (const int16_t *)pcm,
+                                       pcm_item.length / sizeof(int16_t));
+            }
+        }
+        memmove(stream, stream + frame_length, buffered - frame_length);
+        buffered -= frame_length;
+    }
+
+    sink_close(&sink);
+    if(decoder >= 0) sceAudiodecDeleteDecoder(decoder);
+    if(library_initialized) sceAudiodecTermLibrary(AUDIODEC_AAC);
+    if(module_loaded) sceSysmoduleUnloadModule(0x0088);
+    free(pcm);
+    free(stream);
+    http_close(connection, request);
+    return result;
+}
+
+static void * playback_thread(void * station_copy)
+{
+    radio_station_t * station = station_copy;
+    const int result = play_stream(station);
+    free(station);
+    SDL_AtomicSet(&g_playback_running, 0);
+    if(SDL_AtomicGet(&g_stop_playback) || SDL_AtomicGet(&g_shutting_down)) {
+        set_playback_state(RADIO_PLAYBACK_STOPPED, 0, 0, 0);
+    }
+    else {
+        set_playback_state(RADIO_PLAYBACK_ERROR, result < 0 ? result : -5, 0, 0);
+    }
+    return NULL;
+}
+
+bool radio_service_init(void)
+{
+    memset(&g_status, 0, sizeof(g_status));
+    g_state_mutex = SDL_CreateMutex();
+    if(g_state_mutex == NULL) return false;
+    SDL_AtomicSet(&g_shutting_down, 0);
+    SDL_AtomicSet(&g_stop_playback, 0);
+    SDL_AtomicSet(&g_playback_running, 0);
+    SDL_AtomicSet(&g_refresh_running, 0);
+    load_favorites();
+    const bool cached = load_cache();
+    g_status.catalog_state = cached ? RADIO_CATALOG_CACHED : RADIO_CATALOG_LOADING;
+    g_status.catalog_generation = cached ? 1U : 0U;
+    g_status.station_count = g_station_count;
+    g_status.playback_state = RADIO_PLAYBACK_STOPPED;
+
+    const int network_error = network_init();
+    if(network_error < 0) {
+        g_status.error_code = network_error;
+        if(!cached) g_status.catalog_state = RADIO_CATALOG_ERROR;
+        return cached;
+    }
+    return radio_service_refresh() || cached;
+}
+
+void radio_service_shutdown(void)
+{
+    if(g_state_mutex == NULL) return;
+    SDL_AtomicSet(&g_shutting_down, 1);
+    radio_service_stop();
+    while(SDL_AtomicGet(&g_refresh_running) || SDL_AtomicGet(&g_playback_running)) {
+        SDL_Delay(10);
+    }
+    network_shutdown();
+    SDL_DestroyMutex(g_state_mutex);
+    g_state_mutex = NULL;
+}
+
+void radio_service_get_status(radio_service_status_t * out_status)
+{
+    if(out_status == NULL) return;
+    SDL_LockMutex(g_state_mutex);
+    *out_status = g_status;
+    SDL_UnlockMutex(g_state_mutex);
+}
+
+bool radio_service_get_station(unsigned index, radio_station_t * out_station)
+{
+    if(out_station == NULL) return false;
+    SDL_LockMutex(g_state_mutex);
+    const bool found = index < g_station_count;
+    if(found) *out_station = g_stations[index];
+    SDL_UnlockMutex(g_state_mutex);
+    return found;
+}
+
+bool radio_service_is_favorite(const char * uuid)
+{
+    if(uuid == NULL) return false;
+    SDL_LockMutex(g_state_mutex);
+    const bool found = favorite_unlocked(uuid);
+    SDL_UnlockMutex(g_state_mutex);
+    return found;
+}
+
+bool radio_service_toggle_favorite(unsigned station_index)
+{
+    SDL_LockMutex(g_state_mutex);
+    if(station_index >= g_station_count) {
+        SDL_UnlockMutex(g_state_mutex);
+        return false;
+    }
+    const char * uuid = g_stations[station_index].uuid;
+    bool now_favorite = true;
+    for(unsigned i = 0; i < g_favorite_count; ++i) {
+        if(strcmp(g_favorites[i], uuid) == 0) {
+            if(i + 1U < g_favorite_count) {
+                memmove(g_favorites[i], g_favorites[i + 1U],
+                        (g_favorite_count - i - 1U) * sizeof(g_favorites[0]));
+            }
+            --g_favorite_count;
+            memset(g_favorites[g_favorite_count], 0, sizeof(g_favorites[0]));
+            now_favorite = false;
+            save_favorites_unlocked();
+            SDL_UnlockMutex(g_state_mutex);
+            return now_favorite;
+        }
+    }
+    if(g_favorite_count < RADIO_MAX_STATIONS) {
+        SDL_strlcpy(g_favorites[g_favorite_count++], uuid, sizeof(g_favorites[0]));
+        save_favorites_unlocked();
+    }
+    SDL_UnlockMutex(g_state_mutex);
+    return now_favorite;
+}
+
+bool radio_service_refresh(void)
+{
+    if(g_http_template < 0 || SDL_AtomicGet(&g_shutting_down) ||
+       !SDL_AtomicCAS(&g_refresh_running, 0, 1)) return false;
+
+    SDL_LockMutex(g_state_mutex);
+    g_status.refreshing = true;
+    if(g_station_count == 0) g_status.catalog_state = RADIO_CATALOG_LOADING;
+    g_status.error_code = 0;
+    SDL_UnlockMutex(g_state_mutex);
+
+    void * thread = NULL;
+    if(scePthreadCreate(&thread, NULL, refresh_thread, NULL, "radio-catalog") != 0) {
+        SDL_AtomicSet(&g_refresh_running, 0);
+        SDL_LockMutex(g_state_mutex);
+        g_status.refreshing = false;
+        if(g_station_count == 0) g_status.catalog_state = RADIO_CATALOG_ERROR;
+        SDL_UnlockMutex(g_state_mutex);
+        return false;
+    }
+    scePthreadDetach(thread);
+    return true;
+}
+
+void radio_service_play(unsigned station_index)
+{
+    if(SDL_AtomicGet(&g_playback_running)) {
+        radio_service_stop();
+        return;
+    }
+    radio_station_t * station = malloc(sizeof(*station));
+    if(station == NULL) return;
+    SDL_LockMutex(g_state_mutex);
+    if(station_index >= g_station_count) {
+        SDL_UnlockMutex(g_state_mutex);
+        free(station);
+        return;
+    }
+    *station = g_stations[station_index];
+    g_status.playing_index = station_index;
+    g_status.playback_state = RADIO_PLAYBACK_CONNECTING;
+    g_status.sample_rate = 0;
+    g_status.channels = 0;
+    g_status.error_code = 0;
+    SDL_UnlockMutex(g_state_mutex);
+
+    SDL_AtomicSet(&g_stop_playback, 0);
+    SDL_AtomicSet(&g_playback_running, 1);
+    void * thread = NULL;
+    if(scePthreadCreate(&thread, NULL, playback_thread, station, "radio-audio") != 0) {
+        SDL_AtomicSet(&g_playback_running, 0);
+        free(station);
+        set_playback_state(RADIO_PLAYBACK_ERROR, -1, 0, 0);
+        return;
+    }
+    scePthreadDetach(thread);
+}
+
+void radio_service_stop(void)
+{
+    if(SDL_AtomicGet(&g_playback_running)) {
+        SDL_AtomicSet(&g_stop_playback, 1);
+        set_playback_state(RADIO_PLAYBACK_STOPPING, 0, 0, 0);
+    }
+}
+
+

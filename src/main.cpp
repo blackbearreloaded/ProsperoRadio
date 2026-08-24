@@ -9,6 +9,9 @@
 #include <RmlUi/Core/SystemInterface.h>
 
 #include "bitmap_font_engine.h"
+#include "radio_app.h"
+#include "radio_ime.h"
+#include "radio_input.h"
 
 #include <cstdio>
 #include <cstddef>
@@ -518,7 +521,7 @@ void PresentColor(SDL_Renderer* renderer, SDL_Window* window, Uint8 red, Uint8 g
     SDL_UpdateWindowSurface(window);
 }
 
-bool RunSmoke() {
+bool RunApp() {
     if (SDL_SetMemoryFunctions(AllocateTracked, CallocTracked, ReallocTracked, FreeTracked) != 0) {
         return false;
     }
@@ -529,7 +532,7 @@ bool RunSmoke() {
     }
     SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window* window = SDL_CreateWindow("Radio Browser PPSA99767", SDL_WINDOWPOS_UNDEFINED,
+    SDL_Window* window = SDL_CreateWindow("PSRadio PPSA99768", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
     SDL_Surface* surface = SDL_GetWindowSurface(window);
     SDL_Renderer* renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
@@ -551,8 +554,15 @@ bool RunSmoke() {
     if (running) running = LoadFonts();
     Rml::Context* context = running ? Rml::CreateContext("radio-browser", {1920, 1080}, adapted_render_interface) : nullptr;
     Rml::ElementDocument* document = context ? context->LoadDocument("ui/main.rml") : nullptr;
+    RadioApp app;
+    bool input_ready = false;
+    bool ime_ready = false;
     if (document) {
         document->Show();
+        input_ready = radio_input_init();
+        ime_ready = input_ready && radio_ime_init();
+        running = input_ready && ime_ready && app.Initialize(document);
+        if (running) sceSystemServiceHideSplashScreen();
     } else {
         PresentColor(renderer, window, 180, 20, 40);
         running = false;
@@ -563,6 +573,11 @@ bool RunSmoke() {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
         }
+        radio_input_poll();
+        radio_input_event_t input{};
+        while (radio_input_next(&input)) app.HandleInput(input);
+        radio_ime_poll();
+        app.Poll();
         context->Update();
         SDL_SetRenderDrawColor(renderer, 7, 16, 22, 255);
         SDL_RenderClear(renderer);
@@ -572,13 +587,21 @@ bool RunSmoke() {
         sceKernelUsleep(16667);
     }
 
-    return running;
+    app.Shutdown();
+    if (ime_ready) radio_ime_shutdown();
+    if (input_ready) radio_input_shutdown();
+    if (document) document->Close();
+    if (context) Rml::RemoveContext("radio-browser");
+    Rml::Shutdown();
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
+    SDL_Quit();
+    return false;
 }
 
 } // namespace
 
 int main() {
-    sceSystemServiceHideSplashScreen();
-    RunSmoke();
+    RunApp();
     KeepProcessAlive();
 }

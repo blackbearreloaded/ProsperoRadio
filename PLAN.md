@@ -1,5 +1,11 @@
 # PS5 Radio Browser
 
+> Implementation status (PPSA99768): the completed sibling LVGL application
+> has now been ported to RmlUi. The original phased plan below is retained as
+> design history; current architecture, controls, validation, and the one
+> remaining international-text boundary are documented in
+> [docs/LVGL_PORT.md](docs/LVGL_PORT.md).
+
 Detailed implementation plan for a native PS5 internet-radio application using
 the Radio Browser API, SDL2, and RmlUi RML/RCSS documents.
 

@@ -1,15 +1,19 @@
 {
-  "titleName": "PS5 Radio Browser PPSA99767",
-  "titleId": "PPSA99767",
-  "conceptId": "99767",
-  "contentId": "UP9000-PPSA99767_00-RADIOAPP00000001",
+  "titleName": "PSRadio PPSA99768",
+  "titleId": "PPSA99768",
+  "conceptId": "99768",
+  "contentId": "UP9000-PPSA99768_00-PSRADIOAPP000001",
   "moduleSdkVersion": "0x02000009",
   "companionSdkVersion": "0x08050001",
   "fselfMagic": "0x1D3D154F",
   "downloadDataSize": 256,
   "sources": [
     "src/main.cpp",
-    "src/bitmap_font_engine.cpp"
+    "src/bitmap_font_engine.cpp",
+    "src/radio_app.cpp",
+    "src/radio_input.c",
+    "src/radio_ime.c",
+    "src/radio_service.c"
   ],
   "compileDefinitions": [
     "SDL_MAIN_HANDLED",
@@ -20,7 +24,8 @@
   "includePaths": [
     "vendor/ps5/sdl/include",
     "vendor/ps5/sdl/include/SDL2",
-    "vendor/ps5/rmlui/include"
+    "vendor/ps5/rmlui/include",
+    "include"
   ],
   "staticArchives": [
     "vendor/ps5/sdl/lib/libSDL2.a",

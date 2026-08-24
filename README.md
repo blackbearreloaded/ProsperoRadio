@@ -1,9 +1,15 @@
-# ps5-native-app-boilerplate
+# PSRadio for PS5
 
-A beginner-oriented C/C++ template for building native PS5 homebrew
-applications. It compiles application code with Clang, links a native PS5 ELF,
-wraps it as a development FSELF, and assembles a complete title directory ready
-for a directory-based homebrew loader.
+A native PS5 internet-radio application using SDL2 and RmlUi. It browses the
+Radio Browser catalog, searches and filters stations, saves favorites, and
+decodes supported AAC streams through native PS5 audio output.
+
+The complete behavior and fixed 1920 x 1080 design were ported from the
+finished LVGL implementation. The UI itself is RML/RCSS, while a custom bitmap
+font engine and retained SDL surface blitter preserve the pixel-exact LVGL text
+masks already validated on PS5 hardware. See the
+[port milestone](docs/LVGL_PORT.md) and the full
+[rendering investigation](docs/RENDERING_INVESTIGATION.md).
 
 The application itself is native C/C++. C# and .NET are used only on the
 development PC during the build. On the first build, the bootstrapper fetches
@@ -11,17 +17,18 @@ a pinned [SharpProspero](https://github.com/SvenGDK/SharpProspero) revision into
 the ignored `.deps/` cache and applies this repository's focused native-app
 compatibility patch. No SharpProspero source is vendored here.
 
-## What you get
+## Application features
 
-- A minimal native application that displays a notification and stays alive.
-- Original BlackBear launcher icon, 4K BC7 selection artwork, and selection
-  music, ready to replace with an application's own identity.
+- Popular, Trending, Top rated, Favorites, and Discover views.
+- Radio Browser station cache, local search, and four faceted filters.
+- Native PS5 IME, controller input, HTTP, AAC decoding, and AudioOut.
+- Persistent favorites and stable stop/switch playback behavior.
+- RmlUi search and credits overlays plus a persistent now-playing rail.
+- Exact generated Montserrat bitmap faces copied without texture sampling.
 - One asset-preparation command for developer-supplied artwork and audio.
 - One editable [`project.json`](project.json) for title metadata and sources.
 - One-command PowerShell build: `./build.ps1`.
 - Selectable folder, UFS2 `.ffpkg`, and compressed `.ffpfsc` outputs.
-- A complete [graphical Hello World example](examples/hello-world/README.md)
-  with CPU-rendered text and geometric figures.
 - A small local C# frontend for the on-demand SharpProspero linker and FSELF
   writer.
 - A source-reproducible clean-room `libc.prx` loader shim.
@@ -76,15 +83,22 @@ existing directory-based loader, such as
 [ShadowMountPlus](https://github.com/drakmor/ShadowMountPlus); do not upload
 only `eboot.bin`.
 
-Read [Getting started](docs/GETTING_STARTED.md) before the first build.
+The current test identity is `PPSA99768`; every future PS5 test build must
+increment it by one. Read [Getting started](docs/GETTING_STARTED.md) before the
+first build.
 
 ## Repository layout
 
 ```text
 project.json                App identity, sources, and build inputs
-src/main.c                  Minimal native application
+src/main.cpp                SDL/RmlUi lifecycle and exact atlas blitter
+src/radio_app.cpp           RmlUi document and application-state controller
+src/radio_service.c         Radio Browser, cache, decoder, and audio service
+src/radio_input.c           Native PS5 controller adapter
+src/radio_ime.c             Native PS5 IME adapter
+ui/main.rml                 Complete 1920 x 1080 application document
+ui/styles/app.rcss          Fixed-layout PS5 stylesheet
 sce_sys/                    Param, icon, BC7 selection art, and optional snd0.at9
-examples/hello-world/       Complete native CPU-rendered graphical example
 build.ps1                   Complete Windows/WSL build
 tools/doctor.ps1            Read-only prerequisite check
 tools/inspect.ps1           Static ELF/FSELF validator
@@ -114,6 +128,8 @@ dist/                       Generated title directory; ignored
 - [Deployment and smoke test](docs/DEPLOYMENT.md)
 - [Platform findings](docs/PLATFORM_NOTES.md)
 - [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [LVGL-to-RmlUi port](docs/LVGL_PORT.md)
+- [Rendering investigation](docs/RENDERING_INVESTIGATION.md)
 - [Contributing](CONTRIBUTING.md)
 
 ## External projects and tools

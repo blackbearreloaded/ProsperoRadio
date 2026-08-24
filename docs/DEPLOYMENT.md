@@ -36,16 +36,15 @@ is not mistaken for the current application.
 
 ## Title ID allocation
 
-The current app identity is `PPSA99700`. Allocate the next app as `PPSA99701`
+The current app identity is `PPSA99768`. Allocate the next app as `PPSA99769`
 and increment the five-digit numeric suffix by one for each future app. Keep
 the `conceptId` and the title-ID portion of `contentId` synchronized.
 
 ## Smoke test
 
-The default application hides the splash screen, displays
-`Hello from ps5-native-app-boilerplate`, and remains alive. The graphical
-example displays its rendered frame and also remains alive. Close either
-application through the home-screen interface.
+PSRadio hides the splash screen after SDL, RmlUi, native controller input, IME,
+and the Radio Browser service initialize. The browse screen then remains alive
+until it is closed through the home-screen interface.
 
 The examples intentionally keep `main` alive. Do not return from `main` or
 call an exit function unless the target loader and application lifecycle

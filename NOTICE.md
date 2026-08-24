@@ -46,15 +46,33 @@ Original ps5-native-app-boilerplate code is Copyright (C) 2026
 BlackBearReloaded and licensed under GPL-3.0-or-later. Source and script files
 carry matching SPDX identifiers.
 
-## Original presentation assets
+## Radio Browser
 
-The BlackBear icon, selection artwork, and default selection track
-`sce_sys/snd0.at9` are original project assets supplied by BlackBearReloaded,
-Copyright (C) 2026 BlackBearReloaded, and distributed under
+Station discovery, metadata, and stream URLs are provided by the free and open
+[Radio Browser](https://www.radio-browser.info/) community service. Radio
+Browser does not host the radio streams. Individual stations remain
+responsible for their streams, branding, and content.
+
+## Fonts and interface artwork
+
+The active bitmap faces are deterministically generated from LVGL's built-in
+Montserrat Medium data. Montserrat is Copyright 2011 The Montserrat Project
+Authors and is distributed under the SIL Open Font License 1.1; the complete
+license accompanies the generated files in `ui/fonts/lvgl-bitmap/OFL.txt`.
+
+PSRadio launcher artwork and controller/interface icons were generated for
+this project with OpenAI image-generation assistance and reviewed and adapted
+by the maintainer. The generated controller images are visual control prompts,
+not official Sony artwork.
+
+## Original selection audio
+
+The selection track `sce_sys/snd0.at9` is an original project asset supplied by
+BlackBearReloaded, Copyright (C) 2026 BlackBearReloaded, and distributed under
 GPL-3.0-or-later. The track is titled `Night Drive`. Its distributable ATRAC9
-master is a 15-second whole-track loop at 48 kHz stereo and
-192 kb/s. The measured integrated loudness of the final encoded excerpt is
-approximately -28.6 LUFS. The lossy source and uncompressed intermediate are
-intentionally not included.
+master is a 15-second whole-track loop at 48 kHz stereo and 192 kb/s. The
+measured integrated loudness of the final encoded excerpt is approximately
+-28.6 LUFS. The lossy source and uncompressed intermediate are intentionally
+not included.
 
 No Sony runtime module, SDK binary, encryption key, or game file is included.
