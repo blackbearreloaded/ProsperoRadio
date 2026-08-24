@@ -37,7 +37,7 @@ Inspect a generated FSELF:
 
 ```powershell
 dotnet run --project tooling/NativeAppBuilder/NativeAppBuilder.csproj -c Release -- `
-  self --inspect --file dist/PPSA99600/eboot.bin
+  self --inspect --file dist/PPSA99001/eboot.bin
 ```
 
 The normal `build.ps1` command invokes the tool automatically. Developers only

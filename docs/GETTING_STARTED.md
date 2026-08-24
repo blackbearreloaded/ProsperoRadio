@@ -70,7 +70,7 @@ procedure.
 
 ## 5. Review the app identity
 
-The repository builds as PSRadio with title ID `PPSA99600`. Keep that identity
+The repository builds as PSRadio with title ID `PPSA99001`. Keep that identity
 for an ordinary source build or release update.
 
 If you maintain a fork or need a second independently installed test title,

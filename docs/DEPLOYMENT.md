@@ -36,7 +36,7 @@ is not mistaken for the current application.
 
 ## Title identity
 
-The official PSRadio identity is `PPSA99600` and should remain stable across
+The official PSRadio identity is `PPSA99001` and should remain stable across
 normal releases so an installed copy can be updated. Forks and parallel test
 installs must choose another unused title ID and keep `titleName`, `conceptId`,
 and the title-ID portion of `contentId` synchronized. A duplicate registered

@@ -52,8 +52,8 @@ preserves crisp, deterministic text rendering at 1920 x 1080.
 ## Current status
 
 The complete browse, search, favorite, cache, and AAC playback loop has been
-validated on PS5 hardware with ShadowMountPlus. The checked-in application
-identity is `PPSA99600`.
+validated on PS5 hardware with ShadowMountPlus. The release display name is
+**PSRadio** and its application identity is `PPSA99001`.
 
 Current playback intentionally requests AAC stations only. MP3, Ogg Vorbis,
 Ogg Opus, FLAC, and HLS delivery are planned and will be exposed only after
@@ -105,9 +105,9 @@ Successful builds are written under `dist/`:
 
 | Command | Output |
 | --- | --- |
-| `./build.ps1` | `dist/PPSA99600/` |
-| `./build.ps1 -OutputFormat Ffpkg` | App folder plus `dist/PPSA99600.ffpkg` |
-| `./build.ps1 -OutputFormat Ffpfsc` | App folder plus `dist/PPSA99600.ffpfsc` |
+| `./build.ps1` | `dist/PPSA99001/` |
+| `./build.ps1 -OutputFormat Ffpkg` | App folder plus `dist/PPSA99001.ffpkg` |
+| `./build.ps1 -OutputFormat Ffpfsc` | App folder plus `dist/PPSA99001.ffpfsc` |
 | `./build.ps1 -OutputFormat All` | App folder and both image formats |
 
 If `dotnet` or Python is installed outside `PATH`, pass the executable directly:
@@ -141,7 +141,7 @@ expected output tree, read [Getting started](docs/GETTING_STARTED.md).
 ## Deploy
 
 Stage exactly one complete build output using a loader that supports it. For
-directory deployment, copy the entire `dist/PPSA99600/` directory; uploading
+directory deployment, copy the entire `dist/PPSA99001/` directory; uploading
 only `eboot.bin` is insufficient. Filesystem-image users can deploy the
 matching `.ffpkg` or `.ffpfsc` instead.
 

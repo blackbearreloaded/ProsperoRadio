@@ -1,8 +1,8 @@
 {
-  "titleName": "PSRadio PPSA99600",
-  "titleId": "PPSA99600",
-  "conceptId": "99600",
-  "contentId": "UP9000-PPSA99600_00-PSRADIOAPP000001",
+  "titleName": "PSRadio",
+  "titleId": "PPSA99001",
+  "conceptId": "99001",
+  "contentId": "UP9000-PPSA99001_00-PSRADIOAPP000001",
   "moduleSdkVersion": "0x02000009",
   "companionSdkVersion": "0x08050001",
   "fselfMagic": "0x1D3D154F",
