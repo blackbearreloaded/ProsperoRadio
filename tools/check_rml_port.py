@@ -40,7 +40,7 @@ def main() -> int:
     assert required <= set(ids), f"missing RML ids: {sorted(required - set(ids))}"
 
     project = json.loads((repo / "project.json").read_text(encoding="utf-8"))
-    assert project["titleId"] == "PPSA99774"
+    assert project["titleId"] == "PPSA99600"
     for source in ("src/radio_app.cpp", "src/radio_input.c", "src/radio_ime.c",
                    "src/radio_service.c", "src/radio_text.cpp"):
         assert source in project["sources"]

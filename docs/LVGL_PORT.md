@@ -185,5 +185,7 @@ chevrons and the rest of the PPSA99772 layout remain unchanged.
 
 PPSA99773 was retired before an app launch after a partial directory-staging
 attempt produced a duplicate-title error and contaminated its ShadowMount
-registration. PPSA99774 carries the identical visual change under the next
-required title ID; no UI or runtime behavior changed between those artifacts.
+registration. PPSA99774 was built but not deployed. At the operator's request,
+PPSA99600 moves the identical visual change to a clean 600-series title range;
+future builds increment from PPSA99601. No UI or runtime behavior changed
+between these artifacts.
