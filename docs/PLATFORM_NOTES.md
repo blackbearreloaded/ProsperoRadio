@@ -51,6 +51,13 @@ environment.
 - Presentation metadata may be cached by the shell or loader. Follow the
   loader's refresh procedure after structural asset changes.
 
+## UI rendering
+
+- The bitmap-font backend requires exact generated sizes. RCSS is limited to
+  the bundled 20, 24, 28, 32, 36, 40, and 48 px faces.
+- The `v0.1.1` top-bar label was hardware-verified on firmware 6.02 with
+  ShadowMountPlus using the 20 px face.
+
 ## Application capabilities
 
 PSRadio uses SDL's CPU-rendered presentation path, native controller input and
