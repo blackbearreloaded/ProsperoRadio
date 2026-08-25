@@ -1,6 +1,8 @@
 #include "radio_service.h"
 
 #include "aac_timing.h"
+#include "ogg_opus.h"
+#include "opus_decoder.h"
 
 #include "SDL.h"
 
@@ -11,7 +13,7 @@
 
 #define CACHE_MAGIC UINT32_C(0x52424331)
 #define FAVORITES_MAGIC UINT32_C(0x52424631)
-#define CATALOG_CACHE_VERSION 2U
+#define CATALOG_CACHE_VERSION 3U
 #define FAVORITES_VERSION 2U
 #define FAVORITES_LEGACY_VERSION 1U
 #define FAVORITES_LEGACY_CAPACITY 100U
@@ -19,15 +21,14 @@
 #define CACHE_TEMP_PATH "/download0/radio-browser-cache.tmp"
 #define FAVORITES_PATH "/download0/radio-browser-favorites.bin"
 #define FAVORITES_TEMP_PATH "/download0/radio-browser-favorites.tmp"
-#define CATALOG_FEED_LIMIT 160U
-#define CATALOG_URL_POPULAR "https://all.api.radio-browser.info/json/stations/search?codec=AAC&hidebroken=true&order=clickcount&reverse=true&limit=160"
-#define CATALOG_URL_TRENDING "https://all.api.radio-browser.info/json/stations/search?codec=AAC&hidebroken=true&order=clicktrend&reverse=true&limit=160"
-#define CATALOG_URL_VOTED "https://all.api.radio-browser.info/json/stations/search?codec=AAC&hidebroken=true&order=votes&reverse=true&limit=160"
+#define CATALOG_FEED_LIMIT 80U
+#define CATALOG_URL(codec, order) "https://all.api.radio-browser.info/json/stations/search?codec=" codec "&hidebroken=true&order=" order "&reverse=true&limit=80"
 #define CLICK_URL_PREFIX "https://all.api.radio-browser.info/json/url/"
 #define USER_AGENT "PSRadio/1.0 (+https://www.radio-browser.info/)"
 #define JSON_CAPACITY (1024U * 1024U)
 #define STREAM_BUFFER_SIZE (64U * 1024U)
 #define PCM_BUFFER_SIZE (2048U * 2U * 2U)
+#define OPUS_PCM_BUFFER_SIZE (5760U * 2U * sizeof(int16_t))
 #define OPEN_READ_ONLY 0x0000
 #define OPEN_WRITE_CREATE_TRUNCATE 0x0601
 #define FILE_MODE_0666 0x01b6
@@ -125,9 +126,12 @@ typedef struct {
 } catalog_feed_source_t;
 
 static const catalog_feed_source_t CATALOG_FEEDS[] = {
-    {CATALOG_URL_POPULAR, FEED_POPULAR},
-    {CATALOG_URL_TRENDING, FEED_TRENDING},
-    {CATALOG_URL_VOTED, FEED_VOTED},
+    {CATALOG_URL("AAC", "clickcount"), FEED_POPULAR},
+    {CATALOG_URL("OPUS", "clickcount"), FEED_POPULAR},
+    {CATALOG_URL("AAC", "clicktrend"), FEED_TRENDING},
+    {CATALOG_URL("OPUS", "clicktrend"), FEED_TRENDING},
+    {CATALOG_URL("AAC", "votes"), FEED_VOTED},
+    {CATALOG_URL("OPUS", "votes"), FEED_VOTED},
 };
 
 extern int sceKernelOpen(const char * path, int flags, uint16_t mode);
@@ -357,7 +361,8 @@ static void network_shutdown(void)
     g_net_pool = -1;
 }
 
-static int http_open(const char * url, bool streaming, int * connection,
+static int http_open(const char * url, bool streaming, const char * codec,
+                     int * connection,
                      int * request)
 {
     *connection = sceHttpCreateConnectionWithURL(g_http_template, url, streaming ? 0 : 1);
@@ -374,7 +379,13 @@ static int http_open(const char * url, bool streaming, int * connection,
     sceHttpSetConnectTimeOut(*request, 5000000U);
     sceHttpSetSendTimeOut(*request, 5000000U);
     sceHttpSetRecvTimeOut(*request, streaming ? 2000000U : 5000000U);
-    sceHttpAddRequestHeader(*request, "Accept", streaming ? "audio/aac, audio/aacp, */*" : "application/json",
+    const char * accept = "application/json";
+    if(streaming) {
+        accept = codec != NULL && strcasecmp(codec, "OPUS") == 0
+            ? "audio/ogg, audio/opus, */*"
+            : "audio/aac, audio/aacp, */*";
+    }
+    sceHttpAddRequestHeader(*request, "Accept", accept,
                             HTTP_HEADER_OVERWRITE);
     if(streaming) {
         sceHttpAddRequestHeader(*request, "Icy-MetaData", "0", HTTP_HEADER_OVERWRITE);
@@ -518,6 +529,11 @@ static int json_integer_field(const char * begin, const char * end,
     return fallback;
 }
 
+static bool supported_codec(const char * codec)
+{
+    return strcasecmp(codec, "AAC") == 0 || strcasecmp(codec, "OPUS") == 0;
+}
+
 static unsigned parse_catalog(const char * json, size_t length,
                               radio_station_t * stations, unsigned capacity)
 {
@@ -568,7 +584,7 @@ static unsigned parse_catalog(const char * json, size_t length,
         const int hls = json_integer_field(object, object_end, "hls", 0);
         const int healthy = json_integer_field(object, object_end, "lastcheckok", 1);
         if(station.uuid[0] != '\0' && station.name[0] != '\0' && station.url[0] != '\0' &&
-           hls == 0 && healthy != 0) {
+           supported_codec(station.codec) && hls == 0 && healthy != 0) {
             stations[count++] = station;
         }
     }
@@ -600,9 +616,42 @@ static void merge_feed(radio_station_t * catalog, unsigned * catalog_count,
             catalog[index].click_count = feed[rank].click_count;
             catalog[index].click_trend = feed[rank].click_trend;
         }
-        if(kind == FEED_POPULAR) catalog[index].popular_rank = (uint16_t)rank;
-        else if(kind == FEED_TRENDING) catalog[index].trending_rank = (uint16_t)rank;
-        else catalog[index].voted_rank = (uint16_t)rank;
+        if(kind == FEED_POPULAR) catalog[index].popular_rank = 0;
+        else if(kind == FEED_TRENDING) catalog[index].trending_rank = 0;
+        else catalog[index].voted_rank = 0;
+    }
+}
+
+static uint16_t * station_rank(radio_station_t * station, catalog_feed_t kind)
+{
+    if(kind == FEED_POPULAR) return &station->popular_rank;
+    if(kind == FEED_TRENDING) return &station->trending_rank;
+    return &station->voted_rank;
+}
+
+static int64_t station_metric(const radio_station_t * station, catalog_feed_t kind)
+{
+    if(kind == FEED_POPULAR) return station->click_count;
+    if(kind == FEED_TRENDING) return station->click_trend;
+    return station->votes;
+}
+
+static void assign_feed_ranks(radio_station_t * catalog, unsigned count)
+{
+    for(catalog_feed_t kind = FEED_POPULAR; kind <= FEED_VOTED; ++kind) {
+        for(unsigned i = 0; i < count; ++i) {
+            uint16_t * rank = station_rank(&catalog[i], kind);
+            if(*rank == RADIO_RANK_NONE) continue;
+            uint16_t value = 0;
+            const int64_t metric = station_metric(&catalog[i], kind);
+            for(unsigned j = 0; j < count; ++j) {
+                if(*station_rank(&catalog[j], kind) == RADIO_RANK_NONE) continue;
+                const int64_t other = station_metric(&catalog[j], kind);
+                if(other > metric || (other == metric && strcmp(catalog[j].uuid, catalog[i].uuid) < 0))
+                    ++value;
+            }
+            *rank = value;
+        }
     }
 }
 
@@ -620,7 +669,7 @@ static int fetch_catalog_feed(const catalog_feed_source_t * source,
     size_t used = 0;
     int connection = -1;
     int request = -1;
-    int error = http_open(source->url, false, &connection, &request);
+    int error = http_open(source->url, false, NULL, &connection, &request);
     while(error == 0 && used < JSON_CAPACITY && !SDL_AtomicGet(&g_shutting_down)) {
         const int received = sceHttpReadData(request, json + used, JSON_CAPACITY - used);
         if(received < 0) error = received;
@@ -648,7 +697,11 @@ static void retain_local_stations(radio_station_t * catalog, unsigned * count)
                                        g_status.playing_index == i;
         if((favorite_unlocked(g_stations[i].uuid) || currently_playing) &&
            station_index(catalog, *count, g_stations[i].uuid) < 0) {
-            catalog[(*count)++] = g_stations[i];
+            radio_station_t retained = g_stations[i];
+            retained.popular_rank = RADIO_RANK_NONE;
+            retained.trending_rank = RADIO_RANK_NONE;
+            retained.voted_rank = RADIO_RANK_NONE;
+            catalog[(*count)++] = retained;
         }
     }
     SDL_UnlockMutex(g_state_mutex);
@@ -671,6 +724,7 @@ static void * refresh_thread(void * unused)
     }
 
     if(successful_feeds != 0 && count != 0 && !SDL_AtomicGet(&g_shutting_down)) {
+        assign_feed_ranks(parsed, count);
         retain_local_stations(parsed, &count);
         save_cache(parsed, count);
         SDL_LockMutex(g_state_mutex);
@@ -803,6 +857,107 @@ static void sink_close(audio_sink_t * sink)
     sink->handle = -1;
 }
 
+typedef struct {
+    opus_decoder_t decoder;
+    audio_sink_t sink;
+    int16_t * pcm;
+    uint32_t stream_serial;
+    size_t pre_skip_frames;
+    int result;
+    bool decoder_open;
+} opus_playback_t;
+
+static void opus_playback_reset(opus_playback_t * playback)
+{
+    sink_close(&playback->sink);
+    opus_decoder_close(&playback->decoder);
+    playback->decoder_open = false;
+    playback->stream_serial = 0;
+    playback->pre_skip_frames = 0;
+}
+
+static int opus_packet_ready(const ogg_opus_packet_t * packet, void * user_data)
+{
+    opus_playback_t * playback = user_data;
+    if(!playback->decoder_open || playback->stream_serial != packet->stream_serial) {
+        opus_playback_reset(playback);
+        playback->sink.handle = -1;
+        playback->result = opus_decoder_open(&playback->decoder, packet->channels);
+        if(playback->result < 0) return -1;
+        playback->decoder_open = true;
+        playback->stream_serial = packet->stream_serial;
+        playback->pre_skip_frames = packet->pre_skip;
+    }
+
+    size_t produced = 0;
+    playback->result = opus_decoder_decode(
+        &playback->decoder, packet->data, packet->size,
+        playback->pcm, OPUS_PCM_BUFFER_SIZE, &produced);
+    if(playback->result < 0) return -1;
+    const size_t frame_bytes = packet->channels * sizeof(int16_t);
+    if(frame_bytes == 0U || produced % frame_bytes != 0U) {
+        playback->result = -1;
+        return -1;
+    }
+
+    size_t frames = produced / frame_bytes;
+    size_t skip = playback->pre_skip_frames < frames ? playback->pre_skip_frames : frames;
+    playback->pre_skip_frames -= skip;
+    frames -= skip;
+    if(frames == 0U) return 0;
+
+    if(playback->sink.handle < 0) {
+        playback->result = sink_open(&playback->sink, 48000U, packet->channels);
+        if(playback->result < 0) return -1;
+        set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 48000U, packet->channels);
+    }
+    playback->result = sink_push_pcm(
+        &playback->sink, playback->pcm + skip * packet->channels,
+        (unsigned)(frames * packet->channels));
+    return playback->result < 0 ? -1 : 0;
+}
+
+static int play_opus_request(int request)
+{
+    uint8_t * stream = malloc(STREAM_BUFFER_SIZE);
+    ogg_opus_parser_t * parser = malloc(sizeof(*parser));
+    opus_playback_t playback;
+    memset(&playback, 0, sizeof(playback));
+    playback.sink.handle = -1;
+    playback.pcm = malloc(OPUS_PCM_BUFFER_SIZE);
+    if(stream == NULL || parser == NULL || playback.pcm == NULL) {
+        free(playback.pcm);
+        free(parser);
+        free(stream);
+        return -1;
+    }
+
+    ogg_opus_init(parser, opus_packet_ready, &playback);
+    int result = 0;
+    while(!SDL_AtomicGet(&g_stop_playback)) {
+        const int received = sceHttpReadData(request, stream, STREAM_BUFFER_SIZE);
+        if(received < 0) {
+            result = received;
+            break;
+        }
+        if(received == 0) {
+            result = -3;
+            break;
+        }
+        const ogg_opus_result_t parsed = ogg_opus_feed(parser, stream, (size_t)received);
+        if(parsed != OGG_OPUS_OK) {
+            result = parsed == OGG_OPUS_ERR_CALLBACK ? playback.result : (int)parsed;
+            break;
+        }
+    }
+
+    opus_playback_reset(&playback);
+    free(playback.pcm);
+    free(parser);
+    free(stream);
+    return SDL_AtomicGet(&g_stop_playback) ? 0 : result;
+}
+
 static size_t find_adts(const uint8_t * data, size_t size)
 {
     for(size_t i = 0; i + 1U < size; ++i) {
@@ -817,7 +972,7 @@ static int play_stream(const radio_station_t * station)
     SDL_snprintf(click_url, sizeof(click_url), "%s%s", CLICK_URL_PREFIX, station->uuid);
     int click_connection = -1;
     int click_request = -1;
-    if(http_open(click_url, false, &click_connection, &click_request) >= 0) {
+    if(http_open(click_url, false, NULL, &click_connection, &click_request) >= 0) {
         uint8_t discard[256];
         while(sceHttpReadData(click_request, discard, sizeof(discard)) > 0) {}
     }
@@ -826,10 +981,16 @@ static int play_stream(const radio_station_t * station)
 
     int connection = -1;
     int request = -1;
-    int result = http_open(station->url, true, &connection, &request);
+    int result = http_open(station->url, true, station->codec, &connection, &request);
     if(result < 0) return result;
     const unsigned source_channels = http_audio_channels(request);
     set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 0, 0);
+
+    if(strcasecmp(station->codec, "OPUS") == 0) {
+        result = play_opus_request(request);
+        http_close(connection, request);
+        return result;
+    }
 
     uint8_t * stream = malloc(STREAM_BUFFER_SIZE);
     uint8_t * pcm = malloc(PCM_BUFFER_SIZE);
@@ -979,13 +1140,13 @@ static void * playback_thread(void * station_copy)
     radio_station_t * station = station_copy;
     const int result = play_stream(station);
     free(station);
-    SDL_AtomicSet(&g_playback_running, 0);
     if(SDL_AtomicGet(&g_stop_playback) || SDL_AtomicGet(&g_shutting_down)) {
         set_playback_state(RADIO_PLAYBACK_STOPPED, 0, 0, 0);
     }
     else {
         set_playback_state(RADIO_PLAYBACK_ERROR, result < 0 ? result : -5, 0, 0);
     }
+    SDL_AtomicSet(&g_playback_running, 0);
     return NULL;
 }
 
@@ -1150,5 +1311,3 @@ void radio_service_stop(void)
         set_playback_state(RADIO_PLAYBACK_STOPPING, 0, 0, 0);
     }
 }
-
-

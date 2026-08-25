@@ -69,6 +69,13 @@ The installed PS5 Payload SDK remains a build prerequisite. No proprietary Sony
 SDK library, firmware module, encryption key, or extracted game file is
 distributed in the dependency snapshot.
 
+The tracked `libSceSysmodule_stub.a` and `libSceOpusDec_stub.a` files are
+generated import metadata used only to bind public runtime symbols supplied by
+the console. Their symbol-name inputs are retained beside them, and the build
+pins their SHA-256 digests. They contain no decoder implementation or extracted
+Sony executable code. No `libSceOpusDec` runtime module is packaged with the
+application.
+
 ## Radio Browser
 
 Station discovery, metadata, and stream URLs are provided by the free and open

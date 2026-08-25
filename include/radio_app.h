@@ -39,7 +39,7 @@ private:
     unsigned visible_count_ = 0;
     unsigned page_start_ = 0;
     unsigned selected_slot_ = 0;
-    unsigned pending_play_index_ = InvalidStation;
+    char pending_play_uuid_[40]{};
     unsigned focus_ = 0;
     unsigned search_focus_ = 0;
     View view_ = View::Popular;

@@ -2,7 +2,8 @@
 
 PSRadio's current release baseline includes the complete RmlUi interface,
 Radio Browser catalog and search, persistent cache and favorites, native input
-and IME, and AAC/HE-AAC playback through PS5 AudioOut.
+and IME, AAC/HE-AAC playback, and an integrated Ogg Opus path through PS5
+AudioOut.
 
 New stream formats are enabled in Radio Browser queries only after they pass
 on-device playback, stop, station-switching, reconnect, and error-recovery
@@ -49,11 +50,17 @@ identified in the current firmware library inventory.
 MP3 is the next playback milestone because it can reuse the existing continuous
 HTTP, buffering, PCM conversion, and AudioOut paths.
 
-## 2. Ogg Vorbis and Ogg Opus
+## 2. Ogg Opus and Ogg Vorbis
 
-- Add the minimal Ogg demuxing required by live radio streams.
-- Investigate `libSceOpusDec`, `libSceOpusCeltDec`, AJMI, and AvPlayer's
-  confirmed Opus hardware branch before selecting an Opus decoder.
+- [x] Add bounded incremental Ogg demuxing for live Opus radio streams,
+  including continued packets and chained logical streams.
+- [x] Validate `libSceOpusDec` on PS5 with a known 20 ms, 48 kHz stereo packet.
+- [x] Integrate native Opus decoding, pre-skip handling, and the existing
+  AudioOut sink into the production player.
+- [ ] Validate Ogg page CRCs before dispatch and apply Opus output gain and
+  end-granule trimming for full container-spec compliance.
+- [ ] Complete audible playback, stop, rapid station-switching, reconnect, and
+  long-running validation against live Radio Browser Opus stations.
 - Investigate AvPlayer and the firmware library inventory for a callable
   Vorbis path.
 - Integrate redistributable software decoders only for formats without a
@@ -62,8 +69,9 @@ HTTP, buffering, PCM conversion, and AudioOut paths.
 - Validate malformed pages, chained streams, reconnects, long-running playback,
   and rapid station switching.
 
-Vorbis and Opus share an Ogg-container milestone but remain independently
-gated capabilities.
+The Opus packet-to-PCM probe produced the expected 960 stereo frames (3,840
+signed-16 PCM bytes) with nonzero output. Vorbis remains a separately gated
+capability and will not be advertised until its own decoder path is validated.
 
 ## 3. FLAC
 

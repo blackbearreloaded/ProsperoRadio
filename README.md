@@ -14,7 +14,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-PlayStation%205-003791?logo=playstation&amp;logoColor=white" alt="PlayStation 5">
   <img src="https://img.shields.io/badge/UI-RmlUi%20%2B%20SDL2-70E1DC" alt="RmlUi and SDL2">
-  <img src="https://img.shields.io/badge/audio-AAC-5DDFA4" alt="AAC audio">
+  <img src="https://img.shields.io/badge/audio-AAC%20%2B%20Opus-5DDFA4" alt="AAC and Opus audio">
   <a href="https://github.com/blackbearreloaded/psradio/releases/latest"><img src="https://img.shields.io/github/v/release/blackbearreloaded/psradio?display_name=tag&amp;sort=semver&amp;label=latest%20release" alt="Latest release"></a>
   <a href="https://github.com/blackbearreloaded/psradio/actions/workflows/build.yml"><img src="https://github.com/blackbearreloaded/psradio/actions/workflows/build.yml/badge.svg" alt="Build status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="GPL-3.0-or-later"></a>
@@ -23,7 +23,7 @@
 PSRadio is a native C/C++ application for compatible PS5 homebrew environments.
 It queries the community-run [Radio Browser](https://www.radio-browser.info/)
 service, keeps a local station cache and favorites list, and decodes supported
-AAC streams through the console's native audio facilities.
+AAC and Ogg Opus streams through the console's native audio facilities.
 
 The television interface is authored in RML and RCSS. SDL2 provides the native
 window and software presentation path, while a custom RmlUi bitmap-font backend
@@ -47,7 +47,7 @@ radio client, controller-first interface, media stack, and bundled dependencies.
 - Cached catalog search with country, genre, language, and bitrate filters.
 - DualSense-friendly navigation using the D-pad or left analog stick.
 - Native PS5 on-screen keyboard for text search.
-- AAC and HE-AAC playback with buffering, reconnect, resampling, and AudioOut.
+- AAC, HE-AAC, and Ogg Opus playback through native PS5 decoders and AudioOut.
 - Persistent favorites and cached catalog data under `/download0`.
 - Responsive play, stop, station switching, paging, and refresh actions.
 - RmlUi overlays, fixed television safe area, and a persistent now-playing rail.
@@ -59,13 +59,13 @@ radio client, controller-first interface, media stack, and bundled dependencies.
 ## Current status
 
 The complete browse, search, favorite, cache, and AAC playback loop has been
-validated on PS5 hardware with ShadowMountPlus. The release display name is
-**PSRadio** and its application identity is `PPSA99001`.
+validated on PS5 hardware with ShadowMountPlus. Native Opus packet decoding has
+also been validated on hardware; the integrated Ogg Opus streaming path is the
+focus of the `0.2.0` device test. The release display name is **PSRadio** and
+its stable application identity is `PPSA99001`.
 
-Current playback intentionally requests AAC stations only. MP3, Ogg Vorbis,
-Ogg Opus, FLAC, and HLS delivery are planned and will be exposed only after
-their decoder and recovery paths pass hardware validation. See the
-[roadmap](ROADMAP.md).
+Catalog requests advertise AAC and Opus stations. MP3, Ogg Vorbis, FLAC, and
+HLS delivery remain gated by the hardware-first work in the [roadmap](ROADMAP.md).
 
 ## Requirements
 
@@ -180,7 +180,9 @@ build.ps1                    Windows/WSL build orchestrator
 include/                     Native application interfaces
 src/main.cpp                 SDL, RmlUi, renderer, and application lifecycle
 src/radio_app.cpp            UI state, navigation, search, and station actions
-src/radio_service.c          Radio Browser, persistence, AAC decode, and AudioOut
+src/radio_service.c          Radio Browser, persistence, audio streams, and AudioOut
+src/ogg_opus.c               Incremental Ogg Opus demuxing
+src/opus_decoder.c           Native PS5 Opus decoder adapter
 src/radio_input.c            Native controller adapter
 src/radio_ime.c              Native on-screen keyboard adapter
 src/radio_text.cpp           Arabic shaping and visual RTL ordering

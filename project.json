@@ -1,7 +1,7 @@
 {
   "titleName": "PSRadio",
-  "version": "0.1.1",
-  "contentVersion": "01.000.001",
+  "version": "0.2.0",
+  "contentVersion": "01.000.002",
   "masterVersion": "01.00",
   "titleId": "PPSA99001",
   "conceptId": "99001",
@@ -17,6 +17,8 @@
     "src/radio_text.cpp",
     "src/radio_input.c",
     "src/radio_ime.c",
+    "src/ogg_opus.c",
+    "src/opus_decoder.c",
     "src/radio_service.c"
   ],
   "compileDefinitions": [
@@ -42,7 +44,9 @@
   ],
   "stubLibraries": [
     "vendor/ps5/sdk/stubs/libSceLibcInternal.so",
-    "vendor/ps5/sdk/stubs/libkernel.so"
+    "vendor/ps5/sdk/stubs/libkernel.so",
+    "vendor/ps5/sdk/stubs/libSceSysmodule_stub.a",
+    "vendor/ps5/sdk/stubs/libSceOpusDec_stub.a"
   ],
   "appFiles": [],
   "runtimeModules": [

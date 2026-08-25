@@ -19,7 +19,7 @@ radio_app.cpp <----> RmlUi document and RCSS
 radio_service.c
   |        |        |
   |        |        +--> /download0 cache and favorites
-  |        +-----------> AAC decoder -> PCM conversion -> AudioOut
+  |        +-----------> AAC / Ogg Opus -> native decoders -> PCM -> AudioOut
   +--------------------> Radio Browser over native HTTP/TLS
 ```
 
@@ -82,17 +82,17 @@ Font sources and licenses are documented in [`NOTICE.md`](../NOTICE.md).
 ## Radio Browser and persistence
 
 [`src/radio_service.c`](../src/radio_service.c) uses native PS5 network, SSL, and
-HTTP services. Three bounded Radio Browser feeds are merged into one station
-catalog:
+HTTP services. Six bounded Radio Browser feeds are merged into one station
+catalog. AAC and Opus variants are requested for each ranking:
 
 - popular by click count;
 - trending by click trend;
 - top rated by vote count.
 
-The current queries request AAC stations with `hidebroken=true`. Responses are
-parsed into the fixed-size `radio_station_t` model and capped at 480 merged
-stations. Catalog refresh runs on a background thread and publishes changes
-under an SDL mutex.
+The queries use `hidebroken=true`. Responses are restricted to supported AAC
+and Opus codecs, parsed into the fixed-size `radio_station_t` model, merged by
+station UUID, ranked across codecs, and capped at 480 stations. Catalog refresh
+runs on a background thread and publishes changes under an SDL mutex.
 
 The latest usable catalog and favorite UUIDs are stored atomically under
 `/download0`:
@@ -113,9 +113,10 @@ Playback runs on a separate native thread:
 ```text
 resolved station URL
   -> native HTTP continuous read
-  -> ADTS synchronization and frame timing
-  -> native AAC decoder
-  -> channel conversion and 48 kHz resampling
+  -> codec dispatch
+       AAC  -> ADTS synchronization -> native AAC decoder
+       Opus -> incremental Ogg demux -> native libSceOpusDec decoder
+  -> channel conversion and 48 kHz resampling when required
   -> bounded PCM chunks
   -> PS5 AudioOut
 ```
@@ -124,8 +125,11 @@ The player supports stop and station-switch cancellation while connecting,
 buffering, or playing. Decoder, network, and output failures are reported as
 service state rather than terminating the UI.
 
-AAC is the only codec currently advertised by catalog requests. Planned codec
-and container work is tracked in [`ROADMAP.md`](../ROADMAP.md).
+The Ogg parser is project-owned, allocation-free state with bounded packet
+storage. It validates stream structure, Opus headers, packet limits, page
+sequence, continuation, and chained serial transitions before compressed
+packets reach the platform decoder. AAC and Opus are currently advertised;
+planned codec and delivery work is tracked in [`ROADMAP.md`](../ROADMAP.md).
 
 ## Input and text entry
 
@@ -157,6 +161,8 @@ PS5 hardware:
 
 - `tools/check_ui.py`: RML IDs, atlas geometry, licenses, and TGA assets;
 - `tools/aac_timing_check.c`: AAC timing and resampling calculations;
+- `tools/ogg_opus_check.c`: split-input Ogg pages, packet continuation,
+  chained streams, and malformed-input rejection;
 - `tools/radio_input_check.c`: controller edge, dead-zone, and repeat behavior;
 - `tools/radio_text_check.cpp`: UTF-8 shaping and right-to-left ordering;
 - `tools/inspect.ps1`: ELF/FSELF structure and required imports.

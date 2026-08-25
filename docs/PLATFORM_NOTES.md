@@ -55,12 +55,14 @@ environment.
 
 - The bitmap-font backend requires exact generated sizes. RCSS is limited to
   the bundled 20, 24, 28, 32, 36, 40, and 48 px faces.
-- The `v0.1.1` top-bar label was hardware-verified on firmware 6.02 with
-  ShadowMountPlus using the 20 px face.
+- The version top-bar label was hardware-verified on firmware 6.02 with
+  ShadowMountPlus using the 20 px face. It is generated from `project.json`.
 
 ## Application capabilities
 
 PSRadio uses SDL's CPU-rendered presentation path, native controller input and
-IME, native HTTP/TLS, `/download0` persistence, native AAC decoding, and
-AudioOut. GPU rendering and GPU decode are outside this repository's scope.
-See [Architecture](ARCHITECTURE.md) for the runtime boundaries.
+IME, native HTTP/TLS, `/download0` persistence, native AAC and Opus decoding,
+and AudioOut. The `libSceOpusDec` packet-to-PCM path is hardware-verified on
+firmware 6.02; live-stream lifecycle validation is tracked in the roadmap. GPU
+rendering and GPU decode are outside this repository's scope. See
+[Architecture](ARCHITECTURE.md) for the runtime boundaries.

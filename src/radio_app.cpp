@@ -469,7 +469,7 @@ void RadioApp::RefreshPlayback(const radio_service_status_t& status) {
         case RADIO_PLAYBACK_CONNECTING:
             text = "Connecting to station"; warning = true; break;
         case RADIO_PLAYBACK_BUFFERING:
-            text = "Buffering native AAC"; warning = true; break;
+            text = "Buffering native audio"; warning = true; break;
         case RADIO_PLAYBACK_PLAYING:
             std::snprintf(state_text, sizeof(state_text), "Playing  |  %u Hz  |  %u ch",
                 status.sample_rate, status.channels);
@@ -521,7 +521,7 @@ void RadioApp::RefreshPlayback(const radio_service_status_t& status) {
         SetText(document_, "now-badge", "--");
         SetText(document_, "now-name", "Nothing playing");
         SetText(document_, "now-meta", "Choose a station and press Cross");
-        SetText(document_, "now-state", "Native AAC audio ready");
+        SetText(document_, "now-state", "Native AAC / Opus audio ready");
         SetClass(document_, "now-state", "warning", false);
         SetClass(document_, "now-state", "error", false);
     }
@@ -710,8 +710,12 @@ void RadioApp::TogglePlayback() {
     radio_service_status_t status{};
     radio_service_get_status(&status);
     if (PlaybackActive(status.playback_state)) {
-        if (status.playing_index != card_stations_[selected_slot_])
-            pending_play_index_ = card_stations_[selected_slot_];
+        pending_play_uuid_[0] = '\0';
+        if (status.playing_index != card_stations_[selected_slot_]) {
+            radio_station_t station{};
+            if (radio_service_get_station(card_stations_[selected_slot_], &station))
+                CopyString(pending_play_uuid_, sizeof(pending_play_uuid_), station.uuid);
+        }
         radio_service_stop();
     }
     else radio_service_play(card_stations_[selected_slot_]);
@@ -869,12 +873,20 @@ void RadioApp::Poll() {
         RebuildFacets();
         RefreshAll();
     }
-    if (pending_play_index_ != InvalidStation &&
+    if (*pending_play_uuid_ &&
         status.playback_state == RADIO_PLAYBACK_STOPPED) {
-        const unsigned station = pending_play_index_;
-        pending_play_index_ = InvalidStation;
-        radio_service_play(station);
-        radio_service_get_status(&status);
+        char pending_uuid[sizeof(pending_play_uuid_)]{};
+        CopyString(pending_uuid, sizeof(pending_uuid), pending_play_uuid_);
+        pending_play_uuid_[0] = '\0';
+        for (unsigned i = 0; i < status.station_count; ++i) {
+            radio_station_t station{};
+            if (radio_service_get_station(i, &station) &&
+                std::strcmp(station.uuid, pending_uuid) == 0) {
+                radio_service_play(i);
+                radio_service_get_status(&status);
+                break;
+            }
+        }
     }
     if (!have_last_status_ ||
         status.playback_state != last_status_.playback_state ||

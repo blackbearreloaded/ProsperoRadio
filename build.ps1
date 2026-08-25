@@ -227,11 +227,21 @@ foreach ($archive in $staticArchives) {
 }
 $stubLibraries = @($project.stubLibraries) | Where-Object { $_ }
 foreach ($stub in $stubLibraries) {
-    if ($stub -notmatch '^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\.(so|sprx)$') {
+    if ($stub -notmatch '^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*\.(so|sprx|a)$') {
         Fail "Invalid stub library path: $stub"
     }
     if (-not (Test-Path -LiteralPath (Join-Path $here $stub) -PathType Leaf)) {
         Fail "Stub library not found: $stub"
+    }
+}
+$pinnedImportStubs = @{
+    "vendor/ps5/sdk/stubs/libSceSysmodule_stub.a" = "CFAD953132F0BAC90FA636E304F267AD82A7C71E7F41D69943C07416F788C214"
+    "vendor/ps5/sdk/stubs/libSceOpusDec_stub.a" = "2D9D2FED83D16B4B3D975FC00314AF72B5F035486D9A2819B293D3CD0E81616B"
+}
+foreach ($stub in $pinnedImportStubs.Keys) {
+    $actual = (Get-FileHash -LiteralPath (Join-Path $here $stub) -Algorithm SHA256).Hash
+    if ($actual -ne $pinnedImportStubs[$stub]) {
+        Fail "Generated import stub hash mismatch: $stub"
     }
 }
 
