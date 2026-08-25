@@ -29,6 +29,12 @@ The television interface is authored in RML and RCSS. SDL2 provides the native
 window and software presentation path, while a custom RmlUi bitmap-font backend
 preserves crisp, deterministic text rendering at 1920 x 1080.
 
+PSRadio is built on
+[PS5 Native App Boilerplate](https://github.com/blackbearreloaded/ps5-native-app-boilerplate),
+which provides the reproducible native build, host-side tooling, clean-room
+runtime shim, and package pipeline. PSRadio extends that foundation with its
+radio client, controller-first interface, media stack, and bundled dependencies.
+
 > [!IMPORTANT]
 > PSRadio does not run on an unmodified retail console. It is intended for
 > consoles you own with an already configured, compatible homebrew loader.
@@ -223,6 +229,30 @@ wsl /tmp/radio-text-check
 
 Then run `./tools/doctor.ps1` and `./build.ps1`. Hardware-specific changes
 should also be tested on the intended firmware and loader before a release.
+
+## Updating the boilerplate foundation
+
+PSRadio records the boilerplate commit it was derived from in Git history, so
+future foundation changes can be reviewed and merged normally instead of copied
+file by file. Configure the read-only upstream remote once:
+
+```bash
+git remote add boilerplate git@github.com:blackbearreloaded/ps5-native-app-boilerplate.git
+git config remote.boilerplate.tagOpt --no-tags
+git remote set-url --push boilerplate DISABLED
+```
+
+Then review and merge updates:
+
+```bash
+git fetch --no-tags boilerplate main
+git log --oneline HEAD..boilerplate/main
+git merge boilerplate/main
+```
+
+The repositories have independent `v*` release tags, so boilerplate tags are
+intentionally not fetched. Resolve any application-specific conflicts, run the
+development checks above, and complete a full build before pushing the merge.
 
 ## Acknowledgements
 
