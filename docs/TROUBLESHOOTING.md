@@ -89,6 +89,12 @@ compatibility patch deliberately. Do not silence unresolved symbols.
   not package assets. Their absence on a synthetic homebrew concept is expected
   and cannot be fixed by renaming or adding another local image.
 
+## Text is missing while its layout remains visible
+
+PSRadio's deterministic bitmap backend requires an exact generated font size.
+Use only the sizes bundled under `ui/fonts/lvgl-bitmap`: 20, 24, 28, 32, 36,
+40, or 48 px. `tools/check_ui.py` rejects unsupported RCSS sizes before build.
+
 ## The app immediately crashes
 
 - Do not return from `main` or call an exit function.

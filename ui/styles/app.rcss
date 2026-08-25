@@ -77,12 +77,12 @@ button {
 #brand-version {
     position: absolute;
     left: 286px;
-    top: 32px;
-    width: 92px;
-    height: 32px;
+    top: 30px;
+    width: 100px;
+    height: 36px;
     overflow: visible;
     color: #6cdbd9;
-    font-size: 18px;
+    font-size: 20px;
     line-height: 32px;
 }
 

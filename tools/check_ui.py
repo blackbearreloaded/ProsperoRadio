@@ -29,6 +29,13 @@ def main() -> int:
     ids = [value for element in root.iter() if (value := element.get("id"))]
     assert len(ids) == len(set(ids)), "RML ids must be unique"
 
+    stylesheet = (repo / "ui" / "styles" / "app.rcss").read_text(encoding="utf-8")
+    supported_font_sizes = {20, 24, 28, 32, 36, 40, 48}
+    used_font_sizes = {int(size) for size in re.findall(r"font-size:\s*([0-9]+)px", stylesheet)}
+    assert used_font_sizes <= supported_font_sizes, (
+        f"unsupported bitmap font sizes: {sorted(used_font_sizes - supported_font_sizes)}"
+    )
+
     required = set(FIXED_IDS)
     required.update(f"tab-{index}" for index in range(5))
     required.update(f"discover-{index}" for index in range(3))
