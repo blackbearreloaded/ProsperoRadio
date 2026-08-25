@@ -9,11 +9,39 @@ on-device playback, stop, station-switching, reconnect, and error-recovery
 checks. This prevents the catalog from advertising stations that the packaged
 player cannot use.
 
+## Hardware-first decoder policy
+
+Every new codec begins with an investigation of the PS5's existing decoder
+libraries. Prefer a callable platform decoder when it can be used reliably by
+a homebrew application. Bundle a software decoder only when the native path is
+absent, inaccessible, or fails the target validation matrix.
+
+The investigation gate for each codec is:
+
+1. Inventory relevant system libraries, exports, SDK bindings, and existing
+   IDA databases.
+2. Establish whether the path reaches the device-backed AJM service, a CPU
+   decoder module, or another implementation.
+3. Build the smallest target probe that decodes representative frames to PCM.
+4. Record runtime behavior, firmware context, and failure modes before choosing
+   the production decoder.
+
+Use the term **hardware/firmware audio offload** unless runtime evidence proves
+a more specific hardware implementation.
+
+Current candidates are `libSceAudiodec` plus AJM for AAC and MP3,
+`libSceOpusDec` / `libSceOpusCeltDec` plus AJMI for Opus, and AvPlayer for
+container-managed tracks. No dedicated Vorbis or FLAC decoder library has been
+identified in the current firmware library inventory.
+
 ## 1. MP3 playback
 
 - Add codec detection and a shared compressed-audio-to-PCM boundary.
 - Preserve the existing native AAC implementation behind that boundary.
-- Integrate a redistributable open-source MP3 decoder and frame synchronizer.
+- Validate the native `libSceAudiodec` MP3 path (`codec 0x0002`) and derive
+  sample rate and channel count from MPEG frame headers.
+- Use a redistributable open-source MP3 decoder only if the native path fails
+  the hardware-first investigation gate.
 - Handle ICY metadata without disrupting MP3 frame alignment.
 - Validate representative sample rates, channel layouts, and malformed streams
   on PS5 before exposing AAC and MP3 stations together.
@@ -24,7 +52,12 @@ HTTP, buffering, PCM conversion, and AudioOut paths.
 ## 2. Ogg Vorbis and Ogg Opus
 
 - Add the minimal Ogg demuxing required by live radio streams.
-- Integrate redistributable Vorbis and Opus decoders.
+- Investigate `libSceOpusDec`, `libSceOpusCeltDec`, AJMI, and AvPlayer's
+  confirmed Opus hardware branch before selecting an Opus decoder.
+- Investigate AvPlayer and the firmware library inventory for a callable
+  Vorbis path.
+- Integrate redistributable software decoders only for formats without a
+  validated native route.
 - Normalize decoded channels and sample rates for the current output path.
 - Validate malformed pages, chained streams, reconnects, long-running playback,
   and rapid station switching.
@@ -34,7 +67,10 @@ gated capabilities.
 
 ## 3. FLAC
 
-- Add a small redistributable FLAC decoder.
+- Investigate AvPlayer and the firmware library inventory for a callable FLAC
+  path before selecting a decoder.
+- Add a small redistributable FLAC decoder only if no usable native route is
+  found.
 - Size compressed and PCM buffers for higher-bitrate lossless streams.
 - Measure memory use, underrun behavior, and sustained playback on PS5.
 - Expose FLAC stations only when the runtime cost remains acceptable.
@@ -59,13 +95,13 @@ HLS is a delivery protocol rather than a codec and is tracked separately.
   consistently.
 - Expand localization while retaining deterministic television rendering.
 - Reduce packaged font-atlas size without reducing currently supported scripts.
-- Add release automation once the public repository and release naming scheme
-  are stable.
 
 ## Definition of done for a new format
 
 - All bundled decoder dependencies permit redistribution and are recorded in
   `NOTICE.md`.
+- The hardware-first investigation result and selected decoder path are
+  documented, including whether decoding is offloaded or CPU-based.
 - The packaged build advertises only the codecs it enables.
 - Controller input remains responsive during network and decoder activity.
 - Unsupported containers and codec variants fail without crashing.
