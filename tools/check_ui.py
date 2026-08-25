@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+import re
 import struct
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -18,7 +19,7 @@ FIXED_IDS = {
     "play-button", "play-icon", "play-label", "now-art", "now-badge", "now-name",
     "now-meta", "now-state", "credit-button", "connection-dot", "connection-label",
     "search-overlay", "search-query", "search-query-label", "search-reset", "search-apply",
-    "credits-overlay", "credits-close", "brand-mark",
+    "credits-overlay", "credits-close", "brand-mark", "brand-version",
 }
 
 
@@ -41,7 +42,10 @@ def main() -> int:
 
     project = json.loads((repo / "project.json").read_text(encoding="utf-8"))
     assert project["titleName"] == "PSRadio"
+    assert re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)",
+                        project["version"])
     assert project["titleId"] == "PPSA99001"
+    assert root.find(".//*[@id='brand-version']").text == "v{{PSRADIO_VERSION}}"
     for source in ("src/radio_app.cpp", "src/radio_input.c", "src/radio_ime.c",
                    "src/radio_service.c", "src/radio_text.cpp"):
         assert source in project["sources"]

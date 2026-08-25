@@ -26,6 +26,15 @@ jobs:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Verify release version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = (Get-Content project.json -Raw | ConvertFrom-Json).version
+          if ($env:GITHUB_REF_NAME -cne "v$version") {
+            throw "Tag $env:GITHUB_REF_NAME does not match project version v$version."
+          }
+
       - name: Set up .NET 10
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:

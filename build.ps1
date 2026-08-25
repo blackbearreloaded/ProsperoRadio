@@ -104,6 +104,9 @@ if ($project.fselfMagic -notin @("0x1D3D154F", "0xEEF51454")) {
 if ([string]::IsNullOrWhiteSpace($project.titleName)) {
     Fail "project.json titleName cannot be empty."
 }
+if ($project.version -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
+    Fail "project.json version must use major.minor.patch format."
+}
 if ([long]$project.downloadDataSize -lt 0) {
     Fail "project.json downloadDataSize cannot be negative."
 }
@@ -319,6 +322,12 @@ foreach ($assetName in @("pic0.dds", "pic1.dds", "snd0.at9")) {
 
 if (Test-Path -LiteralPath $uiPath -PathType Container) {
     Copy-Item -LiteralPath $uiPath -Destination (Join-Path $app "ui") -Recurse -Force
+    $mainRml = Join-Path $app "ui/main.rml"
+    if (Test-Path -LiteralPath $mainRml -PathType Leaf) {
+        $rml = [IO.File]::ReadAllText($mainRml)
+        $rml = $rml.Replace("{{PSRADIO_VERSION}}", [string]$project.version)
+        [IO.File]::WriteAllText($mainRml, $rml, (New-Object Text.UTF8Encoding($false)))
+    }
 }
 
 foreach ($appFile in @($project.appFiles)) {

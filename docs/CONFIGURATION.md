@@ -13,6 +13,7 @@ validation, and runtime shim without duplicating the build system:
 | Field | Purpose |
 | --- | --- |
 | `titleName` | Name displayed on the home screen. |
+| `version` | Application `major.minor.patch` version rendered in the top bar; release tags must match it as `v<version>`. |
 | `titleId` | Unique `PPSA` plus five-digit application identifier. |
 | `conceptId` | Five numeric characters; normally the numeric title-ID portion. |
 | `contentId` | Package identity containing the title ID and a 16-character suffix. |

@@ -133,11 +133,13 @@ also be run manually from the repository's **Actions** tab.
 
 Version tags publish permanent GitHub Releases automatically. The release
 contains the verified `.ffpfsc`, a ZIP of the directory build, generated
-release notes, and `SHA256SUMS`. For example:
+release notes, and `SHA256SUMS`. Set `version` in `project.json` before tagging;
+the packaged top bar displays that value and CI rejects a mismatched tag:
 
-```bash
-git tag -a v0.1.0 -m "PSRadio v0.1.0"
-git push origin v0.1.0
+```powershell
+$version = (Get-Content project.json -Raw | ConvertFrom-Json).version
+git tag -a "v$version" -m "PSRadio v$version"
+git push origin "v$version"
 ```
 
 Only tags beginning with `v` publish a release; ordinary branch builds remain

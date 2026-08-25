@@ -74,6 +74,18 @@ button {
     line-height: 50px;
 }
 
+#brand-version {
+    position: absolute;
+    left: 286px;
+    top: 32px;
+    width: 92px;
+    height: 32px;
+    overflow: visible;
+    color: #6cdbd9;
+    font-size: 18px;
+    line-height: 32px;
+}
+
 .browse-l1, .browse-r1 {
     position: absolute;
     top: 30px;
