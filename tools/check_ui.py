@@ -44,6 +44,8 @@ def main() -> int:
     assert project["titleName"] == "PSRadio"
     assert re.fullmatch(r"(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)",
                         project["version"])
+    assert re.fullmatch(r"[0-9]{2}\.[0-9]{3}\.[0-9]{3}", project["contentVersion"])
+    assert re.fullmatch(r"[0-9]{2}\.[0-9]{2}", project["masterVersion"])
     assert project["titleId"] == "PPSA99001"
     assert root.find(".//*[@id='brand-version']").text == "v{{PSRADIO_VERSION}}"
     for source in ("src/radio_app.cpp", "src/radio_input.c", "src/radio_ime.c",

@@ -107,6 +107,12 @@ if ([string]::IsNullOrWhiteSpace($project.titleName)) {
 if ($project.version -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') {
     Fail "project.json version must use major.minor.patch format."
 }
+if ($project.contentVersion -notmatch '^[0-9]{2}\.[0-9]{3}\.[0-9]{3}$') {
+    Fail "project.json contentVersion must use NN.NNN.NNN format."
+}
+if ($project.masterVersion -notmatch '^[0-9]{2}\.[0-9]{2}$') {
+    Fail "project.json masterVersion must use NN.NN format."
+}
 if ([long]$project.downloadDataSize -lt 0) {
     Fail "project.json downloadDataSize cannot be negative."
 }
@@ -309,6 +315,8 @@ $param = Get-Content -LiteralPath $baseParamPath -Raw | ConvertFrom-Json
 $param.titleId = $project.titleId
 $param.conceptId = $project.conceptId
 $param.contentId = $project.contentId
+$param.contentVersion = $project.contentVersion
+$param.masterVersion = $project.masterVersion
 $param.localizedParameters.'en-US'.titleName = $project.titleName
 $param.downloadDataSize = [long]$project.downloadDataSize
 $param | ConvertTo-Json -Depth 16 | Set-Content -LiteralPath (Join-Path $app "sce_sys/param.json") -Encoding utf8

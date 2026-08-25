@@ -14,6 +14,8 @@ validation, and runtime shim without duplicating the build system:
 | --- | --- |
 | `titleName` | Name displayed on the home screen. |
 | `version` | Application `major.minor.patch` version rendered in the top bar; release tags must match it as `v<version>`. |
+| `contentVersion` | PS5 package revision in `NN.NNN.NNN` format, displayed on the console's Information screen; increase it for every published update. |
+| `masterVersion` | PS5 package baseline in `NN.NN` format; normally remains `01.00`. |
 | `titleId` | Unique `PPSA` plus five-digit application identifier. |
 | `conceptId` | Five numeric characters; normally the numeric title-ID portion. |
 | `contentId` | Package identity containing the title ID and a 16-character suffix. |

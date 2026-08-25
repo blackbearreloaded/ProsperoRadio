@@ -133,8 +133,9 @@ also be run manually from the repository's **Actions** tab.
 
 Version tags publish permanent GitHub Releases automatically. The release
 contains the verified `.ffpfsc`, a ZIP of the directory build, generated
-release notes, and `SHA256SUMS`. Set `version` in `project.json` before tagging;
-the packaged top bar displays that value and CI rejects a mismatched tag:
+release notes, and `SHA256SUMS`. Before tagging, set `version` in `project.json`
+and advance `contentVersion`. The packaged top bar displays `version`, the PS5
+Information screen displays `contentVersion`, and CI rejects a mismatched tag:
 
 ```powershell
 $version = (Get-Content project.json -Raw | ConvertFrom-Json).version
