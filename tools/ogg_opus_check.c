@@ -132,13 +132,16 @@ static void check_split_continuation_and_chain(void)
            capture.last[1] == 0x55U);
 
     headers = make_headers(body, 1U, 120U);
-    body[headers] = 0x08U;
-    body[headers + 1U] = 0x99U;
     laces[0] = 19U;
     laces[1] = (uint8_t)(headers - 19U);
-    laces[2] = 2U;
-    page_size = make_page(page, 0x06U, 0xaabbccddU, 0U, laces, 3U,
-                          body, headers + 2U);
+    page_size = make_page(page, 0x02U, 0xaabbccddU, 0U, laces, 2U,
+                          body, headers);
+    feed_split(&parser, page, page_size);
+    body[0] = 0x08U;
+    body[1] = 0x99U;
+    laces[0] = 2U;
+    page_size = make_page(page, 0x04U, 0xaabbccddU, 99U, laces, 1U,
+                          body, 2U);
     feed_split(&parser, page, page_size);
     assert(capture.packets == 3U);
     assert(capture.serial[2] == 0xaabbccddU);
@@ -178,6 +181,28 @@ static void check_rejections(void)
     size = make_page(page, 0U, 7U, 18088U, laces, 1U, body, 3U);
     assert(ogg_opus_feed(&parser, page, size) == OGG_OPUS_OK);
     size = make_page(page, 0U, 7U, 18090U, laces, 1U, body, 3U);
+    assert(ogg_opus_feed(&parser, page, size) == OGG_OPUS_ERR_SEQUENCE);
+
+    headers = make_headers(body, 2U, 312U);
+    laces[0] = 19U;
+    laces[1] = (uint8_t)(headers - 19U);
+    size = make_page(page, 0x02U, 7U, 0U, laces, 2U, body, headers);
+    ogg_opus_reset(&parser);
+    assert(ogg_opus_feed(&parser, page, size) == OGG_OPUS_OK);
+    size = make_page(page, 0U, 7U, 100U, laces, 0U, body, 0U);
+    assert(ogg_opus_feed(&parser, page, size) == OGG_OPUS_OK);
+    size = make_page(page, 0U, 7U, 200U, laces, 0U, body, 0U);
+    assert(ogg_opus_feed(&parser, page, size) == OGG_OPUS_ERR_SEQUENCE);
+
+    headers = make_headers(body, 2U, 312U);
+    laces[0] = 19U;
+    laces[1] = (uint8_t)(headers - 19U);
+    size = make_page(page, 0x02U, 7U, 0U, laces, 2U, body, headers);
+    ogg_opus_reset(&parser);
+    assert(ogg_opus_feed(&parser, page, size) == OGG_OPUS_OK);
+    body[0] = 0xf8U;
+    laces[0] = 1U;
+    size = make_page(page, 0x01U, 7U, 18088U, laces, 1U, body, 1U);
     assert(ogg_opus_feed(&parser, page, size) == OGG_OPUS_ERR_SEQUENCE);
 
     headers = make_headers(body, 2U, 312U);
