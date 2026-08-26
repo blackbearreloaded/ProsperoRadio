@@ -34,5 +34,14 @@ int main(void)
     radio_station_t station;
     assert(parse_catalog(mp3_catalog, sizeof(mp3_catalog) - 1U, &station, 1U) == 1U);
     assert(strcmp(station.codec, "MP3") == 0);
+
+    assert(sink_ready_target(false, false) == AUDIO_START_BLOCKS);
+    assert(sink_ready_target(false, true) == AUDIO_RESTART_BLOCKS);
+    assert(sink_ready_target(true, false) == 1U);
+    static const uint8_t celt_packet[] = {0xf8U};
+    static const uint8_t silk_packet[] = {0x78U};
+    assert(opus_packet_is_celt(celt_packet, sizeof(celt_packet)));
+    assert(!opus_packet_is_celt(silk_packet, sizeof(silk_packet)));
+    assert(!opus_packet_is_celt(NULL, 0U));
     return 0;
 }

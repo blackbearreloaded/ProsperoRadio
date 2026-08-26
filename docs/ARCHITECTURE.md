@@ -119,30 +119,34 @@ resolved station URL
   -> codec dispatch
        AAC  -> ADTS synchronization -> native AAC decoder
        MP3  -> MPEG frame synchronization -> native MP3 decoder
-       Opus -> incremental Ogg demux -> TOC mode dispatch
-                                      -> CELT: native libSceOpusCeltDec
-                                      -> SILK/hybrid: native libSceOpusDec
+       Opus -> incremental Ogg demux -> native libSceOpusDec
+                                      -> bounded CELT decoder fallback on -502
   -> channel conversion and 48 kHz resampling when required
   -> two-second decoded PCM ring
   -> dedicated PS5 AudioOut consumer
 ```
 
-The producer primes one second of decoded audio before playback and re-primes
-after an underrun. Network reads and decoding therefore continue independently
-of AudioOut's synchronous pacing, while the bounded two-second capacity prevents
-unlimited latency or memory growth.
+The producer primes one second of decoded audio before initial playback and
+half a second after an underrun. Network reads and decoding therefore continue
+independently of AudioOut's synchronous pacing, while the bounded two-second
+capacity prevents unlimited latency or memory growth.
 
 Stop and station switching set the shared cancellation state and call
 `sceHttpAbortRequest` for the active playback request. This releases a playback
-thread blocked in an HTTP read instead of waiting for the receive timeout.
-Decoder, network, and output failures are reported as service state rather than
-terminating the UI.
+thread blocked in connection setup, request transmission, or an HTTP read
+instead of waiting for the network timeout. Stop and failed-stream teardown
+discard queued PCM immediately. Unexpected live-stream failures receive two
+bounded reconnect attempts with cancellation-aware backoff. Decoder, network,
+and output failures are reported as service state rather than terminating the
+UI.
 
 The Ogg parser is project-owned, allocation-free state with bounded packet
 storage. It validates stream structure, Opus headers, packet limits, page
 sequence, continuation, and chained serial transitions before compressed
 packets reach the platform decoder. Opus TOC configurations 16-31 are routed to
-the dedicated CELT decoder; mode changes reopen the matching native decoder.
+the general decoder first. A CELT packet rejected with native result `-502` is
+retried once with `libSceOpusCeltDec`; decoder failover keeps the existing PCM
+sink alive and does not reapply the logical stream's pre-skip.
 AAC, MP3, and Opus are currently advertised; planned codec and delivery work is
 tracked in [`ROADMAP.md`](../ROADMAP.md).
 

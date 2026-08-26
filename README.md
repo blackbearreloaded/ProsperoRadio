@@ -62,8 +62,10 @@ The complete browse, search, favorite, cache, and AAC playback loop has been
 validated on PS5 hardware with ShadowMountPlus. Native MP3 playback is validated
 at 48 kHz stereo, including live Radio Browser input through PCM and AudioOut.
 Ogg Opus playback is also hardware-validated: CELT-mode packets use the
-console's dedicated CELT decoder, while SILK and hybrid modes retain the general
-native Opus decoder. The release display name is **PSRadio** and its stable
+console's dedicated CELT decoder as a bounded fallback when the general native
+decoder rejects them, while SILK and hybrid modes retain the general decoder.
+The live path has bounded reconnects, immediate cancellation, and a measured
+67 ms Opus stop-to-stopped transition. The release display name is **PSRadio** and its stable
 application identity is `PPSA99001`.
 
 Catalog requests advertise AAC, MP3, and explicitly identified Ogg Opus stations.

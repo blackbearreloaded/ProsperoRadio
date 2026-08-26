@@ -69,9 +69,13 @@ remain before the next release.
   runtime crash.
 - [x] Validate the dedicated `libSceOpusCeltDec` codec-16 path with live
   CELT-only WALM packets and route TOC configurations 16-31 to it.
-- [ ] Validate audible underrun behavior, implement reconnect behavior, and
-  recover automatically when a live stream intermittently returns native
-  decoder result `-502`.
+- [x] Add cancellation-aware request handling, bounded live-stream reconnects,
+  immediate PCM discard on stop/error, and one alternate native decoder retry
+  for CELT packets that return `-502`.
+- [x] Validate live Opus stop and station switching on PS5; the measured stop
+  completed in 67 ms before a second stream reached 48 kHz stereo playback.
+- [ ] Validate induced reconnect, audible underrun behavior, and a live `-502`
+  CELT fallback with persisted on-device evidence.
 - Investigate AvPlayer and the firmware library inventory for a callable
   Vorbis path.
 - Integrate redistributable software decoders only for formats without a

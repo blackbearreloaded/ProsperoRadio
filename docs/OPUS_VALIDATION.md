@@ -1,10 +1,11 @@
 # Native Opus validation
 
 PSRadio uses the console-provided `libSceOpusDec` and `libSceOpusCeltDec`
-decoders. Opus TOC configurations 16-31 select the dedicated CELT path; SILK
-and hybrid configurations retain the general decoder. The application packages
-generated import metadata only; it does not distribute Sony runtime modules or
-a decoder implementation.
+decoders. Packets begin on the general decoder. A CELT-only packet rejected with
+native result `-502` receives one bounded retry through the dedicated CELT
+decoder; SILK and hybrid packets remain on the general decoder. The application
+packages generated import metadata only; it does not distribute Sony runtime
+modules or a decoder implementation.
 
 ## Validation record
 
@@ -26,6 +27,7 @@ a decoder implementation.
 | 2026-08-26 | 6.02 | `PPSA99646` isolated CELT path | After removing an unsafe diagnostic `sceKernelDebugOutText` call from the disposable harness, the dedicated codec-16 decoder loaded, initialized, created, and decoded live WALM CELT packets continuously. PCM was produced immediately and the title remained alive for the full observation window. |
 | 2026-08-26 | 6.02 | `PPSA99648` production routing | The production-style dual decoder selected CELT from the packet TOC, completed every codec-16 setup stage, decoded the first packet, produced PCM, and remained crash-free for the observation window using the checked-in, hash-pinned import stub. |
 | 2026-08-26 | 6.02 | `PPSA99649` AAC regression | The same dual-decoder eboot auto-played an AAC station, opened AudioOut, produced decoded PCM, and remained crash-free for the observation window. |
+| 2026-08-26 | 6.02 | `PPSA99652` lifecycle validation | The hardened player reached 48 kHz stereo Opus output, stopped the first live station in 67 ms, switched to a second Opus station, and persisted `stage=passed`. The Game-category title remained stable for the 50-second observation, closed normally, and released its runtime layers. Eboot SHA-256: `07FDA2070F7E0893A2F5DA34DF500CA27855793460E4DEA2782E8B48E1C94292`. |
 
 Do not use `PPSA99640` through `PPSA99645` as decoder-crash evidence. Their
 disposable telemetry harness called `sceKernelDebugOutText` immediately after
@@ -65,9 +67,10 @@ The packet probe source and reverse-engineering notes are maintained in the
 
 ## Remaining release gate
 
-Before publishing Opus as a completed playback format, validate reconnect and
-audible underrun behavior on the target console. The two-second queue,
-immediate AAC stop, transitions in both codec directions, a ten-minute Opus
-session, dedicated CELT decoding, and the AAC regression now have crash-free
-device evidence. Ogg CRC, output-gain, final-granule trimming, and automatic
-recovery from intermittent `-502` results remain tracked in the project roadmap.
+Before publishing Opus as fully complete, validate an induced network reconnect,
+an audible underrun, and a live stream that exercises the automatic `-502` CELT
+fallback on the target console. The two-second queue, 67 ms Opus stop, direct
+station switch, transitions in both codec directions, a ten-minute Opus session,
+dedicated CELT decoding, and the AAC regression now have crash-free device
+evidence. Ogg CRC, output-gain, and final-granule trimming remain tracked in the
+project roadmap.

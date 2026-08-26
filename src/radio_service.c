@@ -25,7 +25,6 @@
 #define FAVORITES_TEMP_PATH "/download0/radio-browser-favorites.tmp"
 #define CATALOG_FEED_LIMIT 80U
 #define CATALOG_URL(codec, order) "https://all.api.radio-browser.info/json/stations/search?codec=" codec "&hidebroken=true&order=" order "&reverse=true&limit=80"
-#define CLICK_URL_PREFIX "https://all.api.radio-browser.info/json/url/"
 #define USER_AGENT "PSRadio/0.2.0 (+https://www.radio-browser.info/)"
 #define JSON_CAPACITY (1024U * 1024U)
 #define STREAM_BUFFER_SIZE (64U * 1024U)
@@ -46,7 +45,11 @@
 #define AUDIO_OUT_VOLUME_0DB 0x8000
 #define AUDIO_QUEUE_BLOCKS 375U
 #define AUDIO_START_BLOCKS 188U
+#define AUDIO_RESTART_BLOCKS 94U
 #define AUDIO_WAIT_MS 20U
+#define PLAYBACK_RETRY_COUNT 3U
+#define PLAYBACK_RETRY_BASE_MS 250U
+#define OPUS_RETRYABLE_ERROR (-502)
 
 typedef struct {
     uint32_t magic;
@@ -239,6 +242,7 @@ static unsigned g_station_count;
 static unsigned g_favorite_count;
 static radio_service_status_t g_status;
 static SDL_mutex * g_state_mutex;
+static SDL_mutex * g_request_mutex;
 static SDL_atomic_t g_refresh_running;
 static SDL_atomic_t g_playback_running;
 static SDL_atomic_t g_stop_playback;
@@ -248,6 +252,9 @@ static int g_net_pool = -1;
 static int g_ssl_context = -1;
 static int g_http_context = -1;
 static int g_http_template = -1;
+
+static void playback_request_set(int request);
+static void playback_request_clear(int request);
 
 static uint32_t checksum(const void * data, size_t size)
 {
@@ -439,6 +446,7 @@ static int http_open(const char * url, bool streaming, const char * codec,
                             HTTP_HEADER_OVERWRITE);
     if(streaming) {
         sceHttpAddRequestHeader(*request, "Icy-MetaData", "0", HTTP_HEADER_OVERWRITE);
+        playback_request_set(*request);
     }
     int result = sceHttpSendRequest(*request, NULL, 0);
     if(result >= 0) {
@@ -447,6 +455,7 @@ static int http_open(const char * url, bool streaming, const char * codec,
         if(result >= 0 && (status < 200 || status >= 300)) result = -status;
     }
     if(result < 0) {
+        if(streaming) playback_request_clear(*request);
         sceHttpDeleteRequest(*request);
         sceHttpDeleteConnection(*connection);
         *request = -1;
@@ -859,19 +868,25 @@ static void set_playback_state(radio_playback_state_t state, int error,
 
 static void playback_request_set(int request)
 {
-    SDL_LockMutex(g_state_mutex);
+    SDL_LockMutex(g_request_mutex);
     g_playback_request = request;
     if(request >= 0 && SDL_AtomicGet(&g_stop_playback)) {
         sceHttpAbortRequest(request);
     }
-    SDL_UnlockMutex(g_state_mutex);
+    SDL_UnlockMutex(g_request_mutex);
 }
 
 static void playback_request_clear(int request)
 {
-    SDL_LockMutex(g_state_mutex);
+    SDL_LockMutex(g_request_mutex);
     if(g_playback_request == request) g_playback_request = -1;
-    SDL_UnlockMutex(g_state_mutex);
+    SDL_UnlockMutex(g_request_mutex);
+}
+
+static size_t sink_ready_target(bool started, bool played)
+{
+    if(started) return 1U;
+    return played ? AUDIO_RESTART_BLOCKS : AUDIO_START_BLOCKS;
 }
 
 static int sink_audio_thread(void * argument)
@@ -879,6 +894,7 @@ static int sink_audio_thread(void * argument)
     audio_sink_t * sink = argument;
     int16_t block[AUDIO_OUT_GRAIN * 2U];
     bool started = false;
+    bool played = false;
 
     for(;;) {
         SDL_LockMutex(sink->mutex);
@@ -893,7 +909,7 @@ static int sink_audio_thread(void * argument)
             SDL_LockMutex(sink->mutex);
         }
 
-        const size_t target = started ? 1U : AUDIO_START_BLOCKS;
+        const size_t target = sink_ready_target(started, played);
         while(!sink->cancel && !SDL_AtomicGet(&g_stop_playback) &&
               sink->output_result >= 0 && !sink->input_finished &&
               !pcm_queue_ready(&sink->queue, target, false)) {
@@ -923,11 +939,22 @@ static int sink_audio_thread(void * argument)
         }
         if(!started && !SDL_AtomicGet(&g_stop_playback)) {
             started = true;
+            played = true;
             set_playback_state(RADIO_PLAYBACK_PLAYING, 0,
                                sink->input_rate, sink->channels);
         }
     }
     return 0;
+}
+
+static void sink_cancel(audio_sink_t * sink)
+{
+    if(sink == NULL || sink->handle < 0 || sink->mutex == NULL) return;
+    SDL_LockMutex(sink->mutex);
+    sink->cancel = true;
+    SDL_CondBroadcast(sink->can_read);
+    SDL_CondBroadcast(sink->can_write);
+    SDL_UnlockMutex(sink->mutex);
 }
 
 static int sink_open(audio_sink_t * sink, uint32_t input_rate, uint32_t channels)
@@ -1055,7 +1082,8 @@ static int sink_push_pcm(audio_sink_t * sink, const int16_t * samples,
 static void sink_close(audio_sink_t * sink)
 {
     if(sink->handle < 0) return;
-    if(sink->pending != 0 && !SDL_AtomicGet(&g_stop_playback)) {
+    if(sink->pending != 0 && !sink->cancel &&
+       !SDL_AtomicGet(&g_stop_playback)) {
         memset(sink->block + sink->pending, 0,
                (AUDIO_OUT_GRAIN * 2U - sink->pending) * sizeof(sink->block[0]));
         sink->pending = AUDIO_OUT_GRAIN * 2U;
@@ -1089,38 +1117,69 @@ typedef struct {
     size_t pre_skip_frames;
     int result;
     bool decoder_open;
+    bool stream_open;
 } opus_playback_t;
 
-static void opus_playback_reset(opus_playback_t * playback)
+static bool opus_packet_is_celt(const uint8_t * data, size_t size)
 {
-    sink_close(&playback->sink);
+    /* Opus TOC configurations 16-31 are CELT-only (RFC 6716, section 3.1). */
+    return size > 0U && (data[0] >> 3U) >= 16U;
+}
+
+static void opus_decoder_reset(opus_playback_t * playback)
+{
     opus_decoder_close(&playback->decoder);
     playback->decoder_open = false;
+}
+
+static void opus_playback_reset(opus_playback_t * playback, bool discard)
+{
+    if(discard) sink_cancel(&playback->sink);
+    sink_close(&playback->sink);
+    opus_decoder_reset(playback);
     playback->stream_serial = 0;
     playback->pre_skip_frames = 0;
+    playback->stream_open = false;
 }
 
 static int opus_packet_ready(const ogg_opus_packet_t * packet, void * user_data)
 {
     opus_playback_t * playback = user_data;
-    /* Opus TOC configurations 16-31 are CELT-only (RFC 6716, section 3.1). */
-    const bool celt_only = packet->size > 0U && (packet->data[0] >> 3U) >= 16U;
-    if(!playback->decoder_open || playback->stream_serial != packet->stream_serial ||
-       playback->decoder.celt_only != celt_only) {
-        opus_playback_reset(playback);
+    const bool celt_packet = opus_packet_is_celt(packet->data, packet->size);
+    if(!playback->stream_open || playback->stream_serial != packet->stream_serial) {
+        if(playback->stream_open) opus_playback_reset(playback, true);
         playback->sink.handle = -1;
-        playback->result = opus_decoder_open(&playback->decoder,
-                                             packet->channels, celt_only);
-        if(playback->result < 0) return -1;
-        playback->decoder_open = true;
         playback->stream_serial = packet->stream_serial;
         playback->pre_skip_frames = packet->pre_skip;
+        playback->stream_open = true;
+        playback->result = opus_decoder_open(&playback->decoder,
+                                             packet->channels, false);
+        if(playback->result < 0) return -1;
+        playback->decoder_open = true;
+    }
+    else if(playback->decoder.celt_only && !celt_packet) {
+        opus_decoder_reset(playback);
+        playback->result = opus_decoder_open(&playback->decoder,
+                                             packet->channels, false);
+        if(playback->result < 0) return -1;
+        playback->decoder_open = true;
     }
 
     size_t produced = 0;
     playback->result = opus_decoder_decode(
         &playback->decoder, packet->data, packet->size,
         playback->pcm, OPUS_PCM_BUFFER_SIZE, &produced);
+    if(playback->result == OPUS_RETRYABLE_ERROR && celt_packet) {
+        const bool alternate_celt = !playback->decoder.celt_only;
+        opus_decoder_reset(playback);
+        playback->result = opus_decoder_open(&playback->decoder,
+                                             packet->channels, alternate_celt);
+        if(playback->result < 0) return -1;
+        playback->decoder_open = true;
+        playback->result = opus_decoder_decode(
+            &playback->decoder, packet->data, packet->size,
+            playback->pcm, OPUS_PCM_BUFFER_SIZE, &produced);
+    }
     if(playback->result < 0) return -1;
     const size_t frame_bytes = packet->channels * sizeof(int16_t);
     if(frame_bytes == 0U || produced % frame_bytes != 0U) {
@@ -1179,7 +1238,8 @@ static int play_opus_request(int request)
         }
     }
 
-    opus_playback_reset(&playback);
+    opus_playback_reset(&playback,
+                        result < 0 || SDL_AtomicGet(&g_stop_playback));
     free(playback.pcm);
     free(parser);
     free(stream);
@@ -1196,25 +1256,10 @@ static size_t find_adts(const uint8_t * data, size_t size)
 
 static int play_stream(const radio_station_t * station)
 {
-    char click_url[sizeof(CLICK_URL_PREFIX) + sizeof(station->uuid)];
-    SDL_snprintf(click_url, sizeof(click_url), "%s%s", CLICK_URL_PREFIX, station->uuid);
-    int click_connection = -1;
-    int click_request = -1;
-    if(http_open(click_url, false, NULL, &click_connection, &click_request) >= 0) {
-        playback_request_set(click_request);
-        uint8_t discard[256];
-        while(!SDL_AtomicGet(&g_stop_playback) &&
-              sceHttpReadData(click_request, discard, sizeof(discard)) > 0) {}
-        playback_request_clear(click_request);
-    }
-    http_close(click_connection, click_request);
-    if(SDL_AtomicGet(&g_stop_playback)) return 0;
-
     int connection = -1;
     int request = -1;
     int result = http_open(station->url, true, station->codec, &connection, &request);
     if(result < 0) return result;
-    playback_request_set(request);
     const unsigned source_channels = http_audio_channels(request);
     set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 0, 0);
 
@@ -1384,6 +1429,7 @@ static int play_stream(const radio_station_t * station)
         buffered -= frame_length;
     }
 
+    if(result < 0 || SDL_AtomicGet(&g_stop_playback)) sink_cancel(&sink);
     sink_close(&sink);
     if(decoder >= 0) sceAudiodecDeleteDecoder(decoder);
     if(library_initialized) sceAudiodecTermLibrary(codec_type);
@@ -1398,15 +1444,29 @@ static int play_stream(const radio_station_t * station)
 static void * playback_thread(void * station_copy)
 {
     radio_station_t * station = station_copy;
-    const int result = play_stream(station);
+    int result = -1;
+    for(unsigned attempt = 0; attempt < PLAYBACK_RETRY_COUNT; ++attempt) {
+        result = play_stream(station);
+        if(result >= 0 || SDL_AtomicGet(&g_stop_playback) ||
+           SDL_AtomicGet(&g_shutting_down)) break;
+        if(attempt + 1U < PLAYBACK_RETRY_COUNT) {
+            set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 0, 0);
+            const unsigned delay = PLAYBACK_RETRY_BASE_MS << attempt;
+            for(unsigned waited = 0; waited < delay &&
+                !SDL_AtomicGet(&g_stop_playback) &&
+                !SDL_AtomicGet(&g_shutting_down); waited += 25U) {
+                SDL_Delay(25U);
+            }
+        }
+    }
     free(station);
+    SDL_AtomicSet(&g_playback_running, 0);
     if(SDL_AtomicGet(&g_stop_playback) || SDL_AtomicGet(&g_shutting_down)) {
         set_playback_state(RADIO_PLAYBACK_STOPPED, 0, 0, 0);
     }
     else {
         set_playback_state(RADIO_PLAYBACK_ERROR, result < 0 ? result : -5, 0, 0);
     }
-    SDL_AtomicSet(&g_playback_running, 0);
     return NULL;
 }
 
@@ -1414,7 +1474,14 @@ bool radio_service_init(void)
 {
     memset(&g_status, 0, sizeof(g_status));
     g_state_mutex = SDL_CreateMutex();
-    if(g_state_mutex == NULL) return false;
+    g_request_mutex = SDL_CreateMutex();
+    if(g_state_mutex == NULL || g_request_mutex == NULL) {
+        if(g_request_mutex != NULL) SDL_DestroyMutex(g_request_mutex);
+        if(g_state_mutex != NULL) SDL_DestroyMutex(g_state_mutex);
+        g_request_mutex = NULL;
+        g_state_mutex = NULL;
+        return false;
+    }
     SDL_AtomicSet(&g_shutting_down, 0);
     SDL_AtomicSet(&g_stop_playback, 0);
     SDL_AtomicSet(&g_playback_running, 0);
@@ -1445,7 +1512,9 @@ void radio_service_shutdown(void)
         SDL_Delay(10);
     }
     network_shutdown();
+    SDL_DestroyMutex(g_request_mutex);
     SDL_DestroyMutex(g_state_mutex);
+    g_request_mutex = NULL;
     g_state_mutex = NULL;
 }
 
@@ -1574,7 +1643,9 @@ void radio_service_stop(void)
         g_status.error_code = 0;
         g_status.sample_rate = 0;
         g_status.channels = 0;
-        if(g_playback_request >= 0) sceHttpAbortRequest(g_playback_request);
         SDL_UnlockMutex(g_state_mutex);
+        SDL_LockMutex(g_request_mutex);
+        if(g_playback_request >= 0) sceHttpAbortRequest(g_playback_request);
+        SDL_UnlockMutex(g_request_mutex);
     }
 }
