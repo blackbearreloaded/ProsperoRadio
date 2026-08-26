@@ -3,6 +3,7 @@
 #include "aac_timing.h"
 #include "ogg_opus.h"
 #include "opus_decoder.h"
+#include "pcm_queue.h"
 
 #include "SDL.h"
 
@@ -41,6 +42,9 @@
 #define AUDIO_OUT_RATE 48000U
 #define AUDIO_OUT_STEREO_S16 1U
 #define AUDIO_OUT_VOLUME_0DB 0x8000
+#define AUDIO_QUEUE_BLOCKS 375U
+#define AUDIO_START_BLOCKS 188U
+#define AUDIO_WAIT_MS 20U
 
 typedef struct {
     uint32_t magic;
@@ -109,9 +113,17 @@ typedef struct {
     int16_t previous_left;
     int16_t previous_right;
     bool have_previous;
-    bool announced_playing;
     unsigned pending;
     int16_t block[AUDIO_OUT_GRAIN * 2U];
+    int16_t * queue_blocks;
+    pcm_queue_state_t queue;
+    SDL_mutex * mutex;
+    SDL_cond * can_read;
+    SDL_cond * can_write;
+    SDL_Thread * thread;
+    bool input_finished;
+    bool cancel;
+    int output_result;
 } audio_sink_t;
 
 typedef enum {
@@ -171,6 +183,7 @@ extern int sceHttpSendRequest(int request_id, const void * data, size_t size);
 extern int sceHttpGetStatusCode(int request_id, int * status_code);
 extern int sceHttpGetAllResponseHeaders(int request_id, char ** headers, size_t * size);
 extern int sceHttpReadData(int request_id, void * data, size_t size);
+extern int sceHttpAbortRequest(int request_id);
 
 extern int sceSysmoduleLoadModule(uint16_t id);
 extern int sceSysmoduleUnloadModule(uint16_t id);
@@ -196,6 +209,7 @@ static SDL_atomic_t g_refresh_running;
 static SDL_atomic_t g_playback_running;
 static SDL_atomic_t g_stop_playback;
 static SDL_atomic_t g_shutting_down;
+static int g_playback_request = -1;
 static int g_net_pool = -1;
 static int g_ssl_context = -1;
 static int g_http_context = -1;
@@ -806,6 +820,79 @@ static void set_playback_state(radio_playback_state_t state, int error,
     SDL_UnlockMutex(g_state_mutex);
 }
 
+static void playback_request_set(int request)
+{
+    SDL_LockMutex(g_state_mutex);
+    g_playback_request = request;
+    if(request >= 0 && SDL_AtomicGet(&g_stop_playback)) {
+        sceHttpAbortRequest(request);
+    }
+    SDL_UnlockMutex(g_state_mutex);
+}
+
+static void playback_request_clear(int request)
+{
+    SDL_LockMutex(g_state_mutex);
+    if(g_playback_request == request) g_playback_request = -1;
+    SDL_UnlockMutex(g_state_mutex);
+}
+
+static int sink_audio_thread(void * argument)
+{
+    audio_sink_t * sink = argument;
+    int16_t block[AUDIO_OUT_GRAIN * 2U];
+    bool started = false;
+
+    for(;;) {
+        SDL_LockMutex(sink->mutex);
+        if(started && sink->queue.count == 0U && !sink->input_finished &&
+           !sink->cancel && !SDL_AtomicGet(&g_stop_playback)) {
+            started = false;
+            SDL_UnlockMutex(sink->mutex);
+            if(!SDL_AtomicGet(&g_stop_playback)) {
+                set_playback_state(RADIO_PLAYBACK_BUFFERING, 0,
+                                   sink->input_rate, sink->channels);
+            }
+            SDL_LockMutex(sink->mutex);
+        }
+
+        const size_t target = started ? 1U : AUDIO_START_BLOCKS;
+        while(!sink->cancel && !SDL_AtomicGet(&g_stop_playback) &&
+              sink->output_result >= 0 && !sink->input_finished &&
+              !pcm_queue_ready(&sink->queue, target, false)) {
+            SDL_CondWaitTimeout(sink->can_read, sink->mutex, AUDIO_WAIT_MS);
+        }
+        if(sink->cancel || SDL_AtomicGet(&g_stop_playback) ||
+           sink->output_result < 0 || sink->queue.count == 0U) {
+            SDL_UnlockMutex(sink->mutex);
+            break;
+        }
+
+        size_t index = 0;
+        pcm_queue_pop(&sink->queue, &index);
+        memcpy(block, sink->queue_blocks + index * AUDIO_OUT_GRAIN * 2U,
+               sizeof(block));
+        SDL_CondSignal(sink->can_write);
+        SDL_UnlockMutex(sink->mutex);
+
+        const int result = sceAudioOutOutput(sink->handle, block);
+        if(result < 0) {
+            SDL_LockMutex(sink->mutex);
+            sink->output_result = result;
+            sink->cancel = true;
+            SDL_CondBroadcast(sink->can_write);
+            SDL_UnlockMutex(sink->mutex);
+            break;
+        }
+        if(!started && !SDL_AtomicGet(&g_stop_playback)) {
+            started = true;
+            set_playback_state(RADIO_PLAYBACK_PLAYING, 0,
+                               sink->input_rate, sink->channels);
+        }
+    }
+    return 0;
+}
+
 static int sink_open(audio_sink_t * sink, uint32_t input_rate, uint32_t channels)
 {
     memset(sink, 0, sizeof(*sink));
@@ -813,13 +900,70 @@ static int sink_open(audio_sink_t * sink, uint32_t input_rate, uint32_t channels
     sink->input_rate = input_rate;
     sink->channels = channels;
     if(input_rate < 8000U || input_rate > 192000U || channels < 1U || channels > 2U) return -1;
+
+    sink->queue_blocks = malloc(AUDIO_QUEUE_BLOCKS * AUDIO_OUT_GRAIN * 2U * sizeof(int16_t));
+    sink->mutex = SDL_CreateMutex();
+    sink->can_read = SDL_CreateCond();
+    sink->can_write = SDL_CreateCond();
+    if(sink->queue_blocks == NULL || sink->mutex == NULL ||
+       sink->can_read == NULL || sink->can_write == NULL) goto fail;
+    pcm_queue_init(&sink->queue, AUDIO_QUEUE_BLOCKS);
+
     sceAudioOutInit();
     sink->handle = sceAudioOutOpen(0xff, 0, 0, AUDIO_OUT_GRAIN,
                                    AUDIO_OUT_RATE, AUDIO_OUT_STEREO_S16);
-    if(sink->handle < 0) return sink->handle;
+    if(sink->handle < 0) goto fail;
     int volumes[8];
     for(unsigned i = 0; i < 8; ++i) volumes[i] = AUDIO_OUT_VOLUME_0DB;
     sceAudioOutSetVolume(sink->handle, 3, volumes);
+    sink->thread = SDL_CreateThread(sink_audio_thread, "radio-output", sink);
+    if(sink->thread == NULL) goto fail;
+    return 0;
+
+fail:
+    {
+        const int error = sink->handle < 0 ? sink->handle : -1;
+        if(sink->handle >= 0) {
+            sceAudioOutOutput(sink->handle, NULL);
+            sceAudioOutClose(sink->handle);
+        }
+        if(sink->can_write != NULL) SDL_DestroyCond(sink->can_write);
+        if(sink->can_read != NULL) SDL_DestroyCond(sink->can_read);
+        if(sink->mutex != NULL) SDL_DestroyMutex(sink->mutex);
+        free(sink->queue_blocks);
+        memset(sink, 0, sizeof(*sink));
+        sink->handle = -1;
+        return error;
+    }
+}
+
+static int sink_queue_block(audio_sink_t * sink)
+{
+    SDL_LockMutex(sink->mutex);
+    while(sink->queue.count == sink->queue.capacity && !sink->cancel &&
+          !SDL_AtomicGet(&g_stop_playback) && sink->output_result >= 0) {
+        SDL_CondWaitTimeout(sink->can_write, sink->mutex, AUDIO_WAIT_MS);
+    }
+    if(sink->cancel || SDL_AtomicGet(&g_stop_playback)) {
+        SDL_UnlockMutex(sink->mutex);
+        return -1;
+    }
+    if(sink->output_result < 0) {
+        const int result = sink->output_result;
+        SDL_UnlockMutex(sink->mutex);
+        return result;
+    }
+
+    size_t index = 0;
+    if(!pcm_queue_push(&sink->queue, &index)) {
+        SDL_UnlockMutex(sink->mutex);
+        return -1;
+    }
+    memcpy(sink->queue_blocks + index * AUDIO_OUT_GRAIN * 2U,
+           sink->block, sizeof(sink->block));
+    sink->pending = 0;
+    SDL_CondSignal(sink->can_read);
+    SDL_UnlockMutex(sink->mutex);
     return 0;
 }
 
@@ -827,17 +971,7 @@ static int sink_output_frame(audio_sink_t * sink, int16_t left, int16_t right)
 {
     sink->block[sink->pending++] = left;
     sink->block[sink->pending++] = right;
-    if(sink->pending == AUDIO_OUT_GRAIN * 2U) {
-        const int result = sceAudioOutOutput(sink->handle, sink->block);
-        if(result < 0) return result;
-        sink->pending = 0;
-        if(!sink->announced_playing) {
-            sink->announced_playing = true;
-            set_playback_state(RADIO_PLAYBACK_PLAYING, 0,
-                               sink->input_rate, sink->channels);
-        }
-    }
-    return 0;
+    return sink->pending == AUDIO_OUT_GRAIN * 2U ? sink_queue_block(sink) : 0;
 }
 
 static int sink_push_pcm(audio_sink_t * sink, const int16_t * samples,
@@ -879,13 +1013,29 @@ static int sink_push_pcm(audio_sink_t * sink, const int16_t * samples,
 static void sink_close(audio_sink_t * sink)
 {
     if(sink->handle < 0) return;
-    if(sink->pending != 0) {
+    if(sink->pending != 0 && !SDL_AtomicGet(&g_stop_playback)) {
         memset(sink->block + sink->pending, 0,
                (AUDIO_OUT_GRAIN * 2U - sink->pending) * sizeof(sink->block[0]));
-        sceAudioOutOutput(sink->handle, sink->block);
+        sink->pending = AUDIO_OUT_GRAIN * 2U;
+        sink_queue_block(sink);
     }
+
+    SDL_LockMutex(sink->mutex);
+    sink->input_finished = true;
+    sink->cancel = sink->cancel || SDL_AtomicGet(&g_stop_playback) ||
+                   sink->output_result < 0;
+    SDL_CondBroadcast(sink->can_read);
+    SDL_CondBroadcast(sink->can_write);
+    SDL_UnlockMutex(sink->mutex);
+    SDL_WaitThread(sink->thread, NULL);
+
     sceAudioOutOutput(sink->handle, NULL);
     sceAudioOutClose(sink->handle);
+    SDL_DestroyCond(sink->can_write);
+    SDL_DestroyCond(sink->can_read);
+    SDL_DestroyMutex(sink->mutex);
+    free(sink->queue_blocks);
+    memset(sink, 0, sizeof(*sink));
     sink->handle = -1;
 }
 
@@ -1005,8 +1155,11 @@ static int play_stream(const radio_station_t * station)
     int click_connection = -1;
     int click_request = -1;
     if(http_open(click_url, false, NULL, &click_connection, &click_request) >= 0) {
+        playback_request_set(click_request);
         uint8_t discard[256];
-        while(sceHttpReadData(click_request, discard, sizeof(discard)) > 0) {}
+        while(!SDL_AtomicGet(&g_stop_playback) &&
+              sceHttpReadData(click_request, discard, sizeof(discard)) > 0) {}
+        playback_request_clear(click_request);
     }
     http_close(click_connection, click_request);
     if(SDL_AtomicGet(&g_stop_playback)) return 0;
@@ -1015,11 +1168,13 @@ static int play_stream(const radio_station_t * station)
     int request = -1;
     int result = http_open(station->url, true, station->codec, &connection, &request);
     if(result < 0) return result;
+    playback_request_set(request);
     const unsigned source_channels = http_audio_channels(request);
     set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 0, 0);
 
     if(strcasecmp(station->codec, "OPUS") == 0) {
         result = play_opus_request(request);
+        playback_request_clear(request);
         http_close(connection, request);
         return result;
     }
@@ -1029,6 +1184,7 @@ static int play_stream(const radio_station_t * station)
     if(stream == NULL || pcm == NULL) {
         free(stream);
         free(pcm);
+        playback_request_clear(request);
         http_close(connection, request);
         return -1;
     }
@@ -1163,6 +1319,7 @@ static int play_stream(const radio_station_t * station)
     if(module_loaded) sceSysmoduleUnloadModule(0x0088);
     free(pcm);
     free(stream);
+    playback_request_clear(request);
     http_close(connection, request);
     return result;
 }
@@ -1191,6 +1348,7 @@ bool radio_service_init(void)
     SDL_AtomicSet(&g_stop_playback, 0);
     SDL_AtomicSet(&g_playback_running, 0);
     SDL_AtomicSet(&g_refresh_running, 0);
+    g_playback_request = -1;
     load_favorites();
     const bool cached = load_cache();
     g_status.catalog_state = cached ? RADIO_CATALOG_CACHED : RADIO_CATALOG_LOADING;
@@ -1340,6 +1498,12 @@ void radio_service_stop(void)
 {
     if(SDL_AtomicGet(&g_playback_running)) {
         SDL_AtomicSet(&g_stop_playback, 1);
-        set_playback_state(RADIO_PLAYBACK_STOPPING, 0, 0, 0);
+        SDL_LockMutex(g_state_mutex);
+        g_status.playback_state = RADIO_PLAYBACK_STOPPING;
+        g_status.error_code = 0;
+        g_status.sample_rate = 0;
+        g_status.channels = 0;
+        if(g_playback_request >= 0) sceHttpAbortRequest(g_playback_request);
+        SDL_UnlockMutex(g_state_mutex);
     }
 }

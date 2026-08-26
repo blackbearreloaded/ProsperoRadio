@@ -105,6 +105,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "UI validation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/aac_timing_check.c -o /tmp/aac-timing-check
           if ($LASTEXITCODE -ne 0) { throw "AAC timing check compilation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/pcm_queue_check.c -o /tmp/pcm-queue-check
+          if ($LASTEXITCODE -ne 0) { throw "PCM queue check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_input_check.c -o /tmp/radio-input-check
           if ($LASTEXITCODE -ne 0) { throw "Input check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/ogg_opus_check.c src/ogg_opus.c -o /tmp/ogg-opus-check
@@ -119,6 +121,8 @@ jobs:
         run: |
           wsl.exe --exec /tmp/aac-timing-check
           if ($LASTEXITCODE -ne 0) { throw "AAC timing check failed." }
+          wsl.exe --exec /tmp/pcm-queue-check
+          if ($LASTEXITCODE -ne 0) { throw "PCM queue check failed." }
           wsl.exe --exec /tmp/radio-input-check
           if ($LASTEXITCODE -ne 0) { throw "Input check failed." }
           wsl.exe --exec /tmp/ogg-opus-check

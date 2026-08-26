@@ -120,13 +120,20 @@ resolved station URL
        AAC  -> ADTS synchronization -> native AAC decoder
        Opus -> incremental Ogg demux -> native libSceOpusDec decoder
   -> channel conversion and 48 kHz resampling when required
-  -> bounded PCM chunks
-  -> PS5 AudioOut
+  -> two-second decoded PCM ring
+  -> dedicated PS5 AudioOut consumer
 ```
 
-The player supports stop and station-switch cancellation while connecting,
-buffering, or playing. Decoder, network, and output failures are reported as
-service state rather than terminating the UI.
+The producer primes one second of decoded audio before playback and re-primes
+after an underrun. Network reads and decoding therefore continue independently
+of AudioOut's synchronous pacing, while the bounded two-second capacity prevents
+unlimited latency or memory growth.
+
+Stop and station switching set the shared cancellation state and call
+`sceHttpAbortRequest` for the active playback request. This releases a playback
+thread blocked in an HTTP read instead of waiting for the receive timeout.
+Decoder, network, and output failures are reported as service state rather than
+terminating the UI.
 
 The Ogg parser is project-owned, allocation-free state with bounded packet
 storage. It validates stream structure, Opus headers, packet limits, page

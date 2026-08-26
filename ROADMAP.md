@@ -61,8 +61,9 @@ HTTP, buffering, PCM conversion, and AudioOut paths.
   identified Opus stations from Radio Browser's broader OGG category.
 - [ ] Validate Ogg page CRCs before dispatch and apply Opus output gain and
   end-granule trimming for full container-spec compliance.
-- [ ] Complete audible playback, stop, rapid station-switching, reconnect, and
-  long-running validation against live Radio Browser Opus stations.
+- [x] Confirm audible playback against live Radio Browser Opus stations.
+- [ ] Validate immediate stop, rapid AAC/Opus station switching, the decoded-PCM
+  jitter queue, reconnect behavior, and sustained playback on PS5.
 - Investigate AvPlayer and the firmware library inventory for a callable
   Vorbis path.
 - Integrate redistributable software decoders only for formats without a

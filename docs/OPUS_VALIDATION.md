@@ -11,6 +11,7 @@ runtime module or a decoder implementation.
 | 2026-08-25 | 6.02 | `PPSA99609` probe | A known 20 ms, 48 kHz stereo Opus packet decoded to the expected 960 frames (3,840 signed-16 PCM bytes) with nonzero energy. |
 | 2026-08-25 | 6.02 | `PPSA99612` integration | The production PSRadio eboot entered normally, rendered `v0.2.0`, refreshed six catalog feeds, admitted 13 explicitly identified Opus stations, and closed with runtime layers released. |
 | 2026-08-25 | 6.02 | `PPSA99614` Icecast fix | The corrected eboot entered normally, rendered the AAC/Opus-ready UI, and closed with runtime layers released. Its SHA-256 was `C7F00EB0654B07CE2E8CF4E7490AD3A355E50568BD60E3DF5FEB10B71C9A273F`. |
+| 2026-08-25 | 6.02 | `PPSA99615` live playback | Multiple Radio Browser Opus stations produced audible output. Cyrillic station metadata also rendered correctly with the extended bitmap atlas. Brief recurring gaps and delayed stops exposed the need for independent PCM buffering and HTTP-read cancellation. |
 
 The integrated eboot in the second run had SHA-256
 `6E6D84ED90678DC72D1B59A4B780570939E4A3A4BC9E6BD65ACEDD27D3AF0666`.
@@ -36,7 +37,8 @@ The packet probe source and reverse-engineering notes are maintained in the
 
 ## Remaining release gate
 
-Before publishing Opus as a completed playback format, validate live audible
-playback, stop, AAC-to-Opus and Opus-to-AAC switching, reconnect behavior, and a
-long-running stream on the target console. Ogg CRC, output-gain, and final
-granule trimming work remains tracked in the project roadmap.
+Before publishing Opus as a completed playback format, validate the new
+two-second PCM queue and immediate HTTP cancellation through stop,
+AAC-to-Opus and Opus-to-AAC switching, reconnect behavior, and a long-running
+stream on the target console. Ogg CRC, output-gain, and final granule trimming
+work remains tracked in the project roadmap.
