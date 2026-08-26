@@ -67,8 +67,9 @@ HTTP, buffering, PCM conversion, and AudioOut paths.
 - [x] Validate immediate stop from buffered AAC playback.
 - [x] Validate a ten-minute sustained Opus session and clean stop without a
   runtime crash.
-- [ ] Validate audible underrun behavior, reconnect behavior, and the native
-  decoder's `-502` response to the WALM Opus stream variant.
+- [ ] Validate audible underrun behavior, implement reconnect behavior, and
+  identify the live Ogg/Opus packet feature that intermittently produces
+  native decoder result `-502` on WALM streams.
 - Investigate AvPlayer and the firmware library inventory for a callable
   Vorbis path.
 - Integrate redistributable software decoders only for formats without a

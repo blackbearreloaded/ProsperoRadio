@@ -20,6 +20,7 @@ runtime module or a decoder implementation.
 | 2026-08-26 | 6.02 | `PPSA99628` immediate stop | Cross stopped buffered AAC playback within the first one-second observation point. The UI remained in `Ready to play` at 5 and 15 seconds, and no fatal signal was logged. |
 | 2026-08-26 | 6.02 | `PPSA99629` reverse codec transition | The app moved directly from KIIS FM AAC at 24 kHz mono to WALM Old Time Radio Opus at 48 kHz mono without a crash. This WALM stream succeeded; the separate WALM 2 HD variant remains the reproducible `-502` case. |
 | 2026-08-26 | 6.02 | `PPSA99630` ten-minute soak | Deutschlandfunk Opus remained in `Playing` at the start and the 2, 4, 6, and 8-minute checkpoints, then accepted a clean stop after the ten-minute interval. The app produced no fatal signal. Desktop focus changes invalidated the transient screen-difference sampler, so this run proves sustained runtime stability but not gap-free audible output. |
+| 2026-08-26 | 6.02 | `PPSA99631` repeated error recovery | Three consecutive attempts to play WALM Old Time Radio Opus returned native result `-502` without crashing the app. The same station played successfully in `PPSA99629`, so the failure follows changing live stream data rather than a permanently unsupported station. Attempted AAC lifecycle captures were inconclusive because the automated stop inputs were not observed. |
 
 The integrated eboot in the second run had SHA-256
 `6E6D84ED90678DC72D1B59A4B780570939E4A3A4BC9E6BD65ACEDD27D3AF0666`.
