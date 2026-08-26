@@ -13,7 +13,7 @@
 
 #define CACHE_MAGIC UINT32_C(0x52424331)
 #define FAVORITES_MAGIC UINT32_C(0x52424631)
-#define CATALOG_CACHE_VERSION 3U
+#define CATALOG_CACHE_VERSION 4U
 #define FAVORITES_VERSION 2U
 #define FAVORITES_LEGACY_VERSION 1U
 #define FAVORITES_LEGACY_CAPACITY 100U
@@ -24,7 +24,7 @@
 #define CATALOG_FEED_LIMIT 80U
 #define CATALOG_URL(codec, order) "https://all.api.radio-browser.info/json/stations/search?codec=" codec "&hidebroken=true&order=" order "&reverse=true&limit=80"
 #define CLICK_URL_PREFIX "https://all.api.radio-browser.info/json/url/"
-#define USER_AGENT "PSRadio/1.0 (+https://www.radio-browser.info/)"
+#define USER_AGENT "PSRadio/0.2.0 (+https://www.radio-browser.info/)"
 #define JSON_CAPACITY (1024U * 1024U)
 #define STREAM_BUFFER_SIZE (64U * 1024U)
 #define PCM_BUFFER_SIZE (2048U * 2U * 2U)
@@ -127,11 +127,11 @@ typedef struct {
 
 static const catalog_feed_source_t CATALOG_FEEDS[] = {
     {CATALOG_URL("AAC", "clickcount"), FEED_POPULAR},
-    {CATALOG_URL("OPUS", "clickcount"), FEED_POPULAR},
+    {CATALOG_URL("OGG", "clickcount"), FEED_POPULAR},
     {CATALOG_URL("AAC", "clicktrend"), FEED_TRENDING},
-    {CATALOG_URL("OPUS", "clicktrend"), FEED_TRENDING},
+    {CATALOG_URL("OGG", "clicktrend"), FEED_TRENDING},
     {CATALOG_URL("AAC", "votes"), FEED_VOTED},
-    {CATALOG_URL("OPUS", "votes"), FEED_VOTED},
+    {CATALOG_URL("OGG", "votes"), FEED_VOTED},
 };
 
 extern int sceKernelOpen(const char * path, int flags, uint16_t mode);
@@ -529,9 +529,36 @@ static int json_integer_field(const char * begin, const char * end,
     return fallback;
 }
 
-static bool supported_codec(const char * codec)
+static char ascii_lower(char value)
 {
-    return strcasecmp(codec, "AAC") == 0 || strcasecmp(codec, "OPUS") == 0;
+    return value >= 'A' && value <= 'Z' ? (char)(value + ('a' - 'A')) : value;
+}
+
+static bool contains_ascii_case_insensitive(const char * text, const char * needle)
+{
+    if(text == NULL || needle == NULL || *needle == '\0') return false;
+    for(; *text != '\0'; ++text) {
+        const char * hay = text;
+        const char * find = needle;
+        while(*hay != '\0' && *find != '\0' &&
+              ascii_lower(*hay) == ascii_lower(*find)) {
+            ++hay;
+            ++find;
+        }
+        if(*find == '\0') return true;
+    }
+    return false;
+}
+
+static bool normalize_supported_codec(radio_station_t * station)
+{
+    if(strcasecmp(station->codec, "AAC") == 0) return true;
+    if(strcasecmp(station->codec, "OGG") == 0 &&
+       contains_ascii_case_insensitive(station->url, "opus")) {
+        SDL_strlcpy(station->codec, "OPUS", sizeof(station->codec));
+        return true;
+    }
+    return false;
 }
 
 static unsigned parse_catalog(const char * json, size_t length,
@@ -584,7 +611,7 @@ static unsigned parse_catalog(const char * json, size_t length,
         const int hls = json_integer_field(object, object_end, "hls", 0);
         const int healthy = json_integer_field(object, object_end, "lastcheckok", 1);
         if(station.uuid[0] != '\0' && station.name[0] != '\0' && station.url[0] != '\0' &&
-           supported_codec(station.codec) && hls == 0 && healthy != 0) {
+           normalize_supported_codec(&station) && hls == 0 && healthy != 0) {
             stations[count++] = station;
         }
     }

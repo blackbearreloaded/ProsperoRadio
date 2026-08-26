@@ -64,8 +64,10 @@ also been validated on hardware; the integrated Ogg Opus streaming path is the
 focus of the `0.2.0` device test. The release display name is **PSRadio** and
 its stable application identity is `PPSA99001`.
 
-Catalog requests advertise AAC and Opus stations. MP3, Ogg Vorbis, FLAC, and
-HLS delivery remain gated by the hardware-first work in the [roadmap](ROADMAP.md).
+Catalog requests advertise AAC and explicitly identified Ogg Opus stations.
+Radio Browser's generic OGG records are not exposed unless their resolved URL
+identifies Opus. MP3, Ogg Vorbis, FLAC, and HLS delivery remain gated by the
+hardware-first work in the [roadmap](ROADMAP.md).
 
 ## Requirements
 

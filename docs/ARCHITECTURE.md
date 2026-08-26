@@ -89,10 +89,13 @@ catalog. AAC and Opus variants are requested for each ranking:
 - trending by click trend;
 - top rated by vote count.
 
-The queries use `hidebroken=true`. Responses are restricted to supported AAC
-and Opus codecs, parsed into the fixed-size `radio_station_t` model, merged by
-station UUID, ranked across codecs, and capped at 480 stations. Catalog refresh
-runs on a background thread and publishes changes under an SDL mutex.
+The queries use `hidebroken=true`. Radio Browser currently reports Opus streams
+under its broader `OGG` codec label, so PSRadio admits only OGG entries whose
+resolved URL explicitly identifies Opus and normalizes their displayed codec to
+`OPUS`. AAC and normalized Opus entries are parsed into the fixed-size
+`radio_station_t` model, merged by station UUID, ranked across codecs, and
+capped at 480 stations. Catalog refresh runs on a background thread and
+publishes changes under an SDL mutex.
 
 The latest usable catalog and favorite UUIDs are stored atomically under
 `/download0`:
