@@ -13,7 +13,7 @@
 
 #define CACHE_MAGIC UINT32_C(0x52424331)
 #define FAVORITES_MAGIC UINT32_C(0x52424631)
-#define CATALOG_CACHE_VERSION 4U
+#define CATALOG_CACHE_VERSION 5U
 #define FAVORITES_VERSION 2U
 #define FAVORITES_LEGACY_VERSION 1U
 #define FAVORITES_LEGACY_CAPACITY 100U
@@ -479,24 +479,29 @@ static bool json_string_field(const char * begin, const char * end,
         ++value;
         size_t written = 0;
         while(value < end && *value != '"') {
-            unsigned codepoint = (uint8_t)*value++;
-            if(codepoint == '\\' && value < end) {
-                const char escape = *value++;
-                if(escape == 'u' && value + 4 <= end) {
-                    codepoint = 0;
-                    bool valid = true;
-                    for(unsigned i = 0; i < 4; ++i) {
-                        const int hex = hex_value(value[i]);
-                        if(hex < 0) valid = false;
-                        codepoint = (codepoint << 4) | (unsigned)(hex < 0 ? 0 : hex);
-                    }
-                    value += 4;
-                    if(!valid || (codepoint >= 0xd800U && codepoint <= 0xdfffU)) codepoint = '?';
-                }
-                else if(escape == 'n' || escape == 'r' || escape == 't') codepoint = ' ';
-                else if(escape == 'b' || escape == 'f') continue;
-                else codepoint = (uint8_t)escape;
+            if(*value != '\\') {
+                if(written + 1 < capacity) output[written++] = *value;
+                ++value;
+                continue;
             }
+            ++value;
+            if(value >= end) break;
+            unsigned codepoint;
+            const char escape = *value++;
+            if(escape == 'u' && value + 4 <= end) {
+                codepoint = 0;
+                bool valid = true;
+                for(unsigned i = 0; i < 4; ++i) {
+                    const int hex = hex_value(value[i]);
+                    if(hex < 0) valid = false;
+                    codepoint = (codepoint << 4) | (unsigned)(hex < 0 ? 0 : hex);
+                }
+                value += 4;
+                if(!valid || (codepoint >= 0xd800U && codepoint <= 0xdfffU)) codepoint = '?';
+            }
+            else if(escape == 'n' || escape == 'r' || escape == 't') codepoint = ' ';
+            else if(escape == 'b' || escape == 'f') continue;
+            else codepoint = (uint8_t)escape;
             append_utf8(output, capacity, &written, codepoint);
         }
         if(capacity != 0) output[written] = '\0';

@@ -167,6 +167,7 @@ PS5 hardware:
 - `tools/ogg_opus_check.c`: split-input Ogg pages, packet continuation,
   chained streams, and malformed-input rejection;
 - `tools/radio_input_check.c`: controller edge, dead-zone, and repeat behavior;
+- `tools/radio_service_json_check.c`: raw and escaped UTF-8 catalog metadata;
 - `tools/radio_text_check.cpp`: UTF-8 shaping and right-to-left ordering;
 - `tools/inspect.ps1`: ELF/FSELF structure and required imports.
 

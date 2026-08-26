@@ -109,6 +109,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Input check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/ogg_opus_check.c src/ogg_opus.c -o /tmp/ogg-opus-check
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check compilation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -Wl,--gc-sections -Iinclude -Ivendor/ps5/sdl/include/SDL2 tools/radio_service_json_check.c -o /tmp/radio-service-json-check
+          if ($LASTEXITCODE -ne 0) { throw "Radio service JSON check compilation failed." }
           wsl.exe --exec clang++-18 -std=c++20 -Wall -Wextra -Werror -Isrc tools/radio_text_check.cpp src/radio_text.cpp -o /tmp/radio-text-check
           if ($LASTEXITCODE -ne 0) { throw "Text check compilation failed." }
 
@@ -121,6 +123,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Input check failed." }
           wsl.exe --exec /tmp/ogg-opus-check
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check failed." }
+          wsl.exe --exec /tmp/radio-service-json-check
+          if ($LASTEXITCODE -ne 0) { throw "Radio service JSON check failed." }
           wsl.exe --exec /tmp/radio-text-check
           if ($LASTEXITCODE -ne 0) { throw "Text check failed." }
 

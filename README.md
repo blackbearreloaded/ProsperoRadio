@@ -231,6 +231,8 @@ wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/aac_timing_ch
 wsl /tmp/aac-timing-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_input_check.c -o /tmp/radio-input-check
 wsl /tmp/radio-input-check
+wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -Wl,--gc-sections -Iinclude -Ivendor/ps5/sdl/include/SDL2 tools/radio_service_json_check.c -o /tmp/radio-service-json-check
+wsl /tmp/radio-service-json-check
 wsl --exec clang++-18 -std=c++20 -Wall -Wextra -Werror -Isrc tools/radio_text_check.cpp src/radio_text.cpp -o /tmp/radio-text-check
 wsl /tmp/radio-text-check
 ```
