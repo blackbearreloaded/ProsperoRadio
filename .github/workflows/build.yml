@@ -111,6 +111,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "PCM queue check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_input_check.c -o /tmp/radio-input-check
           if ($LASTEXITCODE -ne 0) { throw "Input check compilation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_playlist_check.c src/radio_playlist.c -o /tmp/radio-playlist-check
+          if ($LASTEXITCODE -ne 0) { throw "Radio playlist check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/ogg_opus_check.c src/ogg_opus.c -o /tmp/ogg-opus-check
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -Wl,--gc-sections -Iinclude -Ivendor/ps5/sdl/include/SDL2 tools/radio_service_json_check.c -o /tmp/radio-service-json-check
@@ -129,6 +131,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "PCM queue check failed." }
           wsl.exe --exec /tmp/radio-input-check
           if ($LASTEXITCODE -ne 0) { throw "Input check failed." }
+          wsl.exe --exec /tmp/radio-playlist-check
+          if ($LASTEXITCODE -ne 0) { throw "Radio playlist check failed." }
           wsl.exe --exec /tmp/ogg-opus-check
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check failed." }
           wsl.exe --exec /tmp/radio-service-json-check

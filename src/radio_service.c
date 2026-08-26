@@ -5,6 +5,7 @@
 #include "ogg_opus.h"
 #include "opus_decoder.h"
 #include "pcm_queue.h"
+#include "radio_playlist.h"
 
 #include "SDL.h"
 
@@ -49,6 +50,9 @@
 #define AUDIO_WAIT_MS 20U
 #define PLAYBACK_RETRY_COUNT 3U
 #define PLAYBACK_RETRY_BASE_MS 250U
+#define PLAYLIST_BUFFER_SIZE (64U * 1024U)
+#define PLAYLIST_REDIRECT_LIMIT 3U
+#define PLAYLIST_HLS_UNSUPPORTED (-2001)
 #define OPUS_RETRYABLE_ERROR (-502)
 
 typedef struct {
@@ -490,6 +494,85 @@ static unsigned http_audio_channels(int request)
         }
     }
     return 0;
+}
+
+static radio_playlist_kind_t http_playlist_kind(int request, const char * url)
+{
+    const radio_playlist_kind_t url_kind = radio_playlist_kind_from_url(url);
+    if(url_kind != RADIO_PLAYLIST_NONE) return url_kind;
+    char * headers = NULL;
+    size_t size = 0;
+    if(sceHttpGetAllResponseHeaders(request, &headers, &size) < 0 ||
+       headers == NULL) return RADIO_PLAYLIST_NONE;
+    return radio_playlist_kind_from_headers(headers, size);
+}
+
+static int read_playlist_document(int request, char * data, size_t capacity,
+                                  size_t * size)
+{
+    *size = 0;
+    while(*size < capacity && !SDL_AtomicGet(&g_stop_playback)) {
+        const int received = sceHttpReadData(request, data + *size,
+                                             capacity - *size);
+        if(received < 0) return received;
+        if(received == 0) return *size == 0 ? -2 : 0;
+        *size += (size_t)received;
+    }
+    return SDL_AtomicGet(&g_stop_playback) ? 0 : -2;
+}
+
+static int open_resolved_stream(const radio_station_t * station,
+                                int * connection, int * request)
+{
+    char current[sizeof(station->url)];
+    SDL_strlcpy(current, station->url, sizeof(current));
+    char * document = malloc(PLAYLIST_BUFFER_SIZE);
+    if(document == NULL) return -1;
+
+    int result = -2;
+    for(unsigned depth = 0; depth < PLAYLIST_REDIRECT_LIMIT; ++depth) {
+        result = http_open(current, true, station->codec, connection, request);
+        if(result < 0) break;
+        radio_playlist_kind_t kind = http_playlist_kind(*request, current);
+        if(kind == RADIO_PLAYLIST_NONE) {
+            free(document);
+            return 0;
+        }
+        if(kind == RADIO_PLAYLIST_HLS) {
+            result = PLAYLIST_HLS_UNSUPPORTED;
+            playback_request_clear(*request);
+            http_close(*connection, *request);
+            *connection = -1;
+            *request = -1;
+            break;
+        }
+
+        size_t document_size = 0;
+        result = read_playlist_document(*request, document,
+                                        PLAYLIST_BUFFER_SIZE, &document_size);
+        playback_request_clear(*request);
+        http_close(*connection, *request);
+        *connection = -1;
+        *request = -1;
+        if(result < 0) break;
+        const radio_playlist_kind_t body_kind =
+            radio_playlist_kind_from_body(document, document_size);
+        if(body_kind == RADIO_PLAYLIST_HLS) {
+            result = PLAYLIST_HLS_UNSUPPORTED;
+            break;
+        }
+        if(body_kind == RADIO_PLAYLIST_M3U || body_kind == RADIO_PLAYLIST_PLS)
+            kind = body_kind;
+
+        char resolved[sizeof(current)];
+        result = (int)radio_playlist_first_url(
+            kind, document, document_size, current,
+            resolved, sizeof(resolved));
+        if(result < 0) break;
+        SDL_strlcpy(current, resolved, sizeof(current));
+    }
+    free(document);
+    return result < 0 ? result : -2;
 }
 
 static int hex_value(char value)
@@ -1258,7 +1341,7 @@ static int play_stream(const radio_station_t * station)
 {
     int connection = -1;
     int request = -1;
-    int result = http_open(station->url, true, station->codec, &connection, &request);
+    int result = open_resolved_stream(station, &connection, &request);
     if(result < 0) return result;
     const unsigned source_channels = http_audio_channels(request);
     set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 0, 0);

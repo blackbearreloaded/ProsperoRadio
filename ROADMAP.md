@@ -115,7 +115,7 @@ HLS is a delivery protocol rather than a codec and is tracked separately.
   already validated by the continuous-stream player.
 - [ ] Handle cancellation, variant selection, discontinuities, retries, and stale
   segments.
-- [ ] Resolve simple M3U and PLS playlists when Radio Browser does not provide a
+- [x] Resolve bounded M3U and PLS playlists when Radio Browser does not provide a
   usable direct stream URL.
 - [ ] Reject encrypted, byte-range, fMP4/CMAF, low-latency, and non-AAC variants
   explicitly in the first release.
