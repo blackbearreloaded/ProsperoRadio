@@ -6,7 +6,7 @@
 #include <string.h>
 
 #define HLS_MAX_INPUT (128U * 1024U)
-#define HLS_MAX_LINE 2048U
+#define HLS_MAX_LINE 4096U
 
 typedef struct {
     const char * data;
@@ -269,6 +269,7 @@ radio_hls_result_t radio_hls_parse(const char * data, size_t size,
                 !starts(line, "#EXT-X-PLAYLIST-TYPE:") &&
                 !starts(line, "#EXT-X-ALLOW-CACHE:") &&
                 !starts(line, "#EXT-X-START:") &&
+                !starts(line, "#EXT-X-SESSION-DATA:") &&
                 !starts(line, "#EXT-X-INDEPENDENT-SEGMENTS")) {
             return RADIO_HLS_UNSUPPORTED;
         }

@@ -8,7 +8,7 @@
 extern "C" {
 #endif
 
-#define RADIO_HLS_URL_BYTES 512U
+#define RADIO_HLS_URL_BYTES 2048U
 #define RADIO_HLS_MAX_VARIANTS 12U
 #define RADIO_HLS_MAX_SEGMENTS 64U
 

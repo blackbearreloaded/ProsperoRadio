@@ -11,11 +11,39 @@ static void check(int condition, const char * message)
     exit(1);
 }
 
-int main(void)
+static int probe_file(const char * path, const char * url)
 {
+    FILE * file = fopen(path, "rb");
+    check(file != NULL, "probe HLS file opens");
+    check(fseek(file, 0, SEEK_END) == 0, "probe HLS file seeks");
+    const long length = ftell(file);
+    check(length > 0 && length <= 128L * 1024L, "probe HLS size is bounded");
+    rewind(file);
+    char * data = malloc((size_t)length);
+    check(data != NULL, "probe HLS allocation succeeds");
+    check(fread(data, 1U, (size_t)length, file) == (size_t)length,
+          "probe HLS file reads");
+    fclose(file);
+
+    radio_hls_playlist_t playlist;
+    check(radio_hls_parse(data, (size_t)length, url, &playlist) == RADIO_HLS_OK,
+          "probe HLS manifest parses");
+    free(data);
+    printf("radio_hls_check: PROBE PASS (%s, %u entries)\n",
+           playlist.kind == RADIO_HLS_MASTER ? "master" : "media",
+           playlist.kind == RADIO_HLS_MASTER
+               ? playlist.variant_count : playlist.segment_count);
+    return 0;
+}
+
+int main(int argc, char ** argv)
+{
+    if(argc == 3) return probe_file(argv[1], argv[2]);
+    check(argc == 1, "usage: radio_hls_check [manifest.m3u8 URL]");
     radio_hls_playlist_t playlist;
     const char master[] =
         "#EXTM3U\n"
+        "#EXT-X-SESSION-DATA:DATA-ID=\"radio.test.cdn\",VALUE=\"edge\"\n"
         "#EXT-X-STREAM-INF:BANDWIDTH=128000,CODECS=\"mp4a.40.2\"\n"
         "high/audio.m3u8\n"
         "#EXT-X-STREAM-INF:BANDWIDTH=64000,CODECS=\"mp4a.40.2\"\n"
