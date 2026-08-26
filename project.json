@@ -46,7 +46,8 @@
     "vendor/ps5/sdk/stubs/libSceLibcInternal.so",
     "vendor/ps5/sdk/stubs/libkernel.so",
     "vendor/ps5/sdk/stubs/libSceSysmodule_stub.a",
-    "vendor/ps5/sdk/stubs/libSceOpusDec_stub.a"
+    "vendor/ps5/sdk/stubs/libSceOpusDec_stub.a",
+    "vendor/ps5/sdk/stubs/libSceOpusCeltDec_stub.a"
   ],
   "appFiles": [],
   "runtimeModules": [

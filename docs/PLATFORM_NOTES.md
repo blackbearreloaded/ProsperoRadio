@@ -65,8 +65,9 @@ environment.
 
 PSRadio uses SDL's CPU-rendered presentation path, native controller input and
 IME, native HTTP/TLS, `/download0` persistence, native AAC and Opus decoding,
-and AudioOut. The `libSceOpusDec` packet-to-PCM path is hardware-verified on
-firmware 6.02; live-stream lifecycle validation is tracked in the roadmap. GPU
+and AudioOut. The `libSceOpusDec` and `libSceOpusCeltDec` packet-to-PCM paths
+are hardware-verified on firmware 6.02. CELT-only TOC modes use the dedicated
+codec-16 path; SILK and hybrid modes use the general codec-21 path. GPU
 rendering and GPU decode are outside this repository's scope. See
 [Architecture](ARCHITECTURE.md) for the runtime boundaries.
 

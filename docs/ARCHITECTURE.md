@@ -118,7 +118,9 @@ resolved station URL
   -> native HTTP continuous read
   -> codec dispatch
        AAC  -> ADTS synchronization -> native AAC decoder
-       Opus -> incremental Ogg demux -> native libSceOpusDec decoder
+       Opus -> incremental Ogg demux -> TOC mode dispatch
+                                      -> CELT: native libSceOpusCeltDec
+                                      -> SILK/hybrid: native libSceOpusDec
   -> channel conversion and 48 kHz resampling when required
   -> two-second decoded PCM ring
   -> dedicated PS5 AudioOut consumer
@@ -138,8 +140,10 @@ terminating the UI.
 The Ogg parser is project-owned, allocation-free state with bounded packet
 storage. It validates stream structure, Opus headers, packet limits, page
 sequence, continuation, and chained serial transitions before compressed
-packets reach the platform decoder. AAC and Opus are currently advertised;
-planned codec and delivery work is tracked in [`ROADMAP.md`](../ROADMAP.md).
+packets reach the platform decoder. Opus TOC configurations 16-31 are routed to
+the dedicated CELT decoder; mode changes reopen the matching native decoder.
+AAC and Opus are currently advertised; planned codec and delivery work is
+tracked in [`ROADMAP.md`](../ROADMAP.md).
 
 ## Input and text entry
 

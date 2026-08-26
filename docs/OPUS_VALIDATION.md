@@ -1,8 +1,10 @@
 # Native Opus validation
 
-PSRadio uses the console-provided `libSceOpusDec` decoder. The application
-packages generated import metadata only; it does not distribute the Sony
-runtime module or a decoder implementation.
+PSRadio uses the console-provided `libSceOpusDec` and `libSceOpusCeltDec`
+decoders. Opus TOC configurations 16-31 select the dedicated CELT path; SILK
+and hybrid configurations retain the general decoder. The application packages
+generated import metadata only; it does not distribute Sony runtime modules or
+a decoder implementation.
 
 ## Validation record
 
@@ -21,6 +23,15 @@ runtime module or a decoder implementation.
 | 2026-08-26 | 6.02 | `PPSA99629` reverse codec transition | The app moved directly from KIIS FM AAC at 24 kHz mono to WALM Old Time Radio Opus at 48 kHz mono without a crash. This WALM stream succeeded; the separate WALM 2 HD variant remains the reproducible `-502` case. |
 | 2026-08-26 | 6.02 | `PPSA99630` ten-minute soak | Deutschlandfunk Opus remained in `Playing` at the start and the 2, 4, 6, and 8-minute checkpoints, then accepted a clean stop after the ten-minute interval. The app produced no fatal signal. Desktop focus changes invalidated the transient screen-difference sampler, so this run proves sustained runtime stability but not gap-free audible output. |
 | 2026-08-26 | 6.02 | `PPSA99631` repeated error recovery | Three consecutive attempts to play WALM Old Time Radio Opus returned native result `-502` without crashing the app. The same station played successfully in `PPSA99629`, so the failure follows changing live stream data rather than a permanently unsupported station. Attempted AAC lifecycle captures were inconclusive because the automated stop inputs were not observed. |
+| 2026-08-26 | 6.02 | `PPSA99646` isolated CELT path | After removing an unsafe diagnostic `sceKernelDebugOutText` call from the disposable harness, the dedicated codec-16 decoder loaded, initialized, created, and decoded live WALM CELT packets continuously. PCM was produced immediately and the title remained alive for the full observation window. |
+| 2026-08-26 | 6.02 | `PPSA99648` production routing | The production-style dual decoder selected CELT from the packet TOC, completed every codec-16 setup stage, decoded the first packet, produced PCM, and remained crash-free for the observation window using the checked-in, hash-pinned import stub. |
+| 2026-08-26 | 6.02 | `PPSA99649` AAC regression | The same dual-decoder eboot auto-played an AAC station, opened AudioOut, produced decoded PCM, and remained crash-free for the observation window. |
+
+Do not use `PPSA99640` through `PPSA99645` as decoder-crash evidence. Their
+disposable telemetry harness called `sceKernelDebugOutText` immediately after
+selecting the stream; that optional debug path jumped through a null target in
+`libkernel` before decoder-stage telemetry. Removing the call in `PPSA99646`
+eliminated the crash and exposed the successful CELT lifecycle above.
 
 The integrated eboot in the second run had SHA-256
 `6E6D84ED90678DC72D1B59A4B780570939E4A3A4BC9E6BD65ACEDD27D3AF0666`.
@@ -56,7 +67,7 @@ The packet probe source and reverse-engineering notes are maintained in the
 
 Before publishing Opus as a completed playback format, validate reconnect and
 audible underrun behavior on the target console. The two-second queue,
-immediate AAC stop, transitions in both codec directions, and a ten-minute
-Opus session now have crash-free device evidence. Ogg CRC, output-gain, final
-granule trimming, and the WALM `-502` packet variant remain tracked in the
-project roadmap.
+immediate AAC stop, transitions in both codec directions, a ten-minute Opus
+session, dedicated CELT decoding, and the AAC regression now have crash-free
+device evidence. Ogg CRC, output-gain, final-granule trimming, and automatic
+recovery from intermittent `-502` results remain tracked in the project roadmap.

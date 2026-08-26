@@ -59,10 +59,10 @@ radio client, controller-first interface, media stack, and bundled dependencies.
 ## Current status
 
 The complete browse, search, favorite, cache, and AAC playback loop has been
-validated on PS5 hardware with ShadowMountPlus. Native Opus packet decoding has
-also been validated on hardware; the integrated Ogg Opus streaming path is the
-focus of the `0.2.0` device test. The release display name is **PSRadio** and
-its stable application identity is `PPSA99001`.
+validated on PS5 hardware with ShadowMountPlus. Ogg Opus playback is also
+hardware-validated: CELT-mode packets use the console's dedicated CELT decoder,
+while SILK and hybrid modes retain the general native Opus decoder. The release
+display name is **PSRadio** and its stable application identity is `PPSA99001`.
 
 Catalog requests advertise AAC and explicitly identified Ogg Opus stations.
 Radio Browser's generic OGG records are not exposed unless their resolved URL
@@ -184,7 +184,7 @@ src/main.cpp                 SDL, RmlUi, renderer, and application lifecycle
 src/radio_app.cpp            UI state, navigation, search, and station actions
 src/radio_service.c          Radio Browser, persistence, audio streams, and AudioOut
 src/ogg_opus.c               Incremental Ogg Opus demuxing
-src/opus_decoder.c           Native PS5 Opus decoder adapter
+src/opus_decoder.c           Native PS5 general-Opus/CELT decoder adapter
 src/radio_input.c            Native controller adapter
 src/radio_ime.c              Native on-screen keyboard adapter
 src/radio_text.cpp           Arabic shaping and visual RTL ordering

@@ -237,6 +237,7 @@ foreach ($stub in $stubLibraries) {
 $pinnedImportStubs = @{
     "vendor/ps5/sdk/stubs/libSceSysmodule_stub.a" = "CFAD953132F0BAC90FA636E304F267AD82A7C71E7F41D69943C07416F788C214"
     "vendor/ps5/sdk/stubs/libSceOpusDec_stub.a" = "2D9D2FED83D16B4B3D975FC00314AF72B5F035486D9A2819B293D3CD0E81616B"
+    "vendor/ps5/sdk/stubs/libSceOpusCeltDec_stub.a" = "AFCEAAD3A442CC87412FC96E30716082081AEC846AA1697608910B9FD1F3F51D"
 }
 foreach ($stub in $pinnedImportStubs.Keys) {
     $actual = (Get-FileHash -LiteralPath (Join-Path $here $stub) -Algorithm SHA256).Hash

@@ -67,9 +67,11 @@ HTTP, buffering, PCM conversion, and AudioOut paths.
 - [x] Validate immediate stop from buffered AAC playback.
 - [x] Validate a ten-minute sustained Opus session and clean stop without a
   runtime crash.
+- [x] Validate the dedicated `libSceOpusCeltDec` codec-16 path with live
+  CELT-only WALM packets and route TOC configurations 16-31 to it.
 - [ ] Validate audible underrun behavior, implement reconnect behavior, and
-  identify the live Ogg/Opus packet feature that intermittently produces
-  native decoder result `-502` on WALM streams.
+  recover automatically when a live stream intermittently returns native
+  decoder result `-502`.
 - Investigate AvPlayer and the firmware library inventory for a callable
   Vorbis path.
 - Integrate redistributable software decoders only for formats without a

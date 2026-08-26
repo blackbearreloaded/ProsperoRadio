@@ -1066,10 +1066,14 @@ static void opus_playback_reset(opus_playback_t * playback)
 static int opus_packet_ready(const ogg_opus_packet_t * packet, void * user_data)
 {
     opus_playback_t * playback = user_data;
-    if(!playback->decoder_open || playback->stream_serial != packet->stream_serial) {
+    /* Opus TOC configurations 16-31 are CELT-only (RFC 6716, section 3.1). */
+    const bool celt_only = packet->size > 0U && (packet->data[0] >> 3U) >= 16U;
+    if(!playback->decoder_open || playback->stream_serial != packet->stream_serial ||
+       playback->decoder.celt_only != celt_only) {
         opus_playback_reset(playback);
         playback->sink.handle = -1;
-        playback->result = opus_decoder_open(&playback->decoder, packet->channels);
+        playback->result = opus_decoder_open(&playback->decoder,
+                                             packet->channels, celt_only);
         if(playback->result < 0) return -1;
         playback->decoder_open = true;
         playback->stream_serial = packet->stream_serial;
