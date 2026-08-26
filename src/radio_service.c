@@ -916,7 +916,12 @@ static int sink_open(audio_sink_t * sink, uint32_t input_rate, uint32_t channels
     int volumes[8];
     for(unsigned i = 0; i < 8; ++i) volumes[i] = AUDIO_OUT_VOLUME_0DB;
     sceAudioOutSetVolume(sink->handle, 3, volumes);
-    sink->thread = SDL_CreateThread(sink_audio_thread, "radio-output", sink);
+    /*
+     * The PS5 SDL backend forwards non-null names to pthread_set_name_np.
+     * That optional import is unavailable on the target runtime and resolves
+     * to null, so leave the debug name unset.
+     */
+    sink->thread = SDL_CreateThread(sink_audio_thread, NULL, sink);
     if(sink->thread == NULL) goto fail;
     return 0;
 

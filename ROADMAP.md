@@ -62,8 +62,11 @@ HTTP, buffering, PCM conversion, and AudioOut paths.
 - [ ] Validate Ogg page CRCs before dispatch and apply Opus output gain and
   end-granule trimming for full container-spec compliance.
 - [x] Confirm audible playback against live Radio Browser Opus stations.
-- [ ] Validate immediate stop, rapid AAC/Opus station switching, the decoded-PCM
-  jitter queue, reconnect behavior, and sustained playback on PS5.
+- [x] Validate the decoded-PCM queue and a direct Opus-to-AAC station switch on
+  PS5 without a runtime crash.
+- [ ] Validate immediate stop, rapid AAC-to-Opus switching, reconnect behavior,
+  sustained playback, and the native decoder's `-502` response to the WALM
+  Opus stream variant.
 - Investigate AvPlayer and the firmware library inventory for a callable
   Vorbis path.
 - Integrate redistributable software decoders only for formats without a

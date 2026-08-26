@@ -19,6 +19,9 @@ environment.
   current release.
 - The shim is not a C library. Application imports bind to platform modules
   selected by the linker.
+- On the validated PS5 SDL backend, a non-null `SDL_CreateThread` name is
+  forwarded to an unavailable optional `pthread_set_name_np` import. Native
+  worker threads that use this SDL path must pass a null debug name.
 - PSRadio keeps `main` alive and relies on the host application lifecycle for
   process closure.
 
