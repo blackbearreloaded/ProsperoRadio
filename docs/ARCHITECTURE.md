@@ -97,6 +97,10 @@ resolved URL explicitly identifies Opus and normalizes their displayed codec to
 capped at 480 stations. Catalog refresh runs on a background thread and
 publishes changes under an SDL mutex.
 
+Radio Browser entries flagged as HLS are admitted only when their catalog codec
+is AAC. PSRadio intentionally has no custom station or playlist input; every
+playable URL originates in the fetched or cached Radio Browser catalog.
+
 The latest usable catalog and favorite UUIDs are stored atomically under
 `/download0`:
 
@@ -116,7 +120,9 @@ Playback runs on a separate native thread:
 ```text
 resolved station URL
   -> bounded M3U / PLS indirection when returned by Radio Browser
-  -> native HTTP continuous read
+  -> direct native HTTP read, or audio-only HLS
+       master/media playlist -> lowest-bandwidth AAC variant
+       live MPEG-TS segments -> PAT/PMT/PES -> ADTS AAC bytes
   -> codec dispatch
        AAC  -> ADTS synchronization -> native AAC decoder
        MP3  -> MPEG frame synchronization -> native MP3 decoder
@@ -152,8 +158,11 @@ AAC, MP3, and Opus are currently advertised; planned codec and delivery work is
 tracked in [`ROADMAP.md`](../ROADMAP.md). The completed hardware-first review
 found no callable native Vorbis or FLAC path on the current firmware baseline.
 Their selected future paths are bounded CPU decoding through `stb_vorbis` and
-`dr_flac`, respectively. HLS will remain a transport layer above the existing
-native AAC decoder rather than introducing another codec implementation. See
+`dr_flac`, respectively. HLS is a transport layer above the existing native AAC
+decoder rather than another codec implementation. Its bounded subset supports
+relative master/media URLs, live media sequences, discontinuities, and MPEG-TS
+with ADTS AAC. It rejects encryption, byte ranges, fMP4/CMAF, low-latency parts,
+alternate renditions, video variants, and non-AAC elementary streams. See
 [`CODEC_INVESTIGATION.md`](CODEC_INVESTIGATION.md) for evidence and scope.
 
 ## Input and text entry
@@ -192,6 +201,10 @@ PS5 hardware:
 - `tools/radio_input_check.c`: controller edge, dead-zone, and repeat behavior;
 - `tools/radio_playlist_check.c`: M3U/PLS detection, URL resolution, bounds,
   scheme rejection, and HLS separation;
+- `tools/radio_hls_check.c`: audio-only master/media parsing, variant selection,
+  live sequences, discontinuities, and unsupported-feature rejection;
+- `tools/radio_ts_aac_check.c`: split MPEG-TS input, PAT/PMT discovery, PES
+  stripping, ADTS extraction, and optional live-segment probing;
 - `tools/radio_service_json_check.c`: raw and escaped UTF-8 catalog metadata;
 - `tools/radio_text_check.cpp`: UTF-8 shaping and right-to-left ordering;
 - `tools/inspect.ps1`: ELF/FSELF structure and required imports.

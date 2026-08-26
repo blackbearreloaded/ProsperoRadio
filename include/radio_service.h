@@ -26,6 +26,7 @@ typedef struct {
     uint32_t votes;
     uint32_t click_count;
     int32_t click_trend;
+    uint32_t hls;
     uint16_t popular_rank;
     uint16_t trending_rank;
     uint16_t voted_rank;
@@ -74,4 +75,3 @@ void radio_service_stop(void);
 #endif
 
 #endif
-

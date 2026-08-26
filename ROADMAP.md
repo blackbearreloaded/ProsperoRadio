@@ -109,16 +109,20 @@ HLS is a delivery protocol rather than a codec and is tracked separately.
 
 - [x] Identify reusable bounded master/media playlist and MPEG-TS/AAC components
   in the related PS5 IPTV implementation.
-- [ ] Adapt the TS parser to accept audio-only PMTs and submit ADTS AAC frames to
+- [x] Adapt the TS parser to accept audio-only PMTs and submit ADTS AAC frames to
   PSRadio's native decoder.
-- [ ] Fetch segments and follow live updates while supporting only codecs
+- [x] Fetch segments and follow live updates while supporting only codecs
   already validated by the continuous-stream player.
-- [ ] Handle cancellation, variant selection, discontinuities, retries, and stale
+- [x] Handle cancellation, variant selection, discontinuities, retries, and stale
   segments.
 - [x] Resolve bounded M3U and PLS playlists when Radio Browser does not provide a
   usable direct stream URL.
-- [ ] Reject encrypted, byte-range, fMP4/CMAF, low-latency, and non-AAC variants
+- [x] Reject encrypted, byte-range, fMP4/CMAF, low-latency, and non-AAC variants
   explicitly in the first release.
+- [x] Validate the parser against a current audio-only HLS entry and MPEG-TS
+  segment returned by the Radio Browser catalog.
+- [ ] Validate live HLS/AAC playback, stop, switching, playlist reloads, and
+  discontinuities on PS5 hardware before release.
 
 ## Later improvements
 

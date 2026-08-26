@@ -35,6 +35,14 @@ int main(void)
     assert(parse_catalog(mp3_catalog, sizeof(mp3_catalog) - 1U, &station, 1U) == 1U);
     assert(strcmp(station.codec, "MP3") == 0);
 
+    static const char hls_catalog[] =
+        "[{\"stationuuid\":\"hls-test\",\"name\":\"HLS Test\","
+        "\"url_resolved\":\"https://example.invalid/live.m3u8\","
+        "\"codec\":\"AAC\",\"hls\":1,\"lastcheckok\":1}]";
+    assert(parse_catalog(hls_catalog, sizeof(hls_catalog) - 1U,
+                         &station, 1U) == 1U);
+    assert(strcmp(station.codec, "AAC") == 0 && station.hls == 1U);
+
     assert(sink_ready_target(false, false) == AUDIO_START_BLOCKS);
     assert(sink_ready_target(false, true) == AUDIO_RESTART_BLOCKS);
     assert(sink_ready_target(true, false) == 1U);

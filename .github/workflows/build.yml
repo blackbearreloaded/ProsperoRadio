@@ -113,6 +113,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Input check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_playlist_check.c src/radio_playlist.c -o /tmp/radio-playlist-check
           if ($LASTEXITCODE -ne 0) { throw "Radio playlist check compilation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_hls_check.c src/radio_hls.c src/radio_playlist.c -o /tmp/radio-hls-check
+          if ($LASTEXITCODE -ne 0) { throw "Radio HLS check compilation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_ts_aac_check.c src/radio_ts_aac.c -o /tmp/radio-ts-aac-check
+          if ($LASTEXITCODE -ne 0) { throw "Radio MPEG-TS AAC check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/ogg_opus_check.c src/ogg_opus.c -o /tmp/ogg-opus-check
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -Wl,--gc-sections -Iinclude -Ivendor/ps5/sdl/include/SDL2 tools/radio_service_json_check.c -o /tmp/radio-service-json-check
@@ -133,6 +137,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Input check failed." }
           wsl.exe --exec /tmp/radio-playlist-check
           if ($LASTEXITCODE -ne 0) { throw "Radio playlist check failed." }
+          wsl.exe --exec /tmp/radio-hls-check
+          if ($LASTEXITCODE -ne 0) { throw "Radio HLS check failed." }
+          wsl.exe --exec /tmp/radio-ts-aac-check
+          if ($LASTEXITCODE -ne 0) { throw "Radio MPEG-TS AAC check failed." }
           wsl.exe --exec /tmp/ogg-opus-check
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check failed." }
           wsl.exe --exec /tmp/radio-service-json-check

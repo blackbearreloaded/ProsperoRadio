@@ -48,7 +48,7 @@ radio client, controller-first interface, media stack, and bundled dependencies.
 - DualSense-friendly navigation using the D-pad or left analog stick.
 - Native PS5 on-screen keyboard for text search.
 - AAC, HE-AAC, MP3, and Ogg Opus playback through native PS5 decoders and AudioOut.
-- Bounded M3U and PLS indirection for playlist URLs returned by Radio Browser.
+- Bounded M3U, PLS, and audio-only HLS delivery for URLs returned by Radio Browser.
 - Persistent favorites and cached catalog data under `/download0`.
 - Responsive play, stop, station switching, paging, and refresh actions.
 - RmlUi overlays, fixed television safe area, and a persistent now-playing rail.
@@ -71,10 +71,14 @@ application identity is `PPSA99001`.
 
 Catalog requests advertise AAC, MP3, and explicitly identified Ogg Opus stations.
 Radio Browser's generic OGG records are not exposed unless their resolved URL
-identifies Opus. The hardware-first investigation found no callable native
+identifies Opus. Radio Browser AAC entries flagged as HLS are admitted through
+the bounded master/media-playlist and MPEG-TS transport path; custom stream URLs
+are intentionally outside the product scope. Host checks include a current live
+Radio Browser HLS segment, while PS5 hardware validation remains pending. The
+hardware-first investigation found no callable native
 Vorbis or FLAC path on the current firmware baseline; small redistributable
-software candidates are selected but not yet bundled. HLS/AAC has a concrete
-native-decoder transport plan. See the [codec investigation](docs/CODEC_INVESTIGATION.md)
+software candidates are selected but not yet bundled. See the
+[codec investigation](docs/CODEC_INVESTIGATION.md)
 and [roadmap](ROADMAP.md).
 
 ## Requirements
@@ -245,6 +249,10 @@ wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_input_c
 wsl /tmp/radio-input-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_playlist_check.c src/radio_playlist.c -o /tmp/radio-playlist-check
 wsl /tmp/radio-playlist-check
+wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_hls_check.c src/radio_hls.c src/radio_playlist.c -o /tmp/radio-hls-check
+wsl /tmp/radio-hls-check
+wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_ts_aac_check.c src/radio_ts_aac.c -o /tmp/radio-ts-aac-check
+wsl /tmp/radio-ts-aac-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -Wl,--gc-sections -Iinclude -Ivendor/ps5/sdl/include/SDL2 tools/radio_service_json_check.c -o /tmp/radio-service-json-check
 wsl /tmp/radio-service-json-check
 wsl --exec clang++-18 -std=c++20 -Wall -Wextra -Werror -Isrc tools/radio_text_check.cpp src/radio_text.cpp -o /tmp/radio-text-check

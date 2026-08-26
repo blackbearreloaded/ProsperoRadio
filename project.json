@@ -19,7 +19,9 @@
     "src/radio_ime.c",
     "src/ogg_opus.c",
     "src/opus_decoder.c",
+    "src/radio_hls.c",
     "src/radio_playlist.c",
+    "src/radio_ts_aac.c",
     "src/radio_service.c"
   ],
   "compileDefinitions": [

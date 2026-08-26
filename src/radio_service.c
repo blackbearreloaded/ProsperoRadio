@@ -5,7 +5,9 @@
 #include "ogg_opus.h"
 #include "opus_decoder.h"
 #include "pcm_queue.h"
+#include "radio_hls.h"
 #include "radio_playlist.h"
+#include "radio_ts_aac.h"
 
 #include "SDL.h"
 
@@ -16,7 +18,7 @@
 
 #define CACHE_MAGIC UINT32_C(0x52424331)
 #define FAVORITES_MAGIC UINT32_C(0x52424631)
-#define CATALOG_CACHE_VERSION 6U
+#define CATALOG_CACHE_VERSION 7U
 #define FAVORITES_VERSION 2U
 #define FAVORITES_LEGACY_VERSION 1U
 #define FAVORITES_LEGACY_CAPACITY 100U
@@ -52,7 +54,15 @@
 #define PLAYBACK_RETRY_BASE_MS 250U
 #define PLAYLIST_BUFFER_SIZE (64U * 1024U)
 #define PLAYLIST_REDIRECT_LIMIT 3U
-#define PLAYLIST_HLS_UNSUPPORTED (-2001)
+#define STREAM_OPEN_DIRECT 0
+#define STREAM_OPEN_HLS 1
+#define HLS_PLAYLIST_BUFFER_SIZE (128U * 1024U)
+#define HLS_NETWORK_BUFFER_SIZE (16U * 1024U)
+#define HLS_OUTPUT_BUFFER_SIZE (64U * 1024U)
+#define HLS_MASTER_LIMIT 2U
+#define HLS_LIVE_EDGE_SEGMENTS 2U
+#define HLS_ERROR_PLAYLIST (-2101)
+#define HLS_ERROR_TRANSPORT (-2102)
 #define OPUS_RETRYABLE_ERROR (-502)
 
 typedef struct {
@@ -444,7 +454,8 @@ static int http_open(const char * url, bool streaming, const char * codec,
             accept = "audio/ogg, audio/opus, */*";
         else if(codec != NULL && strcasecmp(codec, "MP3") == 0)
             accept = "audio/mpeg, audio/mp3, */*";
-        else accept = "audio/aac, audio/aacp, */*";
+        else accept = "application/vnd.apple.mpegurl, application/x-mpegURL, "
+                      "video/mp2t, audio/aac, audio/aacp, */*";
     }
     sceHttpAddRequestHeader(*request, "Accept", accept,
                             HTTP_HEADER_OVERWRITE);
@@ -522,7 +533,8 @@ static int read_playlist_document(int request, char * data, size_t capacity,
 }
 
 static int open_resolved_stream(const radio_station_t * station,
-                                int * connection, int * request)
+                                int * connection, int * request,
+                                char * resolved_url, size_t resolved_capacity)
 {
     char current[sizeof(station->url)];
     SDL_strlcpy(current, station->url, sizeof(current));
@@ -533,18 +545,21 @@ static int open_resolved_stream(const radio_station_t * station,
     for(unsigned depth = 0; depth < PLAYLIST_REDIRECT_LIMIT; ++depth) {
         result = http_open(current, true, station->codec, connection, request);
         if(result < 0) break;
-        radio_playlist_kind_t kind = http_playlist_kind(*request, current);
+        radio_playlist_kind_t kind = station->hls != 0U && depth == 0U
+            ? RADIO_PLAYLIST_HLS : http_playlist_kind(*request, current);
         if(kind == RADIO_PLAYLIST_NONE) {
+            SDL_strlcpy(resolved_url, current, resolved_capacity);
             free(document);
-            return 0;
+            return STREAM_OPEN_DIRECT;
         }
         if(kind == RADIO_PLAYLIST_HLS) {
-            result = PLAYLIST_HLS_UNSUPPORTED;
+            SDL_strlcpy(resolved_url, current, resolved_capacity);
             playback_request_clear(*request);
             http_close(*connection, *request);
             *connection = -1;
             *request = -1;
-            break;
+            free(document);
+            return STREAM_OPEN_HLS;
         }
 
         size_t document_size = 0;
@@ -558,8 +573,9 @@ static int open_resolved_stream(const radio_station_t * station,
         const radio_playlist_kind_t body_kind =
             radio_playlist_kind_from_body(document, document_size);
         if(body_kind == RADIO_PLAYLIST_HLS) {
-            result = PLAYLIST_HLS_UNSUPPORTED;
-            break;
+            SDL_strlcpy(resolved_url, current, resolved_capacity);
+            free(document);
+            return STREAM_OPEN_HLS;
         }
         if(body_kind == RADIO_PLAYLIST_M3U || body_kind == RADIO_PLAYLIST_PLS)
             kind = body_kind;
@@ -757,9 +773,12 @@ static unsigned parse_catalog(const char * json, size_t length,
         station.click_count = (uint32_t)json_integer_field(object, object_end, "clickcount", 0);
         station.click_trend = json_integer_field(object, object_end, "clicktrend", 0);
         const int hls = json_integer_field(object, object_end, "hls", 0);
+        station.hls = hls != 0 ? 1U : 0U;
         const int healthy = json_integer_field(object, object_end, "lastcheckok", 1);
         if(station.uuid[0] != '\0' && station.name[0] != '\0' && station.url[0] != '\0' &&
-           normalize_supported_codec(&station) && hls == 0 && healthy != 0) {
+           normalize_supported_codec(&station) &&
+           (station.hls == 0U || strcasecmp(station.codec, "AAC") == 0) &&
+           healthy != 0) {
             stations[count++] = station;
         }
     }
@@ -1337,35 +1356,243 @@ static size_t find_adts(const uint8_t * data, size_t size)
     return size;
 }
 
-static int play_stream(const radio_station_t * station)
+typedef int (*stream_read_fn)(void * context, void * data, size_t size);
+
+typedef struct {
+    radio_hls_playlist_t * playlist;
+    radio_ts_aac_parser_t * transport;
+    uint8_t * network;
+    uint8_t * output;
+    size_t output_at;
+    size_t output_size;
+    char playlist_url[RADIO_HLS_URL_BYTES];
+    uint64_t next_sequence;
+    uint64_t segment_sequence;
+    uint32_t reload_at;
+    int connection;
+    int request;
+} hls_reader_t;
+
+static int http_stream_read(void * context, void * data, size_t size)
 {
-    int connection = -1;
-    int request = -1;
-    int result = open_resolved_stream(station, &connection, &request);
-    if(result < 0) return result;
-    const unsigned source_channels = http_audio_channels(request);
-    set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 0, 0);
+    return sceHttpReadData(*(const int *)context, data, size);
+}
 
-    if(strcasecmp(station->codec, "OPUS") == 0) {
-        result = play_opus_request(request);
-        playback_request_clear(request);
+static void hls_request_close(hls_reader_t * reader)
+{
+    if(reader->request >= 0) playback_request_clear(reader->request);
+    http_close(reader->connection, reader->request);
+    reader->connection = -1;
+    reader->request = -1;
+}
+
+static int hls_fetch_playlist(const char * initial_url,
+                              radio_hls_playlist_t * playlist,
+                              char * media_url, size_t media_url_size)
+{
+    char current[RADIO_HLS_URL_BYTES];
+    SDL_strlcpy(current, initial_url, sizeof(current));
+    char * document = malloc(HLS_PLAYLIST_BUFFER_SIZE);
+    if(document == NULL) return -1;
+
+    int result = HLS_ERROR_PLAYLIST;
+    for(unsigned depth = 0U; depth <= HLS_MASTER_LIMIT; ++depth) {
+        int connection = -1;
+        int request = -1;
+        result = http_open(current, true, "AAC", &connection, &request);
+        size_t document_size = 0U;
+        if(result >= 0) result = read_playlist_document(
+            request, document, HLS_PLAYLIST_BUFFER_SIZE, &document_size);
+        if(request >= 0) playback_request_clear(request);
         http_close(connection, request);
-        return result;
-    }
+        if(result < 0 || SDL_AtomicGet(&g_stop_playback)) break;
 
+        const radio_hls_result_t parsed = radio_hls_parse(
+            document, document_size, current, playlist);
+        if(parsed != RADIO_HLS_OK) {
+            result = HLS_ERROR_PLAYLIST + (int)parsed;
+            break;
+        }
+        if(playlist->kind == RADIO_HLS_MEDIA) {
+            SDL_strlcpy(media_url, current, media_url_size);
+            result = 0;
+            break;
+        }
+        const int selected = radio_hls_select_variant(playlist);
+        if(selected < 0) {
+            result = HLS_ERROR_PLAYLIST;
+            break;
+        }
+        SDL_strlcpy(current, playlist->variants[selected].url,
+                    sizeof(current));
+    }
+    free(document);
+    return SDL_AtomicGet(&g_stop_playback) ? 0 : result;
+}
+
+static int hls_output_ready(const uint8_t * data, size_t size,
+                            void * user_data)
+{
+    hls_reader_t * reader = user_data;
+    if(reader->output_size + size > HLS_OUTPUT_BUFFER_SIZE) return -1;
+    memcpy(reader->output + reader->output_size, data, size);
+    reader->output_size += size;
+    return 0;
+}
+
+static unsigned hls_live_edge(const radio_hls_playlist_t * playlist)
+{
+    return playlist->segment_count > HLS_LIVE_EDGE_SEGMENTS
+        ? playlist->segment_count - HLS_LIVE_EDGE_SEGMENTS : 0U;
+}
+
+static int hls_reader_open(hls_reader_t * reader, const char * url)
+{
+    memset(reader, 0, sizeof(*reader));
+    reader->connection = -1;
+    reader->request = -1;
+    reader->playlist = malloc(sizeof(*reader->playlist));
+    reader->transport = malloc(sizeof(*reader->transport));
+    reader->network = malloc(HLS_NETWORK_BUFFER_SIZE);
+    reader->output = malloc(HLS_OUTPUT_BUFFER_SIZE);
+    if(reader->playlist == NULL || reader->transport == NULL ||
+       reader->network == NULL || reader->output == NULL) return -1;
+
+    int result = hls_fetch_playlist(url, reader->playlist,
+                                    reader->playlist_url,
+                                    sizeof(reader->playlist_url));
+    if(result < 0 || SDL_AtomicGet(&g_stop_playback)) return result;
+    const unsigned first = reader->playlist->is_live != 0U
+        ? hls_live_edge(reader->playlist) : 0U;
+    reader->next_sequence = reader->playlist->segments[first].sequence;
+    radio_ts_aac_init(reader->transport, hls_output_ready, reader);
+    return 0;
+}
+
+static void hls_reader_close(hls_reader_t * reader)
+{
+    hls_request_close(reader);
+    free(reader->output);
+    free(reader->network);
+    free(reader->transport);
+    free(reader->playlist);
+    memset(reader, 0, sizeof(*reader));
+    reader->connection = -1;
+    reader->request = -1;
+}
+
+static int hls_wait(unsigned milliseconds)
+{
+    for(unsigned waited = 0U; waited < milliseconds;
+        waited += 25U) {
+        if(SDL_AtomicGet(&g_stop_playback)) return 0;
+        SDL_Delay(milliseconds - waited < 25U ? milliseconds - waited : 25U);
+    }
+    return SDL_AtomicGet(&g_stop_playback) ? 0 : 1;
+}
+
+static int hls_reload(hls_reader_t * reader)
+{
+    const uint32_t now = SDL_GetTicks();
+    if((int32_t)(reader->reload_at - now) > 0 &&
+       !hls_wait(reader->reload_at - now)) return 0;
+    const int result = hls_fetch_playlist(
+        reader->playlist_url, reader->playlist,
+        reader->playlist_url, sizeof(reader->playlist_url));
+    if(result < 0 || SDL_AtomicGet(&g_stop_playback)) return result;
+    const uint32_t delay = reader->playlist->target_duration_ms / 2U;
+    reader->reload_at = SDL_GetTicks() + (delay < 500U ? 500U : delay);
+
+    const uint64_t first = reader->playlist->segments[0].sequence;
+    const uint64_t last = reader->playlist->segments[
+        reader->playlist->segment_count - 1U].sequence;
+    if(reader->next_sequence < first || reader->next_sequence > last + 1U) {
+        const unsigned edge = hls_live_edge(reader->playlist);
+        reader->next_sequence = reader->playlist->segments[edge].sequence;
+        radio_ts_aac_reset(reader->transport);
+    }
+    return 1;
+}
+
+static int hls_find_segment(const hls_reader_t * reader)
+{
+    for(uint32_t i = 0U; i < reader->playlist->segment_count; ++i) {
+        if(reader->playlist->segments[i].sequence == reader->next_sequence)
+            return (int)i;
+    }
+    return -1;
+}
+
+static int hls_stream_read(void * context, void * data, size_t capacity)
+{
+    hls_reader_t * reader = context;
+    while(!SDL_AtomicGet(&g_stop_playback)) {
+        if(reader->output_at < reader->output_size) {
+            const size_t available = reader->output_size - reader->output_at;
+            const size_t copy = available < capacity ? available : capacity;
+            memcpy(data, reader->output + reader->output_at, copy);
+            reader->output_at += copy;
+            if(reader->output_at == reader->output_size) {
+                reader->output_at = 0U;
+                reader->output_size = 0U;
+            }
+            return (int)copy;
+        }
+
+        if(reader->request < 0) {
+            int segment = hls_find_segment(reader);
+            if(segment < 0) {
+                if(reader->playlist->is_live == 0U) return 0;
+                const int reloaded = hls_reload(reader);
+                if(reloaded <= 0) return reloaded;
+                segment = hls_find_segment(reader);
+                if(segment < 0) continue;
+            }
+            const radio_hls_segment_t * item =
+                &reader->playlist->segments[segment];
+            if(item->discontinuity != 0U)
+                radio_ts_aac_reset(reader->transport);
+            const int result = http_open(item->url, true, "AAC",
+                                         &reader->connection,
+                                         &reader->request);
+            if(result < 0) return result;
+            reader->segment_sequence = item->sequence;
+        }
+
+        const int received = sceHttpReadData(reader->request, reader->network,
+                                             HLS_NETWORK_BUFFER_SIZE);
+        if(received < 0) {
+            hls_request_close(reader);
+            return received;
+        }
+        if(received == 0) {
+            hls_request_close(reader);
+            reader->next_sequence = reader->segment_sequence + 1U;
+            continue;
+        }
+        reader->output_at = 0U;
+        reader->output_size = 0U;
+        const radio_ts_aac_result_t parsed = radio_ts_aac_feed(
+            reader->transport, reader->network, (size_t)received);
+        if(parsed != RADIO_TS_AAC_OK) return HLS_ERROR_TRANSPORT + (int)parsed;
+    }
+    return 0;
+}
+
+static int play_audiodec_reader(stream_read_fn read_stream,
+                                void * read_context,
+                                unsigned source_channels, bool mp3)
+{
     uint8_t * stream = malloc(STREAM_BUFFER_SIZE);
     uint8_t * pcm = malloc(PCM_BUFFER_SIZE);
     if(stream == NULL || pcm == NULL) {
         free(stream);
         free(pcm);
-        playback_request_clear(request);
-        http_close(connection, request);
         return -1;
     }
 
-    const bool mp3 = strcasecmp(station->codec, "MP3") == 0;
     const uint32_t codec_type = mp3 ? AUDIODEC_MP3 : AUDIODEC_AAC;
-    result = sceSysmoduleLoadModule(0x0088);
+    int result = sceSysmoduleLoadModule(0x0088);
     const bool module_loaded = result >= 0;
     if(module_loaded) result = sceAudiodecInitLibrary(codec_type);
     const bool library_initialized = result >= 0;
@@ -1406,8 +1633,8 @@ static int play_stream(const radio_station_t * station)
     while(result >= 0 && !SDL_AtomicGet(&g_stop_playback)) {
         const size_t minimum_header = mp3 ? 4U : 7U;
         if(buffered < minimum_header) {
-            const int read = sceHttpReadData(request, stream + buffered,
-                                             STREAM_BUFFER_SIZE - buffered);
+            const int read = read_stream(read_context, stream + buffered,
+                                         STREAM_BUFFER_SIZE - buffered);
             if(read < 0) {
                 result = read;
                 break;
@@ -1447,8 +1674,8 @@ static int play_stream(const radio_station_t * station)
         }
         while(buffered < frame_length && buffered < STREAM_BUFFER_SIZE &&
               !SDL_AtomicGet(&g_stop_playback)) {
-            const int read = sceHttpReadData(request, stream + buffered,
-                                             STREAM_BUFFER_SIZE - buffered);
+            const int read = read_stream(read_context, stream + buffered,
+                                         STREAM_BUFFER_SIZE - buffered);
             if(read < 0) {
                 result = read;
                 break;
@@ -1519,6 +1746,38 @@ static int play_stream(const radio_station_t * station)
     if(module_loaded) sceSysmoduleUnloadModule(0x0088);
     free(pcm);
     free(stream);
+    return result;
+}
+
+static int play_stream(const radio_station_t * station)
+{
+    int connection = -1;
+    int request = -1;
+    char resolved_url[sizeof(station->url)];
+    const int mode = open_resolved_stream(
+        station, &connection, &request, resolved_url, sizeof(resolved_url));
+    if(mode < 0) return mode;
+    set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 0, 0);
+
+    if(mode == STREAM_OPEN_HLS) {
+        hls_reader_t reader;
+        int result = hls_reader_open(&reader, resolved_url);
+        if(result >= 0 && !SDL_AtomicGet(&g_stop_playback)) {
+            result = play_audiodec_reader(hls_stream_read, &reader, 0U, false);
+        }
+        hls_reader_close(&reader);
+        return result;
+    }
+
+    const unsigned source_channels = http_audio_channels(request);
+    int result;
+    if(strcasecmp(station->codec, "OPUS") == 0)
+        result = play_opus_request(request);
+    else {
+        const bool mp3 = strcasecmp(station->codec, "MP3") == 0;
+        result = play_audiodec_reader(http_stream_read, &request,
+                                      source_channels, mp3);
+    }
     playback_request_clear(request);
     http_close(connection, request);
     return result;
