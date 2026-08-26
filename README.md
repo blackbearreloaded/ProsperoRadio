@@ -70,8 +70,11 @@ application identity is `PPSA99001`.
 
 Catalog requests advertise AAC, MP3, and explicitly identified Ogg Opus stations.
 Radio Browser's generic OGG records are not exposed unless their resolved URL
-identifies Opus. Ogg Vorbis, FLAC, and HLS delivery remain gated by the
-hardware-first work in the [roadmap](ROADMAP.md).
+identifies Opus. The hardware-first investigation found no callable native
+Vorbis or FLAC path on the current firmware baseline; small redistributable
+software candidates are selected but not yet bundled. HLS/AAC has a concrete
+native-decoder transport plan. See the [codec investigation](docs/CODEC_INVESTIGATION.md)
+and [roadmap](ROADMAP.md).
 
 ## Requirements
 
@@ -222,6 +225,7 @@ and can be removed at any time.
 | [Platform constraints](docs/PLATFORM_NOTES.md) | Loader, filesystem, and presentation boundaries |
 | [Native MP3 validation](docs/MP3_VALIDATION.md) | Codec-2 implementation and hardware evidence |
 | [Native Opus validation](docs/OPUS_VALIDATION.md) | Hardware decoder evidence and remaining device gates |
+| [Remaining codec investigation](docs/CODEC_INVESTIGATION.md) | Vorbis, FLAC, and HLS native evidence and implementation decisions |
 | [Roadmap](ROADMAP.md) | Planned codec and streaming support |
 | [Contributing](CONTRIBUTING.md) | Development workflow and validation checklist |
 | [Notices](NOTICE.md) | Dependencies, fonts, artwork, and attribution |

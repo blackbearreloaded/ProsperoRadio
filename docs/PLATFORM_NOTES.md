@@ -74,3 +74,18 @@ rendering and GPU decode are outside this repository's scope. See
 
 The package uses `applicationCategoryType: 0` (game/application), not the media
 category. This is part of the Remote Play-compatible validation baseline.
+
+## Additional codec boundary
+
+On firmware 6.02, internal FLAC sysmodule ID `0x80000053` failed to load from a
+game-category probe with result `0x805a1000`. Static inspection identifies the
+referenced implementation as a CPU plug-in and found no corresponding module
+in the inspected firmware library set.
+
+Recovered AvPlayer initialization succeeded, but its source entry rejected
+Vorbis/WebM, Opus/WebM, and an AAC/M4A positive control equally with
+`0x806a0003`. That runtime result cannot distinguish codec support. The static
+AvPlayer decoder factory contains no Vorbis or FLAC branch, so PSRadio treats
+both formats as software-decoder work. See
+[`CODEC_INVESTIGATION.md`](CODEC_INVESTIGATION.md) for the complete evidence and
+selected candidates.

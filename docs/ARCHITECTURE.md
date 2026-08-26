@@ -148,7 +148,12 @@ the general decoder first. A CELT packet rejected with native result `-502` is
 retried once with `libSceOpusCeltDec`; decoder failover keeps the existing PCM
 sink alive and does not reapply the logical stream's pre-skip.
 AAC, MP3, and Opus are currently advertised; planned codec and delivery work is
-tracked in [`ROADMAP.md`](../ROADMAP.md).
+tracked in [`ROADMAP.md`](../ROADMAP.md). The completed hardware-first review
+found no callable native Vorbis or FLAC path on the current firmware baseline.
+Their selected future paths are bounded CPU decoding through `stb_vorbis` and
+`dr_flac`, respectively. HLS will remain a transport layer above the existing
+native AAC decoder rather than introducing another codec implementation. See
+[`CODEC_INVESTIGATION.md`](CODEC_INVESTIGATION.md) for evidence and scope.
 
 ## Input and text entry
 

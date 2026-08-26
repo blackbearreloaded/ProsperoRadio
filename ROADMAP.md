@@ -29,10 +29,12 @@ The investigation gate for each codec is:
 Use the term **hardware/firmware audio offload** unless runtime evidence proves
 a more specific hardware implementation.
 
-Current candidates are `libSceAudiodec` plus AJM for AAC and MP3,
-`libSceOpusDec` / `libSceOpusCeltDec` plus AJMI for Opus, and AvPlayer for
-container-managed tracks. No dedicated Vorbis or FLAC decoder library has been
-identified in the current firmware library inventory.
+The investigation is complete for the current firmware baseline.
+`libSceAudiodec` plus AJM remains the native AAC and MP3 path, while
+`libSceOpusDec` / `libSceOpusCeltDec` plus AJMI remains the native Opus path.
+No callable native Vorbis or FLAC route was found. The complete evidence and
+selected software fallbacks are recorded in
+[`docs/CODEC_INVESTIGATION.md`](docs/CODEC_INVESTIGATION.md).
 
 ## 1. MP3 playback
 
@@ -76,12 +78,13 @@ remain before the next release.
   completed in 67 ms before a second stream reached 48 kHz stereo playback.
 - [ ] Validate induced reconnect, audible underrun behavior, and a live `-502`
   CELT fallback with persisted on-device evidence.
-- Investigate AvPlayer and the firmware library inventory for a callable
-  Vorbis path.
-- Integrate redistributable software decoders only for formats without a
-  validated native route.
-- Normalize decoded channels and sample rates for the current output path.
-- Validate malformed pages, chained streams, reconnects, long-running playback,
+- [x] Investigate AvPlayer, AJM helpers, and the firmware library inventory for
+  a callable native Vorbis path; none was found.
+- [x] Select `stb_vorbis` as the smallest redistributable software candidate.
+- [ ] Vendor a pinned `stb_vorbis` revision and retain its MIT license.
+- [ ] Integrate bounded push-data decoding and normalize decoded channels and
+  sample rates for the current output path.
+- [ ] Validate malformed pages, chained streams, reconnects, long-running playback,
   and rapid station switching.
 
 The Opus packet-to-PCM probe produced the expected 960 stereo frames (3,840
@@ -90,24 +93,32 @@ capability and will not be advertised until its own decoder path is validated.
 
 ## 3. FLAC
 
-- Investigate AvPlayer and the firmware library inventory for a callable FLAC
-  path before selecting a decoder.
-- Add a small redistributable FLAC decoder only if no usable native route is
-  found.
-- Size compressed and PCM buffers for higher-bitrate lossless streams.
-- Measure memory use, underrun behavior, and sustained playback on PS5.
-- Expose FLAC stations only when the runtime cost remains acceptable.
+- [x] Investigate AvPlayer, AJM, and the firmware library inventory for a
+  callable FLAC path. The only discovered plug-in is CPU-based, absent from
+  the inspected firmware set, and failed its runtime module-load probe.
+- [x] Select `dr_flac` as the smallest redistributable software candidate.
+- [ ] Vendor a pinned `dr_flac` revision and retain its MIT-0 license.
+- [ ] Integrate cancellable callback reads and signed-16 PCM output.
+- [ ] Size compressed and PCM buffers for higher-bitrate lossless streams.
+- [ ] Measure memory use, underrun behavior, and sustained playback on PS5.
+- [ ] Expose FLAC stations only when the runtime cost remains acceptable.
 
 ## 4. HLS and playlist delivery
 
 HLS is a delivery protocol rather than a codec and is tracked separately.
 
-- Parse master and media playlists, fetch segments, and follow live updates.
-- Support only codecs already validated by the continuous-stream player.
-- Handle cancellation, variant selection, discontinuities, retries, and stale
+- [x] Identify reusable bounded master/media playlist and MPEG-TS/AAC components
+  in the related PS5 IPTV implementation.
+- [ ] Adapt the TS parser to accept audio-only PMTs and submit ADTS AAC frames to
+  PSRadio's native decoder.
+- [ ] Fetch segments and follow live updates while supporting only codecs
+  already validated by the continuous-stream player.
+- [ ] Handle cancellation, variant selection, discontinuities, retries, and stale
   segments.
-- Resolve simple M3U and PLS playlists when Radio Browser does not provide a
+- [ ] Resolve simple M3U and PLS playlists when Radio Browser does not provide a
   usable direct stream URL.
+- [ ] Reject encrypted, byte-range, fMP4/CMAF, low-latency, and non-AAC variants
+  explicitly in the first release.
 
 ## Later improvements
 
