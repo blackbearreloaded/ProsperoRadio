@@ -216,6 +216,7 @@ and can be removed at any time.
 | [C# build tooling](docs/CSHARP_TOOLING.md) | SharpProspero integration and host tools |
 | [Runtime shim](docs/RUNTIME_SHIM.md) | Clean-room `libc.prx` scope and reproduction |
 | [Platform constraints](docs/PLATFORM_NOTES.md) | Loader, filesystem, and presentation boundaries |
+| [Native Opus validation](docs/OPUS_VALIDATION.md) | Hardware decoder evidence and remaining device gates |
 | [Roadmap](ROADMAP.md) | Planned codec and streaming support |
 | [Contributing](CONTRIBUTING.md) | Development workflow and validation checklist |
 | [Notices](NOTICE.md) | Dependencies, fonts, artwork, and attribution |

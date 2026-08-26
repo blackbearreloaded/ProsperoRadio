@@ -66,3 +66,6 @@ and AudioOut. The `libSceOpusDec` packet-to-PCM path is hardware-verified on
 firmware 6.02; live-stream lifecycle validation is tracked in the roadmap. GPU
 rendering and GPU decode are outside this repository's scope. See
 [Architecture](ARCHITECTURE.md) for the runtime boundaries.
+
+The package uses `applicationCategoryType: 0` (game/application), not the media
+category. This is part of the Remote Play-compatible validation baseline.

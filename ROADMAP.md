@@ -57,6 +57,8 @@ HTTP, buffering, PCM conversion, and AudioOut paths.
 - [x] Validate `libSceOpusDec` on PS5 with a known 20 ms, 48 kHz stereo packet.
 - [x] Integrate native Opus decoding, pre-skip handling, and the existing
   AudioOut sink into the production player.
+- [x] Confirm the production integration launches on PS5 and admits explicitly
+  identified Opus stations from Radio Browser's broader OGG category.
 - [ ] Validate Ogg page CRCs before dispatch and apply Opus output gain and
   end-granule trimming for full container-spec compliance.
 - [ ] Complete audible playback, stop, rapid station-switching, reconnect, and
