@@ -31,6 +31,7 @@ static void reset_logical_stream(ogg_opus_parser_t * parser)
     parser->packet_size = 0;
     parser->head_seen = 0;
     parser->tags_seen = 0;
+    parser->audio_seen = 0;
     parser->channels = 0;
     parser->pre_skip = 0;
     parser->stream_ended = 0;
@@ -96,6 +97,7 @@ static ogg_opus_result_t complete_packet(ogg_opus_parser_t * parser)
         packet.stream_serial = parser->stream_serial;
         packet.channels = parser->channels;
         packet.pre_skip = parser->pre_skip;
+        parser->audio_seen = 1;
         if(parser->on_packet != NULL &&
            parser->on_packet(&packet, parser->user_data) != 0)
             return fail(parser, OGG_OPUS_ERR_CALLBACK);
@@ -138,7 +140,10 @@ static ogg_opus_result_t begin_page(ogg_opus_parser_t * parser)
     } else {
         if(parser->stream_ended || (parser->page_flags & 0x02U) != 0U)
             return fail(parser, OGG_OPUS_ERR_STREAM);
-        if(sequence != parser->next_sequence)
+        /* Icecast can prepend fresh headers before joining the live page
+           sequence. Let the first complete audio page establish that value. */
+        if(sequence != parser->next_sequence &&
+           (!parser->tags_seen || parser->audio_seen || continued))
             return fail(parser, OGG_OPUS_ERR_SEQUENCE);
     }
 

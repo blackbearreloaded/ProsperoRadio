@@ -61,6 +61,7 @@ typedef struct {
     uint8_t stream_ended;
     uint8_t head_seen;
     uint8_t tags_seen;
+    uint8_t audio_seen;
     uint8_t channels;
     ogg_opus_result_t error;
     ogg_opus_packet_fn on_packet;

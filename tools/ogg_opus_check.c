@@ -166,6 +166,21 @@ static void check_rejections(void)
     assert(ogg_opus_feed(&parser, page, 27U) == OGG_OPUS_ERR_VERSION);
 
     headers = make_headers(body, 2U, 312U);
+    laces[0] = 19U;
+    laces[1] = (uint8_t)(headers - 19U);
+    size = make_page(page, 0x02U, 7U, 0U, laces, 2U, body, headers);
+    ogg_opus_reset(&parser);
+    assert(ogg_opus_feed(&parser, page, size) == OGG_OPUS_OK);
+    body[0] = 0xf8U;
+    body[1] = 0xaaU;
+    body[2] = 0x55U;
+    laces[0] = 3U;
+    size = make_page(page, 0U, 7U, 18088U, laces, 1U, body, 3U);
+    assert(ogg_opus_feed(&parser, page, size) == OGG_OPUS_OK);
+    size = make_page(page, 0U, 7U, 18090U, laces, 1U, body, 3U);
+    assert(ogg_opus_feed(&parser, page, size) == OGG_OPUS_ERR_SEQUENCE);
+
+    headers = make_headers(body, 2U, 312U);
     body[18] = 1U;
     laces[0] = (uint8_t)headers;
     size = make_page(page, 0x06U, 7U, 0U, laces, 1U, body, headers);
@@ -193,8 +208,36 @@ static void check_rejections(void)
     assert(ogg_opus_finish(&parser) == OGG_OPUS_ERR_TRUNCATED);
 }
 
-int main(void)
+static int check_file(const char * path)
 {
+    ogg_opus_parser_t parser;
+    uint8_t data[251];
+    unsigned chunks = 0;
+    FILE * file = fopen(path, "rb");
+    if(file == NULL) return 2;
+    ogg_opus_init(&parser, NULL, NULL);
+    for(;;) {
+        const size_t size = fread(data, 1U, sizeof(data), file);
+        if(size != 0U) {
+            const ogg_opus_result_t result = ogg_opus_feed(&parser, data, size);
+            if(result != OGG_OPUS_OK) {
+                fprintf(stderr, "%s: %s (%d)\n", path,
+                        ogg_opus_result_string(result), result);
+                fclose(file);
+                return 1;
+            }
+            ++chunks;
+        }
+        if(size != sizeof(data)) break;
+    }
+    fclose(file);
+    printf("%s: ok (%u chunks)\n", path, chunks);
+    return 0;
+}
+
+int main(int argc, char ** argv)
+{
+    if(argc == 2) return check_file(argv[1]);
     check_split_continuation_and_chain();
     check_rejections();
     puts("ogg_opus_check: ok");
