@@ -12,6 +12,7 @@ runtime module or a decoder implementation.
 | 2026-08-25 | 6.02 | `PPSA99612` integration | The production PSRadio eboot entered normally, rendered `v0.2.0`, refreshed six catalog feeds, admitted 13 explicitly identified Opus stations, and closed with runtime layers released. |
 | 2026-08-25 | 6.02 | `PPSA99614` Icecast fix | The corrected eboot entered normally, rendered the AAC/Opus-ready UI, and closed with runtime layers released. Its SHA-256 was `C7F00EB0654B07CE2E8CF4E7490AD3A355E50568BD60E3DF5FEB10B71C9A273F`. |
 | 2026-08-25 | 6.02 | `PPSA99615` live playback | Multiple Radio Browser Opus stations produced audible output. Cyrillic station metadata also rendered correctly with the extended bitmap atlas. Brief recurring gaps and delayed stops exposed the need for independent PCM buffering and HTTP-read cancellation. |
+| 2026-08-25 | 6.02 | `PPSA99616` buffering integration | The eboot with a two-second PCM ring, one-second startup reserve, and active HTTP-request cancellation entered normally, rendered the full UI, closed normally, and released its runtime layers. Audible stop/switch and sustained-playback validation remains pending. Eboot SHA-256: `5BA6981020F408069D4FF16055A0340A5AF360F15F73AE7A9110F09E39BA548B`. |
 
 The integrated eboot in the second run had SHA-256
 `6E6D84ED90678DC72D1B59A4B780570939E4A3A4BC9E6BD65ACEDD27D3AF0666`.
