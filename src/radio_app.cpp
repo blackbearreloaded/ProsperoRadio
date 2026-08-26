@@ -521,7 +521,7 @@ void RadioApp::RefreshPlayback(const radio_service_status_t& status) {
         SetText(document_, "now-badge", "--");
         SetText(document_, "now-name", "Nothing playing");
         SetText(document_, "now-meta", "Choose a station and press Cross");
-        SetText(document_, "now-state", "Native AAC / Opus audio ready");
+        SetText(document_, "now-state", "Native AAC / MP3 / Opus audio ready");
         SetClass(document_, "now-state", "warning", false);
         SetClass(document_, "now-state", "error", false);
     }

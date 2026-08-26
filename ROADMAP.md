@@ -2,8 +2,7 @@
 
 PSRadio's current release baseline includes the complete RmlUi interface,
 Radio Browser catalog and search, persistent cache and favorites, native input
-and IME, AAC/HE-AAC playback, and an integrated Ogg Opus path through PS5
-AudioOut.
+and IME, AAC/HE-AAC, MP3, and Ogg Opus playback through PS5 AudioOut.
 
 New stream formats are enabled in Radio Browser queries only after they pass
 on-device playback, stop, station-switching, reconnect, and error-recovery
@@ -37,18 +36,19 @@ identified in the current firmware library inventory.
 
 ## 1. MP3 playback
 
-- Add codec detection and a shared compressed-audio-to-PCM boundary.
-- Preserve the existing native AAC implementation behind that boundary.
-- Validate the native `libSceAudiodec` MP3 path (`codec 0x0002`) and derive
+- [x] Add MP3 codec detection to the existing compressed-audio-to-PCM path.
+- [x] Preserve the existing native AAC implementation in the shared stream loop.
+- [x] Validate the native `libSceAudiodec` MP3 path (`codec 0x0002`) and derive
   sample rate and channel count from MPEG frame headers.
-- Use a redistributable open-source MP3 decoder only if the native path fails
-  the hardware-first investigation gate.
-- Handle ICY metadata without disrupting MP3 frame alignment.
-- Validate representative sample rates, channel layouts, and malformed streams
-  on PS5 before exposing AAC and MP3 stations together.
+- [x] Retain the native path without adding a software MP3 dependency.
+- [ ] Handle non-compliant servers that send ICY metadata despite the client's
+  `Icy-MetaData: 0` request without disrupting MP3 frame alignment.
+- [ ] Validate representative sample rates, channel layouts, and malformed
+  streams on PS5 before the next release.
 
-MP3 is the next playback milestone because it can reuse the existing continuous
-HTTP, buffering, PCM conversion, and AudioOut paths.
+The first live hardware proof decoded a 48 kHz stereo frame into 4,608 bytes of
+signed-16 PCM and reached AudioOut. Broader stream-shape and switching tests
+remain before the next release.
 
 ## 2. Ogg Opus and Ogg Vorbis
 

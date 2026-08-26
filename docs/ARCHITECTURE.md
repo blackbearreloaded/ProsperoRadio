@@ -19,7 +19,7 @@ radio_app.cpp <----> RmlUi document and RCSS
 radio_service.c
   |        |        |
   |        |        +--> /download0 cache and favorites
-  |        +-----------> AAC / Ogg Opus -> native decoders -> PCM -> AudioOut
+  |        +-----------> AAC / MP3 / Ogg Opus -> native decoders -> PCM -> AudioOut
   +--------------------> Radio Browser over native HTTP/TLS
 ```
 
@@ -82,8 +82,8 @@ Font sources and licenses are documented in [`NOTICE.md`](../NOTICE.md).
 ## Radio Browser and persistence
 
 [`src/radio_service.c`](../src/radio_service.c) uses native PS5 network, SSL, and
-HTTP services. Six bounded Radio Browser feeds are merged into one station
-catalog. AAC and Opus variants are requested for each ranking:
+HTTP services. Nine bounded Radio Browser feeds are merged into one station
+catalog. AAC, MP3, and Opus variants are requested for each ranking:
 
 - popular by click count;
 - trending by click trend;
@@ -92,7 +92,7 @@ catalog. AAC and Opus variants are requested for each ranking:
 The queries use `hidebroken=true`. Radio Browser currently reports Opus streams
 under its broader `OGG` codec label, so PSRadio admits only OGG entries whose
 resolved URL explicitly identifies Opus and normalizes their displayed codec to
-`OPUS`. AAC and normalized Opus entries are parsed into the fixed-size
+`OPUS`. AAC, MP3, and normalized Opus entries are parsed into the fixed-size
 `radio_station_t` model, merged by station UUID, ranked across codecs, and
 capped at 480 stations. Catalog refresh runs on a background thread and
 publishes changes under an SDL mutex.
@@ -118,6 +118,7 @@ resolved station URL
   -> native HTTP continuous read
   -> codec dispatch
        AAC  -> ADTS synchronization -> native AAC decoder
+       MP3  -> MPEG frame synchronization -> native MP3 decoder
        Opus -> incremental Ogg demux -> TOC mode dispatch
                                       -> CELT: native libSceOpusCeltDec
                                       -> SILK/hybrid: native libSceOpusDec
@@ -142,7 +143,7 @@ storage. It validates stream structure, Opus headers, packet limits, page
 sequence, continuation, and chained serial transitions before compressed
 packets reach the platform decoder. Opus TOC configurations 16-31 are routed to
 the dedicated CELT decoder; mode changes reopen the matching native decoder.
-AAC and Opus are currently advertised; planned codec and delivery work is
+AAC, MP3, and Opus are currently advertised; planned codec and delivery work is
 tracked in [`ROADMAP.md`](../ROADMAP.md).
 
 ## Input and text entry
@@ -175,6 +176,7 @@ PS5 hardware:
 
 - `tools/check_ui.py`: RML IDs, atlas geometry, licenses, and TGA assets;
 - `tools/aac_timing_check.c`: AAC timing and resampling calculations;
+- `tools/mp3_header_check.c`: MPEG version, rate, channel, and frame geometry;
 - `tools/ogg_opus_check.c`: split-input Ogg pages, packet continuation,
   chained streams, and malformed-input rejection;
 - `tools/radio_input_check.c`: controller edge, dead-zone, and repeat behavior;

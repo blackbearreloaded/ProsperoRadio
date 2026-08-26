@@ -1,6 +1,7 @@
 #include "radio_service.h"
 
 #include "aac_timing.h"
+#include "mp3_header.h"
 #include "ogg_opus.h"
 #include "opus_decoder.h"
 #include "pcm_queue.h"
@@ -14,7 +15,7 @@
 
 #define CACHE_MAGIC UINT32_C(0x52424331)
 #define FAVORITES_MAGIC UINT32_C(0x52424631)
-#define CATALOG_CACHE_VERSION 5U
+#define CATALOG_CACHE_VERSION 6U
 #define FAVORITES_VERSION 2U
 #define FAVORITES_LEGACY_VERSION 1U
 #define FAVORITES_LEGACY_CAPACITY 100U
@@ -36,6 +37,7 @@
 #define HTTP_VERSION_11 2
 #define HTTP_METHOD_GET 0
 #define HTTP_HEADER_OVERWRITE 0U
+#define AUDIODEC_MP3 2U
 #define AUDIODEC_AAC 3U
 #define AUDIODEC_WORD_S16 1
 #define AUDIO_OUT_GRAIN 256U
@@ -90,6 +92,24 @@ typedef struct {
 typedef struct {
     uint32_t size;
     int32_t word_size;
+} sce_audiodec_param_mp3_t;
+
+typedef struct {
+    uint32_t size;
+    uint32_t header;
+    uint8_t crc;
+    uint8_t mode;
+    uint8_t mode_extension;
+    uint8_t copyright;
+    uint8_t original;
+    uint8_t emphasis;
+    uint8_t reserved[2];
+    int32_t result;
+} sce_audiodec_mp3_info_t;
+
+typedef struct {
+    uint32_t size;
+    int32_t word_size;
     uint32_t config_number;
     uint32_t sampling_frequency_index;
     uint32_t max_channels;
@@ -103,6 +123,17 @@ typedef struct {
     uint32_t he_aac;
     int32_t result;
 } sce_audiodec_aac_info_t;
+
+_Static_assert(sizeof(sce_audiodec_au_info_t) == 24U,
+               "SceAudiodecAuInfo ABI mismatch");
+_Static_assert(sizeof(sce_audiodec_pcm_item_t) == 24U,
+               "SceAudiodecPcmItem ABI mismatch");
+_Static_assert(sizeof(sce_audiodec_ctrl_t) == 32U,
+               "SceAudiodecCtrl ABI mismatch");
+_Static_assert(sizeof(sce_audiodec_param_mp3_t) == 8U,
+               "SceAudiodecParamMp3 ABI mismatch");
+_Static_assert(sizeof(sce_audiodec_mp3_info_t) == 20U,
+               "SceAudiodecMp3Info ABI mismatch");
 
 typedef struct {
     int handle;
@@ -139,10 +170,13 @@ typedef struct {
 
 static const catalog_feed_source_t CATALOG_FEEDS[] = {
     {CATALOG_URL("AAC", "clickcount"), FEED_POPULAR},
+    {CATALOG_URL("MP3", "clickcount"), FEED_POPULAR},
     {CATALOG_URL("OGG", "clickcount"), FEED_POPULAR},
     {CATALOG_URL("AAC", "clicktrend"), FEED_TRENDING},
+    {CATALOG_URL("MP3", "clicktrend"), FEED_TRENDING},
     {CATALOG_URL("OGG", "clicktrend"), FEED_TRENDING},
     {CATALOG_URL("AAC", "votes"), FEED_VOTED},
+    {CATALOG_URL("MP3", "votes"), FEED_VOTED},
     {CATALOG_URL("OGG", "votes"), FEED_VOTED},
 };
 
@@ -395,9 +429,11 @@ static int http_open(const char * url, bool streaming, const char * codec,
     sceHttpSetRecvTimeOut(*request, streaming ? 2000000U : 5000000U);
     const char * accept = "application/json";
     if(streaming) {
-        accept = codec != NULL && strcasecmp(codec, "OPUS") == 0
-            ? "audio/ogg, audio/opus, */*"
-            : "audio/aac, audio/aacp, */*";
+        if(codec != NULL && strcasecmp(codec, "OPUS") == 0)
+            accept = "audio/ogg, audio/opus, */*";
+        else if(codec != NULL && strcasecmp(codec, "MP3") == 0)
+            accept = "audio/mpeg, audio/mp3, */*";
+        else accept = "audio/aac, audio/aacp, */*";
     }
     sceHttpAddRequestHeader(*request, "Accept", accept,
                             HTTP_HEADER_OVERWRITE);
@@ -571,7 +607,8 @@ static bool contains_ascii_case_insensitive(const char * text, const char * need
 
 static bool normalize_supported_codec(radio_station_t * station)
 {
-    if(strcasecmp(station->codec, "AAC") == 0) return true;
+    if(strcasecmp(station->codec, "AAC") == 0 ||
+       strcasecmp(station->codec, "MP3") == 0) return true;
     if(strcasecmp(station->codec, "OGG") == 0 &&
        contains_ascii_case_insensitive(station->url, "opus")) {
         SDL_strlcpy(station->codec, "OPUS", sizeof(station->codec));
@@ -1198,26 +1235,38 @@ static int play_stream(const radio_station_t * station)
         return -1;
     }
 
+    const bool mp3 = strcasecmp(station->codec, "MP3") == 0;
+    const uint32_t codec_type = mp3 ? AUDIODEC_MP3 : AUDIODEC_AAC;
     result = sceSysmoduleLoadModule(0x0088);
     const bool module_loaded = result >= 0;
-    if(module_loaded) result = sceAudiodecInitLibrary(AUDIODEC_AAC);
+    if(module_loaded) result = sceAudiodecInitLibrary(codec_type);
     const bool library_initialized = result >= 0;
-    sce_audiodec_param_aac_t param = {
-        sizeof(param), AUDIODEC_WORD_S16, 1, 4, 2, 1
+    sce_audiodec_param_mp3_t mp3_param = {
+        sizeof(mp3_param), AUDIODEC_WORD_S16
     };
-    sce_audiodec_aac_info_t info;
-    memset(&info, 0, sizeof(info));
-    info.size = sizeof(info);
+    sce_audiodec_mp3_info_t mp3_info;
+    memset(&mp3_info, 0, sizeof(mp3_info));
+    mp3_info.size = sizeof(mp3_info);
+    sce_audiodec_param_aac_t aac_param = {
+        sizeof(aac_param), AUDIODEC_WORD_S16, 1, 4, 2, 1
+    };
+    sce_audiodec_aac_info_t aac_info;
+    memset(&aac_info, 0, sizeof(aac_info));
+    aac_info.size = sizeof(aac_info);
     sce_audiodec_au_info_t au;
     memset(&au, 0, sizeof(au));
     au.size = sizeof(au);
     sce_audiodec_pcm_item_t pcm_item;
     memset(&pcm_item, 0, sizeof(pcm_item));
     pcm_item.size = sizeof(pcm_item);
-    sce_audiodec_ctrl_t ctrl = {&param, &info, &au, &pcm_item};
+    sce_audiodec_ctrl_t ctrl = {
+        mp3 ? (void *)&mp3_param : (void *)&aac_param,
+        mp3 ? (void *)&mp3_info : (void *)&aac_info,
+        &au, &pcm_item
+    };
     int decoder = -1;
     if(result >= 0) {
-        decoder = sceAudiodecCreateDecoder(&ctrl, AUDIODEC_AAC);
+        decoder = sceAudiodecCreateDecoder(&ctrl, codec_type);
         if(decoder < 0) result = decoder;
     }
 
@@ -1227,7 +1276,8 @@ static int play_stream(const radio_station_t * station)
     size_t buffered = 0;
     size_t scanned = 0;
     while(result >= 0 && !SDL_AtomicGet(&g_stop_playback)) {
-        if(buffered < 7U) {
+        const size_t minimum_header = mp3 ? 4U : 7U;
+        if(buffered < minimum_header) {
             const int read = sceHttpReadData(request, stream + buffered,
                                              STREAM_BUFFER_SIZE - buffered);
             if(read < 0) {
@@ -1241,9 +1291,13 @@ static int play_stream(const radio_station_t * station)
             buffered += (size_t)read;
         }
 
-        const size_t sync = find_adts(stream, buffered);
+        mp3_header_t mp3_header;
+        const size_t sync = mp3 ? mp3_header_find(stream, buffered, &mp3_header)
+                                : find_adts(stream, buffered);
         if(sync != 0) {
-            const size_t remove = sync == buffered ? (buffered > 6U ? buffered - 6U : 0U) : sync;
+            const size_t tail = minimum_header - 1U;
+            const size_t remove = sync == buffered
+                ? (buffered > tail ? buffered - tail : 0U) : sync;
             if(remove != 0) {
                 memmove(stream, stream + remove, buffered - remove);
                 buffered -= remove;
@@ -1256,10 +1310,10 @@ static int play_stream(const radio_station_t * station)
             continue;
         }
 
-        const size_t frame_length = ((size_t)(stream[3] & 0x03U) << 11) |
-                                    ((size_t)stream[4] << 3) |
-                                    ((size_t)stream[5] >> 5);
-        if(frame_length < 7U || frame_length > 4608U) {
+        const size_t frame_length = mp3 ? mp3_header.frame_bytes :
+            (((size_t)(stream[3] & 0x03U) << 11) |
+             ((size_t)stream[4] << 3) | ((size_t)stream[5] >> 5));
+        if(frame_length < minimum_header || frame_length > 4608U) {
             memmove(stream, stream + 1, --buffered);
             continue;
         }
@@ -1284,15 +1338,21 @@ static int play_stream(const radio_station_t * station)
         pcm_item.address = pcm;
         pcm_item.length = PCM_BUFFER_SIZE;
         result = sceAudiodecDecode(decoder, &ctrl);
-        if(result >= 0 && aac_should_disable_he(
-                stream, frame_length, source_channels, info.sampling_frequency,
-                info.channel_count, info.he_aac)) {
+        if(result >= 0 && pcm_item.length > PCM_BUFFER_SIZE) result = -6;
+        if(mp3 && result >= 0 &&
+           (au.length != frame_length ||
+            pcm_item.length % (mp3_header.channels * sizeof(int16_t)) != 0U)) {
+            result = -6;
+        }
+        if(!mp3 && result >= 0 && aac_should_disable_he(
+                stream, frame_length, source_channels, aac_info.sampling_frequency,
+                aac_info.channel_count, aac_info.he_aac)) {
             sceAudiodecDeleteDecoder(decoder);
             decoder = -1;
-            param.enable_he_aac = 0;
-            memset(&info, 0, sizeof(info));
-            info.size = sizeof(info);
-            decoder = sceAudiodecCreateDecoder(&ctrl, AUDIODEC_AAC);
+            aac_param.enable_he_aac = 0;
+            memset(&aac_info, 0, sizeof(aac_info));
+            aac_info.size = sizeof(aac_info);
+            decoder = sceAudiodecCreateDecoder(&ctrl, codec_type);
             if(decoder < 0) result = decoder;
             else {
                 au.address = stream;
@@ -1304,13 +1364,15 @@ static int play_stream(const radio_station_t * station)
         }
         if(result >= 0 && pcm_item.length != 0) {
             if(sink.handle < 0) {
-                const uint32_t pcm_rate = aac_pcm_rate(
-                    stream, frame_length, info.channel_count, pcm_item.length,
-                    info.sampling_frequency);
-                result = sink_open(&sink, pcm_rate, info.channel_count);
+                const uint32_t pcm_rate = mp3 ? mp3_header.sample_rate :
+                    aac_pcm_rate(stream, frame_length, aac_info.channel_count,
+                                 pcm_item.length, aac_info.sampling_frequency);
+                const uint32_t channels = mp3 ? mp3_header.channels
+                                              : aac_info.channel_count;
+                result = sink_open(&sink, pcm_rate, channels);
                 if(result >= 0) {
                     set_playback_state(RADIO_PLAYBACK_BUFFERING, 0,
-                                       pcm_rate, info.channel_count);
+                                       pcm_rate, channels);
                 }
             }
             if(result >= 0) {
@@ -1324,7 +1386,7 @@ static int play_stream(const radio_station_t * station)
 
     sink_close(&sink);
     if(decoder >= 0) sceAudiodecDeleteDecoder(decoder);
-    if(library_initialized) sceAudiodecTermLibrary(AUDIODEC_AAC);
+    if(library_initialized) sceAudiodecTermLibrary(codec_type);
     if(module_loaded) sceSysmoduleUnloadModule(0x0088);
     free(pcm);
     free(stream);

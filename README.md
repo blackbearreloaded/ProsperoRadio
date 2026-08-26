@@ -14,7 +14,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-PlayStation%205-003791?logo=playstation&amp;logoColor=white" alt="PlayStation 5">
   <img src="https://img.shields.io/badge/UI-RmlUi%20%2B%20SDL2-70E1DC" alt="RmlUi and SDL2">
-  <img src="https://img.shields.io/badge/audio-AAC%20%2B%20Opus-5DDFA4" alt="AAC and Opus audio">
+  <img src="https://img.shields.io/badge/audio-AAC%20%2B%20MP3%20%2B%20Opus-5DDFA4" alt="AAC, MP3, and Opus audio">
   <a href="https://github.com/blackbearreloaded/psradio/releases/latest"><img src="https://img.shields.io/github/v/release/blackbearreloaded/psradio?display_name=tag&amp;sort=semver&amp;label=latest%20release" alt="Latest release"></a>
   <a href="https://github.com/blackbearreloaded/psradio/actions/workflows/build.yml"><img src="https://github.com/blackbearreloaded/psradio/actions/workflows/build.yml/badge.svg" alt="Build status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="GPL-3.0-or-later"></a>
@@ -23,7 +23,7 @@
 PSRadio is a native C/C++ application for compatible PS5 homebrew environments.
 It queries the community-run [Radio Browser](https://www.radio-browser.info/)
 service, keeps a local station cache and favorites list, and decodes supported
-AAC and Ogg Opus streams through the console's native audio facilities.
+AAC, MP3, and Ogg Opus streams through the console's native audio facilities.
 
 The television interface is authored in RML and RCSS. SDL2 provides the native
 window and software presentation path, while a custom RmlUi bitmap-font backend
@@ -47,7 +47,7 @@ radio client, controller-first interface, media stack, and bundled dependencies.
 - Cached catalog search with country, genre, language, and bitrate filters.
 - DualSense-friendly navigation using the D-pad or left analog stick.
 - Native PS5 on-screen keyboard for text search.
-- AAC, HE-AAC, and Ogg Opus playback through native PS5 decoders and AudioOut.
+- AAC, HE-AAC, MP3, and Ogg Opus playback through native PS5 decoders and AudioOut.
 - Persistent favorites and cached catalog data under `/download0`.
 - Responsive play, stop, station switching, paging, and refresh actions.
 - RmlUi overlays, fixed television safe area, and a persistent now-playing rail.
@@ -59,14 +59,16 @@ radio client, controller-first interface, media stack, and bundled dependencies.
 ## Current status
 
 The complete browse, search, favorite, cache, and AAC playback loop has been
-validated on PS5 hardware with ShadowMountPlus. Ogg Opus playback is also
-hardware-validated: CELT-mode packets use the console's dedicated CELT decoder,
-while SILK and hybrid modes retain the general native Opus decoder. The release
-display name is **PSRadio** and its stable application identity is `PPSA99001`.
+validated on PS5 hardware with ShadowMountPlus. Native MP3 playback is validated
+at 48 kHz stereo, including live Radio Browser input through PCM and AudioOut.
+Ogg Opus playback is also hardware-validated: CELT-mode packets use the
+console's dedicated CELT decoder, while SILK and hybrid modes retain the general
+native Opus decoder. The release display name is **PSRadio** and its stable
+application identity is `PPSA99001`.
 
-Catalog requests advertise AAC and explicitly identified Ogg Opus stations.
+Catalog requests advertise AAC, MP3, and explicitly identified Ogg Opus stations.
 Radio Browser's generic OGG records are not exposed unless their resolved URL
-identifies Opus. MP3, Ogg Vorbis, FLAC, and HLS delivery remain gated by the
+identifies Opus. Ogg Vorbis, FLAC, and HLS delivery remain gated by the
 hardware-first work in the [roadmap](ROADMAP.md).
 
 ## Requirements
@@ -216,6 +218,7 @@ and can be removed at any time.
 | [C# build tooling](docs/CSHARP_TOOLING.md) | SharpProspero integration and host tools |
 | [Runtime shim](docs/RUNTIME_SHIM.md) | Clean-room `libc.prx` scope and reproduction |
 | [Platform constraints](docs/PLATFORM_NOTES.md) | Loader, filesystem, and presentation boundaries |
+| [Native MP3 validation](docs/MP3_VALIDATION.md) | Codec-2 implementation and hardware evidence |
 | [Native Opus validation](docs/OPUS_VALIDATION.md) | Hardware decoder evidence and remaining device gates |
 | [Roadmap](ROADMAP.md) | Planned codec and streaming support |
 | [Contributing](CONTRIBUTING.md) | Development workflow and validation checklist |
@@ -229,6 +232,8 @@ Run the lightweight repository checks before a full PS5 build:
 python tools/check_ui.py
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/aac_timing_check.c -o /tmp/aac-timing-check
 wsl /tmp/aac-timing-check
+wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/mp3_header_check.c -o /tmp/mp3-header-check
+wsl /tmp/mp3-header-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_input_check.c -o /tmp/radio-input-check
 wsl /tmp/radio-input-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -Wl,--gc-sections -Iinclude -Ivendor/ps5/sdl/include/SDL2 tools/radio_service_json_check.c -o /tmp/radio-service-json-check
