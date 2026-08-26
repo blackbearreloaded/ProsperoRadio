@@ -17,6 +17,7 @@ runtime module or a decoder implementation.
 | 2026-08-26 | 6.02 | `PPSA99624` Opus variant check | `WALM 2 HD Opus` reached the native decoder but returned signed error `-502` (`fffffe0a`) without crashing. The failure is stream-specific; the known-good Opus control below succeeded with the same eboot. |
 | 2026-08-26 | 6.02 | `PPSA99625` buffered Opus regression | Deutschlandfunk OPUS 24k played at 48 kHz mono for the full 50-second observation window without a fatal signal. |
 | 2026-08-26 | 6.02 | `PPSA99627` codec transition | The app moved from playing Deutschlandfunk Opus at 48 kHz mono directly to Smooth Radio AAC at 44.1 kHz stereo without a crash. The explicit stop action was not observed in this automation run and remains a separate validation item. |
+| 2026-08-26 | 6.02 | `PPSA99628` immediate stop | Cross stopped buffered AAC playback within the first one-second observation point. The UI remained in `Ready to play` at 5 and 15 seconds, and no fatal signal was logged. |
 
 The integrated eboot in the second run had SHA-256
 `6E6D84ED90678DC72D1B59A4B780570939E4A3A4BC9E6BD65ACEDD27D3AF0666`.
@@ -50,8 +51,8 @@ The packet probe source and reverse-engineering notes are maintained in the
 
 ## Remaining release gate
 
-Before publishing Opus as a completed playback format, validate immediate stop,
-AAC-to-Opus switching, reconnect behavior, and a long-running stream on the
-target console. The two-second queue and Opus-to-AAC transition now have
+Before publishing Opus as a completed playback format, validate AAC-to-Opus
+switching, reconnect behavior, and a long-running stream on the target console.
+The two-second queue, immediate AAC stop, and Opus-to-AAC transition now have
 crash-free device evidence. Ogg CRC, output-gain, final granule trimming, and
 the WALM `-502` packet variant remain tracked in the project roadmap.
