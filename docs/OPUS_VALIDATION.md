@@ -19,6 +19,7 @@ runtime module or a decoder implementation.
 | 2026-08-26 | 6.02 | `PPSA99627` codec transition | The app moved from playing Deutschlandfunk Opus at 48 kHz mono directly to Smooth Radio AAC at 44.1 kHz stereo without a crash. The explicit stop action was not observed in this automation run and remains a separate validation item. |
 | 2026-08-26 | 6.02 | `PPSA99628` immediate stop | Cross stopped buffered AAC playback within the first one-second observation point. The UI remained in `Ready to play` at 5 and 15 seconds, and no fatal signal was logged. |
 | 2026-08-26 | 6.02 | `PPSA99629` reverse codec transition | The app moved directly from KIIS FM AAC at 24 kHz mono to WALM Old Time Radio Opus at 48 kHz mono without a crash. This WALM stream succeeded; the separate WALM 2 HD variant remains the reproducible `-502` case. |
+| 2026-08-26 | 6.02 | `PPSA99630` ten-minute soak | Deutschlandfunk Opus remained in `Playing` at the start and the 2, 4, 6, and 8-minute checkpoints, then accepted a clean stop after the ten-minute interval. The app produced no fatal signal. Desktop focus changes invalidated the transient screen-difference sampler, so this run proves sustained runtime stability but not gap-free audible output. |
 
 The integrated eboot in the second run had SHA-256
 `6E6D84ED90678DC72D1B59A4B780570939E4A3A4BC9E6BD65ACEDD27D3AF0666`.
@@ -52,8 +53,9 @@ The packet probe source and reverse-engineering notes are maintained in the
 
 ## Remaining release gate
 
-Before publishing Opus as a completed playback format, validate reconnect
-behavior and a long-running stream on the target console. The two-second queue,
-immediate AAC stop, and transitions in both codec directions now have
-crash-free device evidence. Ogg CRC, output-gain, final granule trimming, and
-the WALM `-502` packet variant remain tracked in the project roadmap.
+Before publishing Opus as a completed playback format, validate reconnect and
+audible underrun behavior on the target console. The two-second queue,
+immediate AAC stop, transitions in both codec directions, and a ten-minute
+Opus session now have crash-free device evidence. Ogg CRC, output-gain, final
+granule trimming, and the WALM `-502` packet variant remain tracked in the
+project roadmap.
