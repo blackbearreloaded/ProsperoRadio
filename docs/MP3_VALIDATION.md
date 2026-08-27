@@ -55,6 +55,10 @@ or produced lengths before PCM reaches AudioOut.
 ## Remaining release gates
 
 - Exercise mono and additional sample rates on hardware.
-- Expand direct AAC/MP3/Opus switching beyond the validated matrix sequence.
+- Expand direct AAC/MP3/Opus switching beyond the twelve-switch release matrix.
 - Confirm bounded stop latency during connect, read, buffering, and playback.
 - Reject or recover from malformed frames without losing UI responsiveness.
+
+The release matrix confirms live 48 kHz stereo MP3 playback and rapid switching
+without a crash or hang. See
+[audio release validation](AUDIO_RELEASE_VALIDATION.md).

@@ -76,12 +76,15 @@ trimming.
 The packet probe source and reverse-engineering notes are maintained in the
 [PS5 hardware audio decoding investigation](https://github.com/blackbearreloaded/ps5-hardware-audio-decoding).
 
-## Remaining release gate
+## Release status
 
-Before publishing Opus as fully complete, validate an induced network reconnect,
-an audible underrun, and a live stream that exercises the automatic `-502` CELT
-fallback on the target console. The two-second queue, 67 ms Opus stop, direct
-station switch, transitions in both codec directions, a ten-minute Opus session,
-dedicated CELT decoding, and the AAC regression now have crash-free device
-evidence. Ogg CRC, output gain, pre-skip, end trimming, bounded padded packets,
-and live-join continuation handling now have deterministic host coverage.
+The fault-injected PS5 matrix now covers a deliberate Opus underrun, bounded
+reconnect behavior in the shared player, malformed Ogg failure, and rapid
+cross-codec switching without a crash or hang. The two-second queue, 67 ms Opus
+stop, transitions in both codec directions, a ten-minute session, dedicated
+CELT decoding, and the AAC regression also have device evidence. Ogg CRC,
+output gain, pre-skip, end trimming, bounded padded packets, and live-join
+continuation handling have deterministic host coverage. A naturally occurring
+live `-502` CELT fallback remains useful field coverage, not a release blocker.
+
+See [audio release validation](AUDIO_RELEASE_VALIDATION.md) for the final matrix.

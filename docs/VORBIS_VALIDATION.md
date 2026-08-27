@@ -77,6 +77,8 @@ This establishes supported-format playback and lifecycle behavior. The shared
 Ogg reader now rejects invalid CRCs, truncation, and illegal serial changes
 before `stb_vorbis` receives bytes. A deterministic chained fixture uses a new
 serial for its second logical stream and verifies that both decoders produce
-nonzero PCM under ASan/UBSan. Induced reconnects, rapid repeated switching, and
-deliberate live-stream faults remain device robustness work rather than a
-missing Vorbis decoder path.
+nonzero PCM under ASan/UBSan. The final PS5 matrix decoded a chained fixture and
+included Vorbis in twelve rapid cross-codec switches without a crash or hang.
+Per-codec network fault injection remains useful extended coverage rather than
+a missing decoder path. See
+[audio release validation](AUDIO_RELEASE_VALIDATION.md).

@@ -102,8 +102,10 @@ its `eboot.bin` SHA-256 was
 
 ## Supported boundary
 
-This evidence establishes basic native and Ogg-FLAC playback, cancellation,
-AAC switching, sustained runtime stability, and clean loader lifecycle.
-Induced reconnects, deliberate network underruns, malformed live streams, and
-rapid repeated switching remain robustness hardening; they are not missing
-decoder or container paths.
+This evidence establishes native and Ogg-FLAC playback, cancellation, AAC
+switching, sustained runtime stability, and clean loader lifecycle. The final
+PS5 matrix added FLAC to twelve rapid cross-codec switches and ended with a
+clean 44.1 kHz stereo FLAC state. Host checks cover malformed, truncated, and
+bounded-opening failures. Per-codec reconnect and network-underrun injection
+remain useful extended coverage rather than missing decoder or container paths.
+See [audio release validation](AUDIO_RELEASE_VALIDATION.md).
