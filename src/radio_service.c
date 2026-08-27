@@ -6,6 +6,7 @@
 #include "ogg_opus.h"
 #include "opus_decoder.h"
 #include "pcm_queue.h"
+#include "playback_retry.h"
 #include "radio_hls.h"
 #include "radio_playlist.h"
 #include "radio_ts_aac.h"
@@ -56,8 +57,6 @@
 #define AUDIO_START_BLOCKS 188U
 #define AUDIO_RESTART_BLOCKS 94U
 #define AUDIO_WAIT_MS 20U
-#define PLAYBACK_RETRY_COUNT 3U
-#define PLAYBACK_RETRY_BASE_MS 250U
 #define PLAYLIST_BUFFER_SIZE (64U * 1024U)
 #define PLAYLIST_REDIRECT_LIMIT 3U
 #define STREAM_OPEN_DIRECT 0
@@ -269,6 +268,7 @@ static SDL_mutex * g_state_mutex;
 static SDL_mutex * g_request_mutex;
 static SDL_atomic_t g_refresh_running;
 static SDL_atomic_t g_playback_running;
+static SDL_atomic_t g_playback_epoch;
 static SDL_atomic_t g_stop_playback;
 static SDL_atomic_t g_shutting_down;
 static int g_playback_request = -1;
@@ -982,6 +982,7 @@ static void * refresh_thread(void * unused)
 static void set_playback_state(radio_playback_state_t state, int error,
                                unsigned sample_rate, unsigned channels)
 {
+    if(state == RADIO_PLAYBACK_PLAYING) SDL_AtomicAdd(&g_playback_epoch, 1);
     SDL_LockMutex(g_state_mutex);
     g_status.playback_state = state;
     g_status.error_code = error;
@@ -2018,18 +2019,24 @@ static void * playback_thread(void * station_copy)
 {
     radio_station_t * station = station_copy;
     int result = -1;
-    for(unsigned attempt = 0; attempt < PLAYBACK_RETRY_COUNT; ++attempt) {
+    unsigned failures = 0U;
+    for(;;) {
+        const int epoch = SDL_AtomicGet(&g_playback_epoch);
+        const uint32_t started = SDL_GetTicks();
         result = play_stream(station);
         if(result >= 0 || SDL_AtomicGet(&g_stop_playback) ||
            SDL_AtomicGet(&g_shutting_down)) break;
-        if(attempt + 1U < PLAYBACK_RETRY_COUNT) {
-            set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 0, 0);
-            const unsigned delay = PLAYBACK_RETRY_BASE_MS << attempt;
-            for(unsigned waited = 0; waited < delay &&
-                !SDL_AtomicGet(&g_stop_playback) &&
-                !SDL_AtomicGet(&g_shutting_down); waited += 25U) {
-                SDL_Delay(25U);
-            }
+        const bool stable_playback =
+            SDL_AtomicGet(&g_playback_epoch) != epoch &&
+            SDL_GetTicks() - started >= PLAYBACK_RETRY_RESET_MS;
+        failures = playback_retry_next_failures(failures, stable_playback);
+        if(!playback_retry_allowed(failures)) break;
+        set_playback_state(RADIO_PLAYBACK_BUFFERING, 0, 0, 0);
+        const unsigned delay = playback_retry_delay_ms(failures);
+        for(unsigned waited = 0; waited < delay &&
+            !SDL_AtomicGet(&g_stop_playback) &&
+            !SDL_AtomicGet(&g_shutting_down); waited += 25U) {
+            SDL_Delay(25U);
         }
     }
     free(station);
@@ -2058,6 +2065,7 @@ bool radio_service_init(void)
     SDL_AtomicSet(&g_shutting_down, 0);
     SDL_AtomicSet(&g_stop_playback, 0);
     SDL_AtomicSet(&g_playback_running, 0);
+    SDL_AtomicSet(&g_playback_epoch, 0);
     SDL_AtomicSet(&g_refresh_running, 0);
     g_playback_request = -1;
     load_favorites();

@@ -109,6 +109,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "MP3 header check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/pcm_queue_check.c -o /tmp/pcm-queue-check
           if ($LASTEXITCODE -ne 0) { throw "PCM queue check compilation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/playback_retry_check.c -o /tmp/playback-retry-check
+          if ($LASTEXITCODE -ne 0) { throw "Playback retry check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_input_check.c -o /tmp/radio-input-check
           if ($LASTEXITCODE -ne 0) { throw "Input check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_playlist_check.c src/radio_playlist.c -o /tmp/radio-playlist-check
@@ -137,6 +139,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "MP3 header check failed." }
           wsl.exe --exec /tmp/pcm-queue-check
           if ($LASTEXITCODE -ne 0) { throw "PCM queue check failed." }
+          wsl.exe --exec /tmp/playback-retry-check
+          if ($LASTEXITCODE -ne 0) { throw "Playback retry check failed." }
           wsl.exe --exec /tmp/radio-input-check
           if ($LASTEXITCODE -ne 0) { throw "Input check failed." }
           wsl.exe --exec /tmp/radio-playlist-check
