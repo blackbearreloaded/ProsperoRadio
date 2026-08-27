@@ -12,6 +12,13 @@ static void check(int condition, const char * message)
 
 int main(void)
 {
+    check(!playback_retry_is_stable(1439999U, 48000U),
+          "29.999 seconds is not stable playback");
+    check(playback_retry_is_stable(1440000U, 48000U),
+          "30 seconds of submitted PCM is stable playback");
+    check(!playback_retry_is_stable(UINT64_MAX, 0U),
+          "zero output rate is never stable");
+
     unsigned failures = 0U;
     failures = playback_retry_next_failures(failures, false);
     check(failures == 1U && playback_retry_allowed(failures),
