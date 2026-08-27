@@ -51,8 +51,9 @@ radio client, controller-first interface, media stack, and bundled dependencies.
 - Native PS5 on-screen keyboard for text search.
 - AAC, MP3, and Ogg Opus playback through native PS5 decoders, plus bounded CPU
   decoding for Ogg Vorbis, native-container FLAC, and Ogg-FLAC, all using PS5
-  AudioOut. HE-AAC uses its native AAC core with timing-safe output
-  normalization; final full-fidelity confirmation remains open.
+  AudioOut. Hardware probing confirms HE-AAC SBR output; HE-AAC v2 Parametric
+  Stereo is not exposed by the public decoder and uses the stable mono-core
+  fallback duplicated to stereo.
 - Bounded M3U, PLS, and audio-only HLS delivery for URLs returned by Radio Browser.
 - Bounded stripping of advertised ICY metadata from every direct stream.
 - Persistent favorites and cached catalog data under `/download0`.
@@ -91,14 +92,15 @@ the bounded master/media-playlist and MPEG-TS transport path; custom stream URLs
 are intentionally outside the product scope. Live HLS/AAC playback, switching,
 stop, restart, and playlist reloads are validated on PS5 hardware. HLS
 discontinuities reset MPEG-TS, ADTS, native AAC, and output geometry together.
-HE-AAC v2
-manifests use the stable AAC core plus the existing 48 kHz stereo output
-normalization; final audible fidelity confirmation remains a release gate. The
+HE-AAC v2 manifests use the stable AAC core plus 48 kHz stereo output
+normalization. A dedicated firmware 6.02 probe confirmed native SBR
+reconstruction at 48 kHz, but every valid public decoder configuration exposed
+Parametric Stereo input as mono; PSRadio does not claim native PS stereo. The
 hardware-first investigation found no callable native Vorbis or FLAC path on
 the current firmware baseline. The selected bounded software fallbacks are
-bundled and validated. See the
-[codec investigation](docs/CODEC_INVESTIGATION.md)
-and [roadmap](ROADMAP.md).
+bundled and validated. See the [codec investigation](docs/CODEC_INVESTIGATION.md),
+[audio release validation](docs/AUDIO_RELEASE_VALIDATION.md), and
+[roadmap](ROADMAP.md).
 
 ## Requirements
 
@@ -255,6 +257,7 @@ and can be removed at any time.
 | [FLAC validation](docs/FLAC_VALIDATION.md) | Bounded native/Ogg FLAC decoder and PS5 lifecycle evidence |
 | [HLS/AAC validation](docs/HLS_VALIDATION.md) | Bounded transport, AAC timing fix, and PS5 lifecycle evidence |
 | [Codec investigation](docs/CODEC_INVESTIGATION.md) | Hardware-first evidence and software-fallback decisions |
+| [Audio release validation](docs/AUDIO_RELEASE_VALIDATION.md) | HE-AAC probe and fault-injected PS5 stress evidence |
 | [Roadmap](ROADMAP.md) | Planned codec and streaming support |
 | [Contributing](CONTRIBUTING.md) | Development workflow and validation checklist |
 | [Notices](NOTICE.md) | Dependencies, fonts, artwork, and attribution |

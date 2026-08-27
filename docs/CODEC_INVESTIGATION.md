@@ -9,7 +9,7 @@ codec path from a library name or a station's metadata.
 
 | Format | Native investigation | Current decision |
 | --- | --- | --- |
-| AAC / HE-AAC | AAC through `libSceAudiodec` reaches the device-backed AJM service and is hardware-validated. The tested HE-AAC v2 stream needs the timing-safe AAC-core fallback; full-fidelity SBR/PS output is not yet confirmed. | Keep native AAC and the bounded HE-AAC core fallback without claiming full HE-AAC fidelity. |
+| AAC / HE-AAC | AAC through `libSceAudiodec` reaches the device-backed AJM service. A dedicated HE-AAC v2 probe confirms 48 kHz SBR reconstruction, but every valid public configuration exposes Parametric Stereo as mono. | Keep native AAC. Use the timing-safe AAC-core fallback and stereo normalization for HE-AAC v2; do not claim unavailable native PS stereo. |
 | MP3 | Public codec `0x0002` reaches AJM and is hardware-validated in PSRadio. | Keep the native decoder. |
 | Ogg Opus | `libSceOpusDec` and `libSceOpusCeltDec` reach AJMI/AJM and are hardware-validated in PSRadio. | Keep the native dual-decoder path. |
 | Ogg Vorbis | No Vorbis branch exists in the recovered AvPlayer decoder factory. The inspected AJM Vorbis helper prepares headers but exposes no PCM decode job. | Use the bundled, bounded `stb_vorbis` CPU decoder; live playback, stop, AAC switching, and an eleven-minute PS5 run are validated. |
@@ -18,8 +18,27 @@ codec path from a library name or a station's metadata.
 
 Ogg Vorbis and FLAC are enabled after their bundled software paths passed host
 and PS5 validation. Radio Browser HLS/AAC records are enabled after passing live
-playback, switching, stop, restart, and playlist-reload checks. Audible HE-AAC
-fallback fidelity and a live discontinuity remain release gates.
+playback, switching, stop, restart, playlist reload, and a forced hardware
+discontinuity. The HE-AAC and release stress evidence is recorded in
+[`AUDIO_RELEASE_VALIDATION.md`](AUDIO_RELEASE_VALIDATION.md).
+
+### HE-AAC SBR/PS probe
+
+Disposable game-category probe `PPSA99697` decoded a 24-frame HE-AAC v2 ADTS
+fixture through `libSceAudiodec`. With HE enabled, the public 24-byte AAC
+configuration produced nonzero 48 kHz mono PCM with energy above 12 kHz,
+confirming SBR reconstruction. Disabling HE produced the 24 kHz mono AAC core.
+
+The public and recovered extended configurations were then varied across word
+size, AAC configuration, channel count, and the extra AvPlayer field. Every
+valid HE configuration still reported one decoded channel. The AvPlayer-style
+16-bit word-size configuration was rejected by the public API. Static analysis
+of AvPlayer confirmed its 28-byte internal parameter shape, but did not expose
+a callable public path that returns Parametric Stereo as two channels.
+
+This is a measured platform boundary, not a container-parser failure. PSRadio
+retains native AAC offload, correct timing, and bounded stereo normalization;
+it does not add a software HE-AAC decoder solely to synthesize PS stereo.
 
 ## Firmware and test boundary
 
@@ -181,11 +200,11 @@ A format is included in Radio Browser queries only after these core gates pass:
    a runtime crash.
 5. A sustained playback run completes for the new decoder path.
 
-Representative sample-rate/channel variants, stop during each network stage,
-switching against every other decoder, induced reconnects and underruns, rapid
-repeated switching, and malformed live sources are tracked as extended
-robustness evidence. They refine the supported edge boundary without being
-misreported as a missing basic codec implementation.
+Representative sample-rate/channel variants and naturally occurring CELT
+fallbacks remain useful coverage. Fault-injected reconnect, underrun, malformed
+Ogg, HLS discontinuity, ICY metadata, and rapid cross-codec switching now have
+persisted PS5 evidence in
+[`AUDIO_RELEASE_VALIDATION.md`](AUDIO_RELEASE_VALIDATION.md).
 
 The shared reconnect policy permits three consecutive failures with bounded
 250, 500, and 1,000 ms backoff. An attempt is considered stable only after it

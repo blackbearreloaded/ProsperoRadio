@@ -46,10 +46,12 @@ mono AAC. HLS initially discarded the manifest's stereo intent, bypassing an
 existing native HE-AAC workaround and producing slow-motion audio on PS5.
 
 Variant selection now records two source channels for exact `mp4a.40.29`
-manifests. This activates the existing stable decoder configuration: decode the
-24 kHz mono AAC core, then normalize it through the shared 48 kHz stereo output
-path. This prioritizes correct timing and stability; operator confirmation of
-final audible HE-AAC fidelity remains required before release.
+manifests. This activates the stable decoder configuration: decode the 24 kHz
+mono AAC core, then normalize it through the shared 48 kHz stereo output path.
+A dedicated hardware probe subsequently confirmed native 48 kHz SBR output but
+also showed that every valid public configuration exposes HE-AAC v2 Parametric
+Stereo as mono. The fallback therefore preserves correct timing and the PS5
+stereo output contract without claiming unavailable native PS stereo.
 
 ## Hardware lifecycle evidence
 
@@ -71,8 +73,9 @@ its `eboot.bin` SHA-256 was
 
 The final run produced no AudioDec failure, fatal signal, app-crash marker, or
 loader error. Synthetic host cases cover inline discontinuities and retained
-discontinuity-sequence values, but a live discontinuity has not yet been
-captured on hardware.
+discontinuity-sequence values. A later fault-injected PS5 run exercised a
+discontinuity from 44.1 kHz stereo to 48 kHz mono and reopened the decoder and
+sink with the new geometry without a crash.
 
 At an inline discontinuity or a forced live-edge jump, the reader now drains
 the old PCM sink, recreates the AAC decoder, clears partial ADTS framing, and
@@ -81,9 +84,9 @@ to the playlist's base `EXT-X-DISCONTINUITY-SEQUENCE` alone does not trigger a
 second reset because it can simply mean an already-consumed boundary slid out
 of the live window.
 
-## Remaining release gates
+## Retained boundary
 
-- operator-confirm normal speed and acceptable fidelity for the HE-AAC core
-  fallback;
-- hardware-exercise a live discontinuity;
-- retain the explicit rejection behavior for unsupported HLS forms.
+- native HE-AAC SBR is available, but public Parametric Stereo output is mono;
+- unsupported HLS forms remain explicit failures;
+- naturally occurring live discontinuities remain useful field coverage in
+  addition to the deterministic fault-injected hardware test.

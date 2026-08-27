@@ -3,13 +3,15 @@
 PSRadio's implemented playback baseline includes the complete RmlUi interface,
 Radio Browser catalog and search, persistent cache and favorites, native input
 and IME, AAC, MP3, Ogg Opus, Ogg Vorbis, native-container FLAC, and Ogg-FLAC
-playback through PS5 AudioOut. HE-AAC currently uses a timing-safe AAC-core
-fallback; audible full-fidelity confirmation remains a release gate.
+playback through PS5 AudioOut. Hardware probing confirms native HE-AAC SBR
+reconstruction. The public decoder exposes HE-AAC v2 Parametric Stereo as mono,
+so the release path uses the timing-safe AAC core and duplicates normalized
+output to stereo instead of claiming unavailable native PS stereo.
 
 New stream formats are enabled in Radio Browser queries only after bounded host
 checks plus on-device playback, stop, station switching, sustained playback,
-and clean lifecycle checks. Induced network faults and malformed live sources
-remain explicit hardening work after the basic codec/container path is proven.
+and clean lifecycle checks. The current release also passed fault-injected
+reconnect, underrun, malformed Ogg, HLS discontinuity, and rapid-switch tests.
 This keeps known unsupported codec categories out of the catalog while keeping
 edge-case claims evidence-based. Radio Browser's ambiguous generic `OGG`
 records remain visible and are signature-probed at playback; an unknown Ogg
@@ -84,8 +86,9 @@ remain before the next release.
   for CELT packets that return `-502`.
 - [x] Validate live Opus stop and station switching on PS5; the measured stop
   completed in 67 ms before a second stream reached 48 kHz stereo playback.
-- [ ] Validate induced reconnect, audible underrun behavior, and a live `-502`
-  CELT fallback with persisted on-device evidence.
+- [x] Validate induced reconnect and underrun behavior with persisted on-device
+  telemetry; both resumed or remained responsive without a crash.
+- [ ] Capture a naturally occurring live `-502` CELT fallback.
 - [x] Investigate AvPlayer, AJM helpers, and the firmware library inventory for
   a callable native Vorbis path; none was found.
 - [x] Select `stb_vorbis` as the smallest redistributable software candidate.
@@ -96,7 +99,8 @@ remain before the next release.
   to AAC on PS5.
 - [x] Reject CRC-invalid, truncated, and inconsistent Ogg pages and decode PCM
   from both logical streams in a chained Vorbis host regression.
-- [ ] Validate induced reconnects and rapid repeated station switching on PS5.
+- [x] Validate induced reconnects and rapid repeated cross-codec station
+  switching on PS5.
 
 The Opus packet-to-PCM probe produced the expected 960 stereo frames (3,840
 signed-16 PCM bytes) with nonzero output. Ogg Vorbis is enabled through the
@@ -119,8 +123,8 @@ basic format support.
   PS5.
 - [x] Validate a ten-minute sustained Ogg-FLAC session on PS5.
 - [x] Expose FLAC stations after the bounded runtime passed device validation.
-- [ ] Add induced reconnect, underrun, malformed live-stream, and rapid-switch
-  evidence as robustness hardening.
+- [x] Add induced reconnect, underrun, malformed-input, and rapid-switch
+  robustness evidence through the shared stress matrix and host regressions.
 
 `dr_flac` is the bounded CPU fallback because firmware 6.02 exposes no callable
 native FLAC decoder to this application. Host checks cover native and
@@ -148,8 +152,11 @@ HLS is a delivery protocol rather than a codec and is tracked separately.
   segment returned by the Radio Browser catalog.
 - [x] Validate live HLS/AAC playback, stop, restart, station switching, and
   playlist reloads on PS5 hardware.
-- [ ] Confirm audible HE-AAC fallback fidelity and hardware-exercise a live
-  discontinuity before the next release.
+- [x] Probe HE-AAC v2 on hardware: native SBR reaches 48 kHz, while public
+  configurations expose Parametric Stereo as mono; retain the stable core
+  fallback and stereo normalization.
+- [x] Hardware-exercise an HLS discontinuity that changes output from 44.1 kHz
+  stereo to 48 kHz mono without a crash or stale decoder geometry.
 
 ## Later improvements
 
