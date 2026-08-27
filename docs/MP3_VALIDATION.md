@@ -42,7 +42,9 @@ signed-16 stereo samples. The recovered data image SHA-256 was
 44.1/24/11.025 kHz rates, mono and stereo, padded frames, prefixed metadata,
 and reserved version/layer rejection. `tools/icy_metadata_check.c` covers
 case-insensitive `icy-metaint` parsing, split and zero-length metadata blocks,
-truncation, read errors, and MP3 sync bytes embedded in discarded metadata.
+truncation, read errors, and codec sync bytes embedded in discarded metadata.
+The wrapper is transport-scoped, so any direct Radio Browser response that
+advertises `icy-metaint` is stripped before AAC, MP3, Ogg, or FLAC framing.
 `tools/radio_service_json_check.c` confirms that a healthy non-HLS Radio Browser
 MP3 entry enters the catalog.
 The production compile also fixes the recovered 64-bit ABI sizes at 24-byte AU

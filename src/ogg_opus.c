@@ -34,6 +34,7 @@ static void reset_logical_stream(ogg_opus_parser_t * parser)
     parser->tags_seen = 0;
     parser->audio_seen = 0;
     parser->sequence_jump_seen = 0;
+    parser->discard_continued = 0;
     parser->channels = 0;
     parser->pre_skip = 0;
     parser->output_gain_q8 = 0;
@@ -137,14 +138,16 @@ static ogg_opus_result_t begin_page(ogg_opus_parser_t * parser,
         /* Icecast can prepend fresh headers before joining the live page
            sequence. Let the first complete audio page establish that value. */
         if(page->sequence != parser->next_sequence) {
-            if(!parser->tags_seen || parser->audio_seen || continued ||
+            if(!parser->tags_seen || parser->audio_seen ||
                parser->sequence_jump_seen)
                 return fail(parser, OGG_OPUS_ERR_SEQUENCE);
             parser->sequence_jump_seen = 1;
+            parser->discard_continued = (uint8_t)continued;
         }
     }
 
-    if((parser->packet_size != 0U) != continued)
+    if(!parser->discard_continued &&
+       (parser->packet_size != 0U) != continued)
         return fail(parser, OGG_OPUS_ERR_PAGE);
     parser->next_sequence = page->sequence + 1U;
     return OGG_OPUS_OK;
@@ -158,6 +161,11 @@ static int page_ready(const ogg_page_t * page, void * user_data)
     size_t body_at = 0;
     for(size_t i = 0; i < page->lace_count; ++i) {
         const size_t lace = page->laces[i];
+        if(parser->discard_continued) {
+            body_at += lace;
+            if(lace < 255U) parser->discard_continued = 0U;
+            continue;
+        }
         if(lace > OGG_OPUS_MAX_PACKET_SIZE - parser->packet_size) {
             fail(parser, OGG_OPUS_ERR_PACKET_TOO_LARGE);
             return -1;

@@ -114,5 +114,12 @@ int main(void)
     assert(opus_packet_is_celt(celt_packet, sizeof(celt_packet)));
     assert(!opus_packet_is_celt(silk_packet, sizeof(silk_packet)));
     assert(!opus_packet_is_celt(NULL, 0U));
+
+    hls_reader_t hls_reader;
+    memset(&hls_reader, 0, sizeof(hls_reader));
+    hls_reader.discontinuity_pending = true;
+    assert(hls_take_discontinuity(&hls_reader) == STREAM_READ_DISCONTINUITY);
+    assert(!hls_reader.discontinuity_pending);
+    assert(hls_take_discontinuity(&hls_reader) == 0);
     return 0;
 }

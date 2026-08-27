@@ -98,6 +98,28 @@ static void check_chained_streams(void)
         size_t consumed = 0U;
         check(vorbis_decoder_open(&decoder, output, size, &consumed) ==
               VORBIS_DECODER_OK, "chained stream reopens decoder");
+        int16_t pcm[VORBIS_DECODER_MAX_FRAME_FRAMES * 2U];
+        size_t at = consumed;
+        size_t total_samples = 0U;
+        bool nonzero = false;
+        while(at < size) {
+            size_t used = 0U;
+            size_t samples = 0U;
+            const int result = vorbis_decoder_decode(
+                &decoder, output + at, size - at, &used,
+                pcm, sizeof(pcm) / sizeof(pcm[0]), &samples);
+            check(result == VORBIS_DECODER_OK ||
+                  result == VORBIS_DECODER_NEED_MORE,
+                  "chained stream frame decode");
+            for(size_t i = 0U; i < samples; ++i)
+                nonzero = nonzero || pcm[i] != 0;
+            total_samples += samples;
+            at += used;
+            if(used == 0U) break;
+        }
+        check(total_samples >= 4800U,
+              "chained stream decoded expected PCM duration");
+        check(nonzero, "chained stream decoded nonzero PCM");
         vorbis_decoder_close(&decoder);
 
         check(ogg_stream_next_chain(&stream) == OGG_STREAM_OK,

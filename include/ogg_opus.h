@@ -14,7 +14,7 @@ extern "C" {
 #define OGG_OPUS_MAX_PACKET_SIZE 65536U
 #endif
 
-#define OGG_OPUS_MAX_AUDIO_PACKET_SIZE 1275U
+#define OGG_OPUS_MAX_AUDIO_PACKET_SIZE 61440U
 
 typedef enum {
     OGG_OPUS_OK = 0,
@@ -64,6 +64,7 @@ typedef struct {
     uint8_t tags_seen;
     uint8_t audio_seen;
     uint8_t sequence_jump_seen;
+    uint8_t discard_continued;
     uint8_t channels;
     ogg_opus_result_t error;
     ogg_opus_packet_fn on_packet;

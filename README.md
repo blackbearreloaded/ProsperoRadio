@@ -54,7 +54,7 @@ radio client, controller-first interface, media stack, and bundled dependencies.
   AudioOut. HE-AAC uses its native AAC core with timing-safe output
   normalization; final full-fidelity confirmation remains open.
 - Bounded M3U, PLS, and audio-only HLS delivery for URLs returned by Radio Browser.
-- Bounded stripping of advertised ICY metadata from direct MP3 streams.
+- Bounded stripping of advertised ICY metadata from every direct stream.
 - Persistent favorites and cached catalog data under `/download0`.
 - Responsive play, stop, station switching, paging, and refresh actions.
 - RmlUi overlays, fixed television safe area, and a persistent now-playing rail.
@@ -71,6 +71,8 @@ at 48 kHz stereo, including live Radio Browser input through PCM and AudioOut.
 Ogg Opus playback is also hardware-validated: CELT-mode packets use the
 console's dedicated CELT decoder as a bounded fallback when the general native
 decoder rejects them, while SILK and hybrid modes retain the general decoder.
+Ogg pages are CRC-validated before dispatch; Opus playback applies output gain,
+pre-skip, final end trim, padded-packet limits, and live-join continuation rules.
 The live path has bounded reconnects, immediate cancellation, and a measured
 67 ms Opus stop-to-stopped transition. Bounded Ogg Vorbis playback is validated
 at 44.1 kHz stereo, including stop, switching back to AAC, and a sustained
@@ -87,7 +89,9 @@ being sent to a mismatched decoder. Radio Browser AAC entries flagged as HLS
 are admitted through
 the bounded master/media-playlist and MPEG-TS transport path; custom stream URLs
 are intentionally outside the product scope. Live HLS/AAC playback, switching,
-stop, restart, and playlist reloads are validated on PS5 hardware. HE-AAC v2
+stop, restart, and playlist reloads are validated on PS5 hardware. HLS
+discontinuities reset MPEG-TS, ADTS, native AAC, and output geometry together.
+HE-AAC v2
 manifests use the stable AAC core plus the existing 48 kHz stereo output
 normalization; final audible fidelity confirmation remains a release gate. The
 hardware-first investigation found no callable native Vorbis or FLAC path on

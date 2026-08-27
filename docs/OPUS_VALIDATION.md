@@ -61,13 +61,17 @@ Initial live tests returned `ffffffffb`, the signed parser result `-5`
 (`OGG_OPUS_ERR_SEQUENCE`). Icecast supplied fresh `OpusHead` and `OpusTags`
 pages with sequence numbers 0 and 1, then joined the current live audio page at
 a much higher sequence number. The parser now allows exactly one discontinuity
-between validated tags and the first complete audio packet. Continued packets,
-additional discontinuities, and gaps after audio starts remain errors.
+between validated tags and the first audio page. If that page begins with an
+orphan continued packet, its incomplete bytes are discarded through the first
+terminating lace and subsequent complete packets are decoded. Additional
+discontinuities and gaps after audio starts remain errors.
 
 The sanitizer-enabled host regression suite passed captures from
-Deutschlandfunk, Nightwave Plaza, and Dance Wave. It also verifies rejection of
-a second pre-audio jump, a mismatched continued page, and a missing page after
-audio starts, plus reset behavior for a chained logical stream.
+Deutschlandfunk, Nightwave Plaza, and Dance Wave. It verifies full-page CRC
+before packet dispatch, 61,440-byte packet acceptance, 61,441-byte rejection,
+orphan-continuation discard, a second pre-audio jump rejection, gaps after
+audio starts, chained logical streams, output gain, pre-skip, and final-granule
+trimming.
 
 The packet probe source and reverse-engineering notes are maintained in the
 [PS5 hardware audio decoding investigation](https://github.com/blackbearreloaded/ps5-hardware-audio-decoding).
@@ -79,5 +83,5 @@ an audible underrun, and a live stream that exercises the automatic `-502` CELT
 fallback on the target console. The two-second queue, 67 ms Opus stop, direct
 station switch, transitions in both codec directions, a ten-minute Opus session,
 dedicated CELT decoding, and the AAC regression now have crash-free device
-evidence. Ogg CRC, output-gain, and final-granule trimming remain tracked in the
-project roadmap.
+evidence. Ogg CRC, output gain, pre-skip, end trimming, bounded padded packets,
+and live-join continuation handling now have deterministic host coverage.

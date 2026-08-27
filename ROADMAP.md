@@ -49,8 +49,8 @@ selected software fallbacks are recorded in
 - [x] Validate the native `libSceAudiodec` MP3 path (`codec 0x0002`) and derive
   sample rate and channel count from MPEG frame headers.
 - [x] Retain the native path without adding a software MP3 dependency.
-- [ ] Handle non-compliant servers that send ICY metadata despite the client's
-  `Icy-MetaData: 0` request without disrupting MP3 frame alignment.
+- [x] Strip advertised ICY metadata from direct streams when a server ignores
+  `Icy-MetaData: 0`, without exposing metadata bytes to codec framing.
 - [ ] Validate representative sample rates, channel layouts, and malformed
   streams on PS5 before the next release.
 
@@ -67,8 +67,10 @@ remain before the next release.
   AudioOut sink into the production player.
 - [x] Confirm the production integration launches on PS5 and admits explicitly
   identified Opus stations from Radio Browser's broader OGG category.
-- [ ] Validate Ogg page CRCs before dispatch and apply Opus output gain and
-  end-granule trimming for full container-spec compliance.
+- [x] Validate Ogg page CRCs before dispatch and apply Opus output gain,
+  pre-skip, and end-granule trimming for container-spec compliance.
+- [x] Accept bounded Opus packets through 61,440 bytes and discard an orphan
+  continued packet when joining an Icecast stream mid-broadcast.
 - [x] Confirm audible playback against live Radio Browser Opus stations.
 - [x] Validate the decoded-PCM queue and direct Opus-to-AAC and AAC-to-Opus
   station switches on PS5 without a runtime crash.
@@ -92,8 +94,9 @@ remain before the next release.
   sample rates for the current output path.
 - [x] Validate live 44.1 kHz stereo playback, stop, and direct switching back
   to AAC on PS5.
-- [ ] Validate additional malformed pages, chained streams, reconnects, and
-  rapid repeated station switching.
+- [x] Reject CRC-invalid, truncated, and inconsistent Ogg pages and decode PCM
+  from both logical streams in a chained Vorbis host regression.
+- [ ] Validate induced reconnects and rapid repeated station switching on PS5.
 
 The Opus packet-to-PCM probe produced the expected 960 stereo frames (3,840
 signed-16 PCM bytes) with nonzero output. Ogg Vorbis is enabled through the

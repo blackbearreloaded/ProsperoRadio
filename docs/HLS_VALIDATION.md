@@ -74,6 +74,13 @@ loader error. Synthetic host cases cover inline discontinuities and retained
 discontinuity-sequence values, but a live discontinuity has not yet been
 captured on hardware.
 
+At an inline discontinuity or a forced live-edge jump, the reader now drains
+the old PCM sink, recreates the AAC decoder, clears partial ADTS framing, and
+starts the next segment with fresh sample-rate and channel geometry. A change
+to the playlist's base `EXT-X-DISCONTINUITY-SEQUENCE` alone does not trigger a
+second reset because it can simply mean an already-consumed boundary slid out
+of the live window.
+
 ## Remaining release gates
 
 - operator-confirm normal speed and acceptable fidelity for the HE-AAC core

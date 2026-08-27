@@ -73,7 +73,10 @@ The sustained-run package SHA-256 was
 its `eboot.bin` SHA-256 was
 `4A2B9F47B12085BD2140B3ADBF9FC01DCA021AB19DC341CDA2CBDE34CAC240A2`.
 
-This establishes supported-format playback and lifecycle behavior. Additional
-malformed-page coverage, chained streams, induced reconnects, rapid repeated
-switching, and deliberate live-stream faults remain robustness and
-container-compliance work rather than a missing Vorbis decoder path.
+This establishes supported-format playback and lifecycle behavior. The shared
+Ogg reader now rejects invalid CRCs, truncation, and illegal serial changes
+before `stb_vorbis` receives bytes. A deterministic chained fixture uses a new
+serial for its second logical stream and verifies that both decoders produce
+nonzero PCM under ASan/UBSan. Induced reconnects, rapid repeated switching, and
+deliberate live-stream faults remain device robustness work rather than a
+missing Vorbis decoder path.

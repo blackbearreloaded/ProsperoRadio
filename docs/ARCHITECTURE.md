@@ -123,13 +123,13 @@ Playback runs on a separate native thread:
 ```text
 resolved station URL
   -> bounded M3U / PLS indirection when returned by Radio Browser
-  -> direct native HTTP read, or audio-only HLS
+  -> direct native HTTP read with advertised ICY metadata stripped,
+     or audio-only HLS
        master/media playlist -> lowest-bandwidth AAC variant
        live MPEG-TS segments -> PAT/PMT/PES -> ADTS AAC bytes
   -> codec dispatch
        AAC  -> ADTS synchronization -> native AAC decoder
-       MP3  -> advertised ICY metadata stripping -> MPEG frame synchronization
-            -> native MP3 decoder
+       MP3  -> MPEG frame synchronization -> native MP3 decoder
        Opus -> incremental Ogg demux -> native libSceOpusDec
                                       -> bounded CELT decoder fallback on -502
        Vorbis -> bounded stb_vorbis push-data CPU decoder
@@ -144,6 +144,11 @@ half a second after an underrun. Network reads and decoding therefore continue
 independently of AudioOut's synchronous pacing, while the bounded two-second
 capacity prevents unlimited latency or memory growth.
 
+An HLS discontinuity drains the old PCM sink, recreates the native AAC decoder,
+and clears partial transport/framing state before the next segment. This lets
+sample rate, channel count, and AAC profile change without reusing stale output
+geometry.
+
 Stop and station switching set the shared cancellation state and call
 `sceHttpAbortRequest` for the active playback request. This releases a playback
 thread blocked in connection setup, request transmission, or an HTTP read
@@ -154,12 +159,14 @@ and output failures are reported as service state rather than terminating the
 UI.
 
 The Ogg parser is project-owned, allocation-free state with bounded packet
-storage. It validates stream structure, Opus headers, packet limits, page
-sequence, continuation, and chained serial transitions before compressed
-packets reach the platform decoder. Opus TOC configurations 16-31 are routed to
-the general decoder first. A CELT packet rejected with native result `-502` is
-retried once with `libSceOpusCeltDec`; decoder failover keeps the existing PCM
-sink alive and does not reapply the logical stream's pre-skip.
+storage. It validates full-page CRCs, stream structure, Opus headers, packet
+limits, page sequence, continuation, and chained serial transitions before
+compressed packets reach the platform decoder. Opus audio packets are bounded
+at 61,440 bytes; an orphan continuation at a valid live join is discarded
+before later complete packets are dispatched. Opus TOC configurations 16-31
+are routed to the general decoder first. A CELT packet rejected with native
+result `-502` is retried once with `libSceOpusCeltDec`; decoder failover keeps
+the existing PCM sink alive and does not reapply the logical stream's pre-skip.
 AAC, MP3, Opus, Vorbis, and FLAC are currently advertised; planned codec and delivery
 work is tracked in [`ROADMAP.md`](../ROADMAP.md). The completed hardware-first
 review found no callable native Vorbis or FLAC path on the current firmware
