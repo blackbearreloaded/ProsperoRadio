@@ -76,6 +76,15 @@ are retained beside them, and the build pins their SHA-256 digests. They contain
 no decoder implementation or extracted Sony executable code. No Opus runtime
 module is packaged with the application.
 
+## stb_vorbis
+
+[`stb_vorbis`](https://github.com/nothings/stb) by Sean Barrett is distributed
+under the MIT license retained in `vendor/stb/LICENSE.txt`. PSRadio vendors the
+single-file decoder from commit
+`2c980bb59875b0d32144a71867fbdebb2f77cd20`; exact provenance and the tracked
+file digest are recorded in `vendor/stb/README.md`. Vorbis decoding is CPU-based
+because the hardware-first investigation found no callable native PS5 route.
+
 ## Radio Browser
 
 Station discovery, metadata, and stream URLs are provided by the free and open

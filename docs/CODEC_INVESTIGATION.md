@@ -25,7 +25,7 @@ fallback fidelity and a live discontinuity remain release gates.
 
 The runtime probes below used firmware 6.02 with ShadowMountPlus and game
 category packages. Disposable probe identities are included so a result can be
-matched to retained investigation-loop evidence. They are not application
+matched to retained development-protocol evidence. They are not application
 release identities.
 
 ### FLAC module probe
@@ -172,7 +172,7 @@ is included in Radio Browser queries:
 4. Stop while connecting, while blocked in a read, and with queued PCM.
 5. Direct switching to and from AAC and Opus without a crash.
 6. Reconnect, underrun recovery, and at least ten minutes of sustained playback.
-7. Persisted investigation-loop evidence containing the decoder, output rate,
+7. Persisted development-protocol evidence containing the decoder, output rate,
    channel count, and terminal state.
 
 The preferred implementation order is simple M3U/PLS resolution, HLS/AAC,

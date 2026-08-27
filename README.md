@@ -256,6 +256,10 @@ wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_hls_che
 wsl /tmp/radio-hls-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_ts_aac_check.c src/radio_ts_aac.c -o /tmp/radio-ts-aac-check
 wsl /tmp/radio-ts-aac-check
+wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/ogg_opus_check.c src/ogg_opus.c -o /tmp/ogg-opus-check
+wsl /tmp/ogg-opus-check
+wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/vorbis_decoder_check.c src/vorbis_decoder.c -lm -o /tmp/vorbis-decoder-check
+wsl /tmp/vorbis-decoder-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -Wl,--gc-sections -Iinclude -Ivendor/ps5/sdl/include/SDL2 tools/radio_service_json_check.c -o /tmp/radio-service-json-check
 wsl /tmp/radio-service-json-check
 wsl --exec clang++-18 -std=c++20 -Wall -Wextra -Werror -Isrc tools/radio_text_check.cpp src/radio_text.cpp -o /tmp/radio-text-check
