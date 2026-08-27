@@ -10,7 +10,7 @@ locally, while complete ADTS frames continue through the existing native
 - master and media playlists with relative URL resolution;
 - lowest-bandwidth audio-only AAC variant selection;
 - live media sequences, reloads, stale-segment suppression, retries, and
-  discontinuity resets;
+  inline or discontinuity-sequence resets;
 - MPEG-TS PAT, PMT, PES, and ADTS extraction;
 - cancellation during requests and playlist waits;
 - unencrypted, whole-segment MPEG-TS only.
@@ -70,8 +70,9 @@ its `eboot.bin` SHA-256 was
 `83B5E2FF6CD6A8FB975E8672860081DC5A9BA9D8AAA459712C3880BE652A50EE`.
 
 The final run produced no AudioDec failure, fatal signal, app-crash marker, or
-loader error. A synthetic host case covers discontinuity reset behavior, but a
-live discontinuity has not yet been captured on hardware.
+loader error. Synthetic host cases cover inline discontinuities and retained
+discontinuity-sequence values, but a live discontinuity has not yet been
+captured on hardware.
 
 ## Remaining release gates
 

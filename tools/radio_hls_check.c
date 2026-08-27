@@ -63,6 +63,7 @@ int main(int argc, char ** argv)
     const char media[] =
         "#EXTM3U\r\n#EXT-X-TARGETDURATION:6\r\n"
         "#EXT-X-MEDIA-SEQUENCE:42\r\n"
+        "#EXT-X-DISCONTINUITY-SEQUENCE:7\r\n"
         "#EXTINF:6.0,\r\nseg42.ts\r\n"
         "#EXT-X-DISCONTINUITY\r\n"
         "#EXTINF:6.0,\r\n../seg43.ts?key=one\r\n";
@@ -70,7 +71,9 @@ int main(int argc, char ** argv)
                           "https://radio.test/live/audio/index.m3u8", &playlist) ==
           RADIO_HLS_OK, "live media playlist parses");
     check(playlist.kind == RADIO_HLS_MEDIA && playlist.is_live == 1U &&
-          playlist.target_duration_ms == 6000U && playlist.segment_count == 2U,
+          playlist.target_duration_ms == 6000U &&
+          playlist.discontinuity_sequence == 7U &&
+          playlist.segment_count == 2U,
           "media metadata retained");
     check(playlist.segments[0].sequence == 42U &&
           playlist.segments[1].sequence == 43U &&
@@ -90,6 +93,14 @@ int main(int argc, char ** argv)
     check(radio_hls_parse(encrypted, sizeof(encrypted) - 1U,
                           "https://radio.test/index.m3u8", &playlist) ==
           RADIO_HLS_UNSUPPORTED, "encrypted media rejected");
+    const char bad_discontinuity_sequence[] =
+        "#EXTM3U\n#EXT-X-TARGETDURATION:6\n"
+        "#EXT-X-DISCONTINUITY-SEQUENCE:nope\n"
+        "#EXTINF:6,\nseg.ts\n";
+    check(radio_hls_parse(bad_discontinuity_sequence,
+                          sizeof(bad_discontinuity_sequence) - 1U,
+                          "https://radio.test/index.m3u8", &playlist) ==
+          RADIO_HLS_MALFORMED, "malformed discontinuity sequence rejected");
 
     puts("radio_hls_check: PASS");
     return 0;

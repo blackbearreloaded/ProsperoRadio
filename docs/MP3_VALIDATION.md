@@ -40,8 +40,11 @@ signed-16 stereo samples. The recovered data image SHA-256 was
 
 `tools/mp3_header_check.c` covers MPEG-1, MPEG-2, and MPEG-2.5 headers,
 44.1/24/11.025 kHz rates, mono and stereo, padded frames, prefixed metadata,
-and reserved version/layer rejection. `tools/radio_service_json_check.c`
-confirms that a healthy non-HLS Radio Browser MP3 entry enters the catalog.
+and reserved version/layer rejection. `tools/icy_metadata_check.c` covers
+case-insensitive `icy-metaint` parsing, split and zero-length metadata blocks,
+truncation, read errors, and MP3 sync bytes embedded in discarded metadata.
+`tools/radio_service_json_check.c` confirms that a healthy non-HLS Radio Browser
+MP3 entry enters the catalog.
 The production compile also fixes the recovered 64-bit ABI sizes at 24-byte AU
 and PCM descriptors, a 32-byte control block, an 8-byte MP3 parameter block,
 and a 20-byte MP3 result block. Runtime decoding rejects inconsistent consumed
@@ -53,5 +56,3 @@ or produced lengths before PCM reaches AudioOut.
 - Expand direct AAC/MP3/Opus switching beyond the validated matrix sequence.
 - Confirm bounded stop latency during connect, read, buffering, and playback.
 - Reject or recover from malformed frames without losing UI responsiveness.
-- Handle servers that ignore the `Icy-MetaData: 0` request before enabling
-  their metadata-bearing streams.

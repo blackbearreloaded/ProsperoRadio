@@ -128,7 +128,8 @@ resolved station URL
        live MPEG-TS segments -> PAT/PMT/PES -> ADTS AAC bytes
   -> codec dispatch
        AAC  -> ADTS synchronization -> native AAC decoder
-       MP3  -> MPEG frame synchronization -> native MP3 decoder
+       MP3  -> advertised ICY metadata stripping -> MPEG frame synchronization
+            -> native MP3 decoder
        Opus -> incremental Ogg demux -> native libSceOpusDec
                                       -> bounded CELT decoder fallback on -502
        Vorbis -> bounded stb_vorbis push-data CPU decoder
@@ -203,6 +204,8 @@ PS5 hardware:
 - `tools/check_ui.py`: RML IDs, atlas geometry, licenses, and TGA assets;
 - `tools/aac_timing_check.c`: AAC timing and resampling calculations;
 - `tools/mp3_header_check.c`: MPEG version, rate, channel, and frame geometry;
+- `tools/icy_metadata_check.c`: response-header parsing, split metadata blocks,
+  truncation, and read-error propagation;
 - `tools/ogg_opus_check.c`: split-input Ogg pages, packet continuation,
   chained streams, and malformed-input rejection;
 - `tools/vorbis_decoder_check.c`: incremental Vorbis decoding and bounded
@@ -213,7 +216,7 @@ PS5 hardware:
 - `tools/radio_playlist_check.c`: M3U/PLS detection, URL resolution, bounds,
   scheme rejection, and HLS separation;
 - `tools/radio_hls_check.c`: audio-only master/media parsing, variant selection,
-  live sequences, discontinuities, and unsupported-feature rejection;
+  live media/discontinuity sequences, and unsupported-feature rejection;
 - `tools/radio_ts_aac_check.c`: split MPEG-TS input, PAT/PMT discovery, PES
   stripping, ADTS extraction, and optional live-segment probing;
 - `tools/radio_service_json_check.c`: raw and escaped UTF-8 catalog metadata;

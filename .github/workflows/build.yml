@@ -107,6 +107,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "AAC timing check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/mp3_header_check.c -o /tmp/mp3-header-check
           if ($LASTEXITCODE -ne 0) { throw "MP3 header check compilation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/icy_metadata_check.c src/icy_metadata.c -o /tmp/icy-metadata-check
+          if ($LASTEXITCODE -ne 0) { throw "ICY metadata check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/pcm_queue_check.c -o /tmp/pcm-queue-check
           if ($LASTEXITCODE -ne 0) { throw "PCM queue check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/playback_retry_check.c -o /tmp/playback-retry-check
@@ -137,6 +139,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "AAC timing check failed." }
           wsl.exe --exec /tmp/mp3-header-check
           if ($LASTEXITCODE -ne 0) { throw "MP3 header check failed." }
+          wsl.exe --exec /tmp/icy-metadata-check
+          if ($LASTEXITCODE -ne 0) { throw "ICY metadata check failed." }
           wsl.exe --exec /tmp/pcm-queue-check
           if ($LASTEXITCODE -ne 0) { throw "PCM queue check failed." }
           wsl.exe --exec /tmp/playback-retry-check

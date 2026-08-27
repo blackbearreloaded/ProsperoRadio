@@ -257,8 +257,10 @@ radio_hls_result_t radio_hls_parse(const char * data, size_t size,
                !equal_case(method, "NONE")) return RADIO_HLS_UNSUPPORTED;
         }
         else if(tag_value(line, "#EXT-X-DISCONTINUITY-SEQUENCE:", &value)) {
-            uint64_t ignored = 0;
-            if(!parse_u64(value, &ignored)) return RADIO_HLS_MALFORMED;
+            if(playlist->kind == RADIO_HLS_MASTER ||
+               !parse_u64(value, &playlist->discontinuity_sequence))
+                return RADIO_HLS_MALFORMED;
+            playlist->kind = RADIO_HLS_MEDIA;
         }
         else if(starts(line, "#EXT-X-BYTERANGE:") ||
                 starts(line, "#EXT-X-MAP:") ||

@@ -21,6 +21,7 @@
     "src/opus_decoder.c",
     "src/vorbis_decoder.c",
     "src/flac_decoder.c",
+    "src/icy_metadata.c",
     "src/radio_hls.c",
     "src/radio_playlist.c",
     "src/radio_ts_aac.c",

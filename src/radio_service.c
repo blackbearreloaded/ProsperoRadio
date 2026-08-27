@@ -2,6 +2,7 @@
 
 #include "aac_timing.h"
 #include "flac_decoder.h"
+#include "icy_metadata.h"
 #include "mp3_header.h"
 #include "ogg_opus.h"
 #include "opus_decoder.h"
@@ -519,6 +520,15 @@ static unsigned http_audio_channels(int request)
         }
     }
     return 0;
+}
+
+static size_t http_icy_metadata_interval(int request)
+{
+    char * headers = NULL;
+    size_t size = 0U;
+    if(sceHttpGetAllResponseHeaders(request, &headers, &size) < 0 ||
+       headers == NULL) return 0U;
+    return icy_metadata_interval_from_headers(headers, size);
 }
 
 static radio_playlist_kind_t http_playlist_kind(int request, const char * url)
@@ -1719,6 +1729,8 @@ static int hls_reload(hls_reader_t * reader)
     const uint32_t now = SDL_GetTicks();
     if((int32_t)(reader->reload_at - now) > 0 &&
        !hls_wait(reader->reload_at - now)) return 0;
+    const uint64_t discontinuity_sequence =
+        reader->playlist->discontinuity_sequence;
     const int result = hls_fetch_playlist(
         reader->playlist_url, reader->playlist,
         reader->playlist_url, sizeof(reader->playlist_url), NULL);
@@ -1729,11 +1741,14 @@ static int hls_reload(hls_reader_t * reader)
     const uint64_t first = reader->playlist->segments[0].sequence;
     const uint64_t last = reader->playlist->segments[
         reader->playlist->segment_count - 1U].sequence;
+    bool reset_transport = reader->playlist->discontinuity_sequence !=
+                           discontinuity_sequence;
     if(reader->next_sequence < first || reader->next_sequence > last + 1U) {
         const unsigned edge = hls_live_edge(reader->playlist);
         reader->next_sequence = reader->playlist->segments[edge].sequence;
-        radio_ts_aac_reset(reader->transport);
+        reset_transport = true;
     }
+    if(reset_transport) radio_ts_aac_reset(reader->transport);
     return 1;
 }
 
@@ -2017,8 +2032,15 @@ static int play_stream(const radio_station_t * station, bool * played)
     }
     else {
         const bool mp3 = strcasecmp(station->codec, "MP3") == 0;
-        result = play_audiodec_reader(http_stream_read, &request,
-                                      source_channels, mp3, played);
+        if(mp3) {
+            icy_metadata_reader_t reader;
+            icy_metadata_reader_init(&reader, http_stream_read, &request,
+                                     http_icy_metadata_interval(request));
+            result = play_audiodec_reader(icy_metadata_read, &reader,
+                                          source_channels, true, played);
+        }
+        else result = play_audiodec_reader(http_stream_read, &request,
+                                           source_channels, false, played);
     }
     playback_request_clear(request);
     http_close(connection, request);

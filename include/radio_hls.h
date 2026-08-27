@@ -44,6 +44,7 @@ typedef struct {
     uint32_t is_live;
     uint32_t target_duration_ms;
     uint64_t media_sequence;
+    uint64_t discontinuity_sequence;
     uint32_t variant_count;
     uint32_t segment_count;
     radio_hls_variant_t variants[RADIO_HLS_MAX_VARIANTS];

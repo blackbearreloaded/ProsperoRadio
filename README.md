@@ -54,6 +54,7 @@ radio client, controller-first interface, media stack, and bundled dependencies.
   AudioOut. HE-AAC uses its native AAC core with timing-safe output
   normalization; final full-fidelity confirmation remains open.
 - Bounded M3U, PLS, and audio-only HLS delivery for URLs returned by Radio Browser.
+- Bounded stripping of advertised ICY metadata from direct MP3 streams.
 - Persistent favorites and cached catalog data under `/download0`.
 - Responsive play, stop, station switching, paging, and refresh actions.
 - RmlUi overlays, fixed television safe area, and a persistent now-playing rail.
@@ -264,6 +265,8 @@ wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/aac_timing_ch
 wsl /tmp/aac-timing-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/mp3_header_check.c -o /tmp/mp3-header-check
 wsl /tmp/mp3-header-check
+wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/icy_metadata_check.c src/icy_metadata.c -o /tmp/icy-metadata-check
+wsl /tmp/icy-metadata-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/pcm_queue_check.c -o /tmp/pcm-queue-check
 wsl /tmp/pcm-queue-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/playback_retry_check.c -o /tmp/playback-retry-check
