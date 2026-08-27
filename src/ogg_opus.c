@@ -2,15 +2,16 @@
 
 #include <string.h>
 
-enum {
-    OGG_OPUS_STAGE_HEADER,
-    OGG_OPUS_STAGE_LACES,
-    OGG_OPUS_STAGE_BODY
-};
-
 static uint16_t read_u16le(const uint8_t * p)
 {
     return (uint16_t)((uint16_t)p[0] | ((uint16_t)p[1] << 8));
+}
+
+static int16_t read_i16le(const uint8_t * p)
+{
+    const uint16_t value = read_u16le(p);
+    return value < UINT16_C(0x8000)
+        ? (int16_t)value : (int16_t)((int32_t)value - INT32_C(0x10000));
 }
 
 static uint32_t read_u32le(const uint8_t * p)
@@ -35,6 +36,7 @@ static void reset_logical_stream(ogg_opus_parser_t * parser)
     parser->sequence_jump_seen = 0;
     parser->channels = 0;
     parser->pre_skip = 0;
+    parser->output_gain_q8 = 0;
     parser->stream_ended = 0;
 }
 
@@ -50,6 +52,7 @@ static int valid_opus_head(ogg_opus_parser_t * parser)
 
     parser->channels = p[9];
     parser->pre_skip = read_u16le(p + 10);
+    parser->output_gain_q8 = read_i16le(p + 16);
     return 1;
 }
 
@@ -78,7 +81,8 @@ static int valid_opus_tags(const uint8_t * p, size_t size)
     return 1;
 }
 
-static ogg_opus_result_t complete_packet(ogg_opus_parser_t * parser)
+static ogg_opus_result_t complete_packet(ogg_opus_parser_t * parser,
+                                          const ogg_page_t * page)
 {
     ogg_opus_packet_t packet;
 
@@ -96,8 +100,12 @@ static ogg_opus_result_t complete_packet(ogg_opus_parser_t * parser)
         packet.data = parser->packet;
         packet.size = parser->packet_size;
         packet.stream_serial = parser->stream_serial;
+        packet.page_sequence = page->sequence;
+        packet.granule_position = page->granule_position;
         packet.channels = parser->channels;
         packet.pre_skip = parser->pre_skip;
+        packet.output_gain_q8 = parser->output_gain_q8;
+        packet.end_of_stream = (uint8_t)((page->flags & 0x04U) != 0U);
         parser->audio_seen = 1;
         if(parser->on_packet != NULL &&
            parser->on_packet(&packet, parser->user_data) != 0)
@@ -107,43 +115,26 @@ static ogg_opus_result_t complete_packet(ogg_opus_parser_t * parser)
     return OGG_OPUS_OK;
 }
 
-static ogg_opus_result_t finish_page(ogg_opus_parser_t * parser)
+static ogg_opus_result_t begin_page(ogg_opus_parser_t * parser,
+                                     const ogg_page_t * page)
 {
-    if((parser->page_flags & 0x04U) != 0U) {
-        if(parser->packet_size != 0U)
-            return fail(parser, OGG_OPUS_ERR_PAGE);
-        parser->stream_ended = 1;
-    }
-    parser->header_used = 0;
-    parser->laces_used = 0;
-    parser->segment_used = 0;
-    parser->page_segments = 0;
-    parser->page_lace = 0;
-    parser->stage = OGG_OPUS_STAGE_HEADER;
-    return OGG_OPUS_OK;
-}
+    const int continued = (page->flags & 0x01U) != 0U;
 
-static ogg_opus_result_t begin_page(ogg_opus_parser_t * parser)
-{
-    const uint32_t serial = read_u32le(parser->header + 14);
-    const uint32_t sequence = read_u32le(parser->header + 18);
-    const int continued = (parser->page_flags & 0x01U) != 0U;
-
-    if(!parser->have_stream || serial != parser->stream_serial) {
+    if(!parser->have_stream || page->stream_serial != parser->stream_serial) {
         if(parser->have_stream && (!parser->stream_ended ||
                                    parser->packet_size != 0U))
             return fail(parser, OGG_OPUS_ERR_STREAM);
-        if((parser->page_flags & 0x02U) == 0U || sequence != 0U)
+        if((page->flags & 0x02U) == 0U || page->sequence != 0U)
             return fail(parser, OGG_OPUS_ERR_STREAM);
         reset_logical_stream(parser);
         parser->have_stream = 1;
-        parser->stream_serial = serial;
+        parser->stream_serial = page->stream_serial;
     } else {
-        if(parser->stream_ended || (parser->page_flags & 0x02U) != 0U)
+        if(parser->stream_ended || (page->flags & 0x02U) != 0U)
             return fail(parser, OGG_OPUS_ERR_STREAM);
         /* Icecast can prepend fresh headers before joining the live page
            sequence. Let the first complete audio page establish that value. */
-        if(sequence != parser->next_sequence) {
+        if(page->sequence != parser->next_sequence) {
             if(!parser->tags_seen || parser->audio_seen || continued ||
                parser->sequence_jump_seen)
                 return fail(parser, OGG_OPUS_ERR_SEQUENCE);
@@ -153,29 +144,56 @@ static ogg_opus_result_t begin_page(ogg_opus_parser_t * parser)
 
     if((parser->packet_size != 0U) != continued)
         return fail(parser, OGG_OPUS_ERR_PAGE);
-
-    parser->next_sequence = sequence + 1U;
-    parser->page_lace = 0;
-    parser->segment_used = 0;
-    parser->stage = OGG_OPUS_STAGE_BODY;
-    if(parser->page_segments == 0U) return finish_page(parser);
+    parser->next_sequence = page->sequence + 1U;
     return OGG_OPUS_OK;
 }
 
-static ogg_opus_result_t consume_empty_segments(ogg_opus_parser_t * parser)
+static int page_ready(const ogg_page_t * page, void * user_data)
 {
-    ogg_opus_result_t result;
-    while(parser->stage == OGG_OPUS_STAGE_BODY &&
-          parser->page_lace < parser->page_segments &&
-          parser->laces[parser->page_lace] == 0U) {
-        result = complete_packet(parser);
-        if(result != OGG_OPUS_OK) return result;
-        ++parser->page_lace;
+    ogg_opus_parser_t * parser = user_data;
+    if(begin_page(parser, page) != OGG_OPUS_OK) return -1;
+
+    size_t body_at = 0;
+    for(size_t i = 0; i < page->lace_count; ++i) {
+        const size_t lace = page->laces[i];
+        if(lace > OGG_OPUS_MAX_PACKET_SIZE - parser->packet_size) {
+            fail(parser, OGG_OPUS_ERR_PACKET_TOO_LARGE);
+            return -1;
+        }
+        memcpy(parser->packet + parser->packet_size, page->body + body_at,
+               lace);
+        parser->packet_size += lace;
+        body_at += lace;
+        if(lace < 255U && complete_packet(parser, page) != OGG_OPUS_OK)
+            return -1;
     }
-    if(parser->stage == OGG_OPUS_STAGE_BODY &&
-       parser->page_lace == parser->page_segments)
-        return finish_page(parser);
-    return OGG_OPUS_OK;
+
+    if((page->flags & 0x04U) != 0U) {
+        if(parser->packet_size != 0U) {
+            fail(parser, OGG_OPUS_ERR_PAGE);
+            return -1;
+        }
+        parser->stream_ended = 1;
+    }
+    return 0;
+}
+
+static ogg_opus_result_t page_error(ogg_opus_parser_t * parser,
+                                     ogg_page_result_t result)
+{
+    switch(result) {
+        case OGG_PAGE_OK: return OGG_OPUS_OK;
+        case OGG_PAGE_ERR_ARGUMENT: return OGG_OPUS_ERR_ARGUMENT;
+        case OGG_PAGE_ERR_CAPTURE: return OGG_OPUS_ERR_CAPTURE;
+        case OGG_PAGE_ERR_VERSION: return OGG_OPUS_ERR_VERSION;
+        case OGG_PAGE_ERR_FLAGS: return OGG_OPUS_ERR_PAGE;
+        case OGG_PAGE_ERR_CHECKSUM: return OGG_OPUS_ERR_CHECKSUM;
+        case OGG_PAGE_ERR_CALLBACK:
+            return parser->error != OGG_OPUS_OK
+                ? parser->error : OGG_OPUS_ERR_CALLBACK;
+        case OGG_PAGE_ERR_TRUNCATED: return OGG_OPUS_ERR_TRUNCATED;
+        default: return OGG_OPUS_ERR_PAGE;
+    }
 }
 
 void ogg_opus_init(ogg_opus_parser_t * parser,
@@ -185,6 +203,7 @@ void ogg_opus_init(ogg_opus_parser_t * parser,
     memset(parser, 0, sizeof(*parser));
     parser->on_packet = on_packet;
     parser->user_data = user_data;
+    ogg_page_init(&parser->pages, page_ready, parser);
 }
 
 void ogg_opus_reset(ogg_opus_parser_t * parser)
@@ -198,80 +217,15 @@ void ogg_opus_reset(ogg_opus_parser_t * parser)
 }
 
 ogg_opus_result_t ogg_opus_feed(ogg_opus_parser_t * parser,
-                                const void * input, size_t size)
+                                const void * data, size_t size)
 {
-    const uint8_t * data = (const uint8_t *)input;
-    size_t offset = 0;
-    size_t take;
-    size_t remaining;
-    ogg_opus_result_t result;
-
     if(parser == NULL || (data == NULL && size != 0U))
         return OGG_OPUS_ERR_ARGUMENT;
     if(parser->error != OGG_OPUS_OK) return parser->error;
 
-    while(offset < size) {
-        if(parser->stage == OGG_OPUS_STAGE_HEADER) {
-            take = sizeof(parser->header) - parser->header_used;
-            if(take > size - offset) take = size - offset;
-            memcpy(parser->header + parser->header_used, data + offset, take);
-            parser->header_used += take;
-            offset += take;
-            if(parser->header_used != sizeof(parser->header)) continue;
-            if(memcmp(parser->header, "OggS", 4) != 0)
-                return fail(parser, OGG_OPUS_ERR_CAPTURE);
-            if(parser->header[4] != 0U)
-                return fail(parser, OGG_OPUS_ERR_VERSION);
-            if((parser->header[5] & ~0x07U) != 0U)
-                return fail(parser, OGG_OPUS_ERR_PAGE);
-            parser->page_flags = parser->header[5];
-            parser->page_segments = parser->header[26];
-            parser->laces_used = 0;
-            parser->stage = OGG_OPUS_STAGE_LACES;
-            if(parser->page_segments == 0U) {
-                result = begin_page(parser);
-                if(result != OGG_OPUS_OK) return result;
-            }
-        } else if(parser->stage == OGG_OPUS_STAGE_LACES) {
-            take = parser->page_segments - parser->laces_used;
-            if(take > size - offset) take = size - offset;
-            memcpy(parser->laces + parser->laces_used, data + offset, take);
-            parser->laces_used += take;
-            offset += take;
-            if(parser->laces_used != parser->page_segments) continue;
-            result = begin_page(parser);
-            if(result != OGG_OPUS_OK) return result;
-            result = consume_empty_segments(parser);
-            if(result != OGG_OPUS_OK) return result;
-        } else {
-            result = consume_empty_segments(parser);
-            if(result != OGG_OPUS_OK) return result;
-            if(parser->stage != OGG_OPUS_STAGE_BODY) continue;
-
-            remaining = parser->laces[parser->page_lace] - parser->segment_used;
-            take = remaining;
-            if(take > size - offset) take = size - offset;
-            if(take > OGG_OPUS_MAX_PACKET_SIZE - parser->packet_size)
-                return fail(parser, OGG_OPUS_ERR_PACKET_TOO_LARGE);
-            memcpy(parser->packet + parser->packet_size, data + offset, take);
-            parser->packet_size += take;
-            parser->segment_used += take;
-            offset += take;
-            if(parser->segment_used != parser->laces[parser->page_lace])
-                continue;
-
-            if(parser->laces[parser->page_lace] < 255U) {
-                result = complete_packet(parser);
-                if(result != OGG_OPUS_OK) return result;
-            }
-            ++parser->page_lace;
-            parser->segment_used = 0;
-            if(parser->page_lace == parser->page_segments) {
-                result = finish_page(parser);
-                if(result != OGG_OPUS_OK) return result;
-            }
-        }
-    }
+    const ogg_page_result_t result = ogg_page_feed(&parser->pages, data, size);
+    if(result != OGG_PAGE_OK)
+        return fail(parser, page_error(parser, result));
     return OGG_OPUS_OK;
 }
 
@@ -279,8 +233,10 @@ ogg_opus_result_t ogg_opus_finish(ogg_opus_parser_t * parser)
 {
     if(parser == NULL) return OGG_OPUS_ERR_ARGUMENT;
     if(parser->error != OGG_OPUS_OK) return parser->error;
-    if(parser->stage != OGG_OPUS_STAGE_HEADER || parser->header_used != 0U ||
-       parser->packet_size != 0U)
+    const ogg_page_result_t result = ogg_page_finish(&parser->pages);
+    if(result != OGG_PAGE_OK)
+        return fail(parser, page_error(parser, result));
+    if(parser->packet_size != 0U)
         return fail(parser, OGG_OPUS_ERR_TRUNCATED);
     return OGG_OPUS_OK;
 }
@@ -300,6 +256,7 @@ const char * ogg_opus_result_string(ogg_opus_result_t result)
         case OGG_OPUS_ERR_TAGS: return "invalid OpusTags";
         case OGG_OPUS_ERR_CALLBACK: return "packet callback failed";
         case OGG_OPUS_ERR_TRUNCATED: return "truncated Ogg stream";
+        case OGG_OPUS_ERR_CHECKSUM: return "Ogg page checksum mismatch";
         default: return "unknown Ogg Opus error";
     }
 }

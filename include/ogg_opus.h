@@ -4,6 +4,8 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "ogg_page.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -26,15 +28,20 @@ typedef enum {
     OGG_OPUS_ERR_HEAD = -8,
     OGG_OPUS_ERR_TAGS = -9,
     OGG_OPUS_ERR_CALLBACK = -10,
-    OGG_OPUS_ERR_TRUNCATED = -11
+    OGG_OPUS_ERR_TRUNCATED = -11,
+    OGG_OPUS_ERR_CHECKSUM = -12
 } ogg_opus_result_t;
 
 typedef struct {
     const uint8_t * data;
     size_t size;
     uint32_t stream_serial;
+    uint32_t page_sequence;
+    uint64_t granule_position;
     uint8_t channels;
     uint16_t pre_skip;
+    int16_t output_gain_q8;
+    uint8_t end_of_stream;
 } ogg_opus_packet_t;
 
 /* Packet data remains valid only for the duration of the callback. */
@@ -43,20 +50,13 @@ typedef int (*ogg_opus_packet_fn)(const ogg_opus_packet_t * packet,
 
 /* Caller-owned state; no allocation or external dependency is required. */
 typedef struct {
-    uint8_t header[27];
-    uint8_t laces[255];
+    ogg_page_parser_t pages;
     uint8_t packet[OGG_OPUS_MAX_PACKET_SIZE];
-    size_t header_used;
-    size_t laces_used;
-    size_t segment_used;
     size_t packet_size;
     uint32_t stream_serial;
     uint32_t next_sequence;
-    uint16_t page_segments;
-    uint16_t page_lace;
     uint16_t pre_skip;
-    uint8_t page_flags;
-    uint8_t stage;
+    int16_t output_gain_q8;
     uint8_t have_stream;
     uint8_t stream_ended;
     uint8_t head_seen;
