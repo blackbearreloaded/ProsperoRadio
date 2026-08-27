@@ -7,6 +7,7 @@
 #include <string.h>
 
 #include "flac_fixture.inc"
+#include "ogg_flac_fixture.inc"
 
 typedef struct {
     const uint8_t * data;
@@ -75,6 +76,37 @@ static size_t decode_fixture(size_t input_size, size_t max_chunk,
     return total_samples;
 }
 
+static void decode_ogg_fixture(void)
+{
+    memory_reader_t reader = {
+        OGG_FLAC_FIXTURE, OGG_FLAC_FIXTURE_len, 0U, 131U
+    };
+    flac_decoder_t decoder;
+    memset(&decoder, 0, sizeof(decoder));
+    check(flac_decoder_open(&decoder, memory_read, &reader) == FLAC_DECODER_OK,
+          "Ogg-FLAC fixture opens");
+    check(decoder.sample_rate == 48000U, "Ogg-FLAC sample rate is 48 kHz");
+    check(decoder.channels == 1U, "Ogg-FLAC fixture is mono");
+
+    int16_t pcm[FLAC_DECODER_READ_FRAMES * 2U];
+    size_t total_samples = 0U;
+    bool nonzero = false;
+    for(;;) {
+        size_t samples = 0U;
+        const int result = flac_decoder_read_pcm(
+            &decoder, pcm, sizeof(pcm) / sizeof(pcm[0]), &samples);
+        if(result == FLAC_DECODER_EOF) break;
+        check(result == FLAC_DECODER_OK, "Ogg-FLAC decode succeeds");
+        total_samples += samples;
+        for(size_t i = 0U; i < samples; ++i) {
+            if(pcm[i] != 0) nonzero = true;
+        }
+    }
+    check(total_samples == 12000U, "Ogg-FLAC exact fixture duration");
+    check(nonzero, "Ogg-FLAC PCM is nonzero");
+    flac_decoder_close(&decoder);
+}
+
 typedef struct {
     uint8_t prefix[46];
     size_t at;
@@ -103,6 +135,7 @@ int main(void)
     check(FLAC_FIXTURE_len == 12206U, "fixture byte count");
     decode_fixture(FLAC_FIXTURE_len, 0U, true);
     decode_fixture(FLAC_FIXTURE_len, 257U, true);
+    decode_ogg_fixture();
     check(decode_fixture(FLAC_FIXTURE_len - 1000U, 113U, false) < 11025U * 2U,
           "truncated stream stops without over-read");
 
