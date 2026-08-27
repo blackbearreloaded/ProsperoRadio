@@ -62,6 +62,42 @@ int main(void)
     check(nonzero, "decoded PCM is nonzero");
     vorbis_decoder_close(&decoder);
     check(decoder.handle == NULL, "decoder closes cleanly");
+
+    memset(&decoder, 0, sizeof(decoder));
+    available = 0U;
+    consumed = 0U;
+    opened = VORBIS_DECODER_NEED_MORE;
+    while(opened == VORBIS_DECODER_NEED_MORE && available < VORBIS_FIXTURE_SIZE) {
+        const size_t left = VORBIS_FIXTURE_SIZE - available;
+        available += left < 257U ? left : 257U;
+        opened = vorbis_decoder_open(&decoder, VORBIS_FIXTURE,
+                                     available, &consumed);
+    }
+    check(opened == VORBIS_DECODER_OK, "chunked stream headers open");
+
+    size_t buffered_at = consumed;
+    size_t supplied = available;
+    total_samples = 0U;
+    while(buffered_at < supplied || supplied < VORBIS_FIXTURE_SIZE) {
+        size_t used = 0U;
+        size_t samples = 0U;
+        const int result = vorbis_decoder_decode(
+            &decoder, VORBIS_FIXTURE + buffered_at, supplied - buffered_at,
+            &used, pcm, sizeof(pcm) / sizeof(pcm[0]), &samples);
+        check(result == VORBIS_DECODER_OK ||
+              result == VORBIS_DECODER_NEED_MORE,
+              "chunked frame decode result");
+        buffered_at += used;
+        total_samples += samples;
+        if(result == VORBIS_DECODER_NEED_MORE) {
+            check(supplied < VORBIS_FIXTURE_SIZE,
+                  "chunked decoder only requests available data");
+            const size_t left = VORBIS_FIXTURE_SIZE - supplied;
+            supplied += left < 257U ? left : 257U;
+        }
+    }
+    check(total_samples >= 4800U, "chunked stream decoded expected PCM");
+    vorbis_decoder_close(&decoder);
     puts("vorbis_decoder_check: PASS");
     return 0;
 }

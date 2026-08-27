@@ -1487,6 +1487,11 @@ static int play_vorbis_reader(stream_read_fn read_stream, void * read_context)
         result = vorbis_decoder_decode(
             &decoder, stream, buffered, &consumed,
             pcm, VORBIS_PCM_BUFFER_SAMPLES, &samples);
+        if(result == VORBIS_DECODER_NEED_MORE) {
+            result = vorbis_read_more(
+                read_stream, read_context, stream, &buffered);
+            continue;
+        }
         if(result < 0) break;
         if(consumed != 0U) {
             memmove(stream, stream + consumed, buffered - consumed);
@@ -1495,10 +1500,6 @@ static int play_vorbis_reader(stream_read_fn read_stream, void * read_context)
         if(samples != 0U) {
             result = sink_push_pcm(&sink, pcm, (unsigned)samples);
             if(result < 0) break;
-        }
-        if(result == VORBIS_DECODER_NEED_MORE) {
-            result = vorbis_read_more(
-                read_stream, read_context, stream, &buffered);
         }
     }
 
