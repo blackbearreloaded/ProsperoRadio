@@ -1,4 +1,5 @@
 #include "vorbis_decoder.h"
+#include "ogg_stream.h"
 
 #include <stdbool.h>
 #include <stdio.h>
@@ -6,6 +7,105 @@
 #include <string.h>
 
 #include "vorbis_fixture.inc"
+
+static void check(int condition, const char * message);
+
+typedef struct {
+    const uint8_t * data;
+    size_t size;
+    size_t at;
+} memory_source_t;
+
+static int memory_read(void * context, void * output, size_t size)
+{
+    memory_source_t * source = context;
+    if(size > 7U) size = 7U;
+    if(size > source->size - source->at) size = source->size - source->at;
+    memcpy(output, source->data + source->at, size);
+    source->at += size;
+    return (int)size;
+}
+
+static void write_u32le(uint8_t * output, uint32_t value)
+{
+    output[0] = (uint8_t)value;
+    output[1] = (uint8_t)(value >> 8);
+    output[2] = (uint8_t)(value >> 16);
+    output[3] = (uint8_t)(value >> 24);
+}
+
+static uint32_t ogg_crc(const uint8_t * data, size_t size)
+{
+    uint32_t crc = 0U;
+    for(size_t i = 0U; i < size; ++i) {
+        const uint8_t byte = i >= 22U && i < 26U ? 0U : data[i];
+        crc ^= (uint32_t)byte << 24;
+        for(unsigned bit = 0U; bit < 8U; ++bit)
+            crc = (crc << 1) ^ ((crc & UINT32_C(0x80000000)) != 0U
+                ? UINT32_C(0x04c11db7) : 0U);
+    }
+    return crc;
+}
+
+static void rewrite_ogg_serial(uint8_t * data, size_t size, uint32_t serial)
+{
+    size_t at = 0U;
+    while(at < size) {
+        check(size - at >= 27U && memcmp(data + at, "OggS", 4U) == 0,
+              "fixture page header");
+        const size_t laces = data[at + 26U];
+        check(size - at >= 27U + laces, "fixture lacing table");
+        size_t body = 0U;
+        for(size_t i = 0U; i < laces; ++i) body += data[at + 27U + i];
+        const size_t page_size = 27U + laces + body;
+        check(page_size <= size - at, "fixture page body");
+        write_u32le(data + at + 14U, serial);
+        write_u32le(data + at + 22U, 0U);
+        write_u32le(data + at + 22U, ogg_crc(data + at, page_size));
+        at += page_size;
+    }
+}
+
+static void check_chained_streams(void)
+{
+    static ogg_stream_t stream;
+    uint8_t * input = malloc(VORBIS_FIXTURE_SIZE * 2U);
+    uint8_t * output = malloc(VORBIS_FIXTURE_SIZE);
+    check(input != NULL && output != NULL, "chain fixture allocation");
+    memcpy(input, VORBIS_FIXTURE, VORBIS_FIXTURE_SIZE);
+    memcpy(input + VORBIS_FIXTURE_SIZE, VORBIS_FIXTURE,
+           VORBIS_FIXTURE_SIZE);
+    rewrite_ogg_serial(input + VORBIS_FIXTURE_SIZE, VORBIS_FIXTURE_SIZE,
+                       UINT32_C(0x66554433));
+
+    memory_source_t source = {input, VORBIS_FIXTURE_SIZE * 2U, 0U};
+    ogg_stream_init(&stream, memory_read, &source);
+    for(unsigned chain = 0U; chain < 2U; ++chain) {
+        size_t size = 0U;
+        for(;;) {
+            const int read = ogg_stream_read(
+                &stream, output + size, VORBIS_FIXTURE_SIZE - size);
+            check(read >= 0, "validated chain read");
+            if(read == 0) break;
+            size += (size_t)read;
+        }
+        check(size == VORBIS_FIXTURE_SIZE, "one complete logical stream");
+        check(ogg_stream_status(&stream) == OGG_STREAM_CHAIN_END,
+              "logical stream EOS boundary");
+
+        vorbis_decoder_t decoder;
+        memset(&decoder, 0, sizeof(decoder));
+        size_t consumed = 0U;
+        check(vorbis_decoder_open(&decoder, output, size, &consumed) ==
+              VORBIS_DECODER_OK, "chained stream reopens decoder");
+        vorbis_decoder_close(&decoder);
+
+        check(ogg_stream_next_chain(&stream) == OGG_STREAM_OK,
+              "advance to next logical stream");
+    }
+    free(output);
+    free(input);
+}
 
 static void check(int condition, const char * message)
 {
@@ -16,6 +116,7 @@ static void check(int condition, const char * message)
 
 int main(void)
 {
+    check_chained_streams();
     vorbis_decoder_t decoder;
     memset(&decoder, 0, sizeof(decoder));
     size_t consumed = 0U;

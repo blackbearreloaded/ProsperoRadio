@@ -123,7 +123,11 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Radio MPEG-TS AAC check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/ogg_opus_check.c src/ogg_opus.c src/ogg_page.c -o /tmp/ogg-opus-check
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check compilation failed." }
-          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/vorbis_decoder_check.c src/vorbis_decoder.c -lm -o /tmp/vorbis-decoder-check
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/ogg_stream_check.c src/ogg_stream.c src/ogg_page.c -o /tmp/ogg-stream-check
+          if ($LASTEXITCODE -ne 0) { throw "Validated Ogg stream check compilation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/opus_pcm_check.c src/opus_pcm.c -lm -o /tmp/opus-pcm-check
+          if ($LASTEXITCODE -ne 0) { throw "Opus PCM compliance check compilation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/vorbis_decoder_check.c src/vorbis_decoder.c src/ogg_stream.c src/ogg_page.c -lm -o /tmp/vorbis-decoder-check
           if ($LASTEXITCODE -ne 0) { throw "Vorbis decoder check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/flac_decoder_check.c src/flac_decoder.c -o /tmp/flac-decoder-check
           if ($LASTEXITCODE -ne 0) { throw "FLAC decoder check compilation failed." }
@@ -155,6 +159,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Radio MPEG-TS AAC check failed." }
           wsl.exe --exec /tmp/ogg-opus-check
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check failed." }
+          wsl.exe --exec /tmp/ogg-stream-check
+          if ($LASTEXITCODE -ne 0) { throw "Validated Ogg stream check failed." }
+          wsl.exe --exec /tmp/opus-pcm-check
+          if ($LASTEXITCODE -ne 0) { throw "Opus PCM compliance check failed." }
           wsl.exe --exec /tmp/vorbis-decoder-check
           if ($LASTEXITCODE -ne 0) { throw "Vorbis decoder check failed." }
           wsl.exe --exec /tmp/flac-decoder-check

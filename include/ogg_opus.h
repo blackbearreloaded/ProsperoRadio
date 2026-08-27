@@ -42,6 +42,7 @@ typedef struct {
     uint16_t pre_skip;
     int16_t output_gain_q8;
     uint8_t end_of_stream;
+    uint8_t end_of_page;
 } ogg_opus_packet_t;
 
 /* Packet data remains valid only for the duration of the callback. */

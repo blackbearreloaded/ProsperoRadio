@@ -13,6 +13,7 @@ typedef struct {
     uint16_t pre_skip[4];
     int16_t gain_q8[4];
     uint8_t end_of_stream[4];
+    uint8_t end_of_page[4];
     size_t sizes[4];
     uint8_t first[4];
     uint8_t last[4];
@@ -139,6 +140,7 @@ static int capture_packet(const ogg_opus_packet_t * packet, void * user_data)
     capture->pre_skip[n] = packet->pre_skip;
     capture->gain_q8[n] = packet->output_gain_q8;
     capture->end_of_stream[n] = packet->end_of_stream;
+    capture->end_of_page[n] = packet->end_of_page;
     capture->sizes[n] = packet->size;
     capture->first[n] = packet->data[0];
     capture->last[n] = packet->data[packet->size - 1U];
@@ -225,12 +227,14 @@ static void check_split_continuation_and_chain(void)
     assert(capture.sequence[0] == 1U && capture.granule[0] == 1920U);
     assert(capture.channels[0] == 2U && capture.pre_skip[0] == 312U);
     assert(capture.gain_q8[0] == -512 && capture.end_of_stream[0] == 1U);
+    assert(capture.end_of_page[0] == 0U);
     assert(capture.sizes[0] == 300U && capture.first[0] == 0U &&
            capture.last[0] == 43U);
     assert(capture.sizes[1] == 3U && capture.first[1] == 0xf8U &&
            capture.last[1] == 0x55U);
     assert(capture.sequence[1] == 1U && capture.granule[1] == 1920U &&
            capture.gain_q8[1] == -512 && capture.end_of_stream[1] == 1U);
+    assert(capture.end_of_page[1] == 1U);
 
     headers = make_headers_gain(body, 1U, 120U, 384);
     laces[0] = 19U;
@@ -249,6 +253,7 @@ static void check_split_continuation_and_chain(void)
     assert(capture.sequence[2] == 99U && capture.granule[2] == 480U);
     assert(capture.channels[2] == 1U && capture.pre_skip[2] == 120U);
     assert(capture.gain_q8[2] == 384 && capture.end_of_stream[2] == 1U);
+    assert(capture.end_of_page[2] == 1U);
     assert(capture.sizes[2] == 2U && capture.last[2] == 0x99U);
     assert(ogg_opus_finish(&parser) == OGG_OPUS_OK);
 }

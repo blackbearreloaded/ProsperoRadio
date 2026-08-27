@@ -20,7 +20,14 @@ static int page_ready(const ogg_page_t * page, void * user_data)
 {
     ogg_stream_t * stream = (ogg_stream_t *)user_data;
 
-    if(stream->have_stream && page->stream_serial != stream->stream_serial) {
+    if(!stream->have_stream &&
+       (((page->flags & 0x02U) == 0U) || page->sequence != 0U)) {
+        stream->status = OGG_STREAM_ERR_STREAM;
+        return -1;
+    }
+    if(stream->have_stream &&
+       (page->stream_serial != stream->stream_serial ||
+        (page->flags & 0x02U) != 0U)) {
         stream->status = OGG_STREAM_ERR_STREAM;
         return -1;
     }

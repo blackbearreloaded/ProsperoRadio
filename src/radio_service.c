@@ -5,7 +5,9 @@
 #include "icy_metadata.h"
 #include "mp3_header.h"
 #include "ogg_opus.h"
+#include "ogg_stream.h"
 #include "opus_decoder.h"
+#include "opus_pcm.h"
 #include "pcm_queue.h"
 #include "playback_retry.h"
 #include "radio_hls.h"
@@ -40,6 +42,8 @@
 #define VORBIS_STREAM_BUFFER_SIZE (256U * 1024U)
 #define VORBIS_NETWORK_CHUNK_SIZE (16U * 1024U)
 #define VORBIS_PCM_BUFFER_SAMPLES (VORBIS_DECODER_MAX_FRAME_FRAMES * 2U)
+#define VORBIS_CHAIN_END 2
+#define OGG_STREAM_PLAYBACK_ERROR_BASE (-3400)
 #define FLAC_PCM_BUFFER_SAMPLES (FLAC_DECODER_READ_FRAMES * 2U)
 #define OPEN_READ_ONLY 0x0000
 #define OPEN_WRITE_CREATE_TRUNCATE 0x0601
@@ -1252,9 +1256,12 @@ typedef struct {
     int16_t * pcm;
     uint32_t stream_serial;
     size_t pre_skip_frames;
+    uint64_t decoded_frames;
+    uint64_t granule_offset;
     int result;
     bool decoder_open;
     bool stream_open;
+    bool have_granule_offset;
     uint64_t output_frames;
 } opus_playback_t;
 
@@ -1350,6 +1357,9 @@ static void opus_playback_reset(opus_playback_t * playback, bool discard)
     opus_decoder_reset(playback);
     playback->stream_serial = 0;
     playback->pre_skip_frames = 0;
+    playback->decoded_frames = 0U;
+    playback->granule_offset = 0U;
+    playback->have_granule_offset = false;
     playback->stream_open = false;
 }
 
@@ -1358,7 +1368,7 @@ static int opus_packet_ready(const ogg_opus_packet_t * packet, void * user_data)
     opus_playback_t * playback = user_data;
     const bool celt_packet = opus_packet_is_celt(packet->data, packet->size);
     if(!playback->stream_open || playback->stream_serial != packet->stream_serial) {
-        if(playback->stream_open) opus_playback_reset(playback, true);
+        if(playback->stream_open) opus_playback_reset(playback, false);
         playback->sink.handle = -1;
         playback->stream_serial = packet->stream_serial;
         playback->pre_skip_frames = packet->pre_skip;
@@ -1398,11 +1408,53 @@ static int opus_packet_ready(const ogg_opus_packet_t * packet, void * user_data)
         return -1;
     }
 
-    size_t frames = produced / frame_bytes;
-    size_t skip = playback->pre_skip_frames < frames ? playback->pre_skip_frames : frames;
+    const size_t packet_frames = produced / frame_bytes;
+    if(UINT64_MAX - playback->decoded_frames < packet_frames) {
+        playback->result = -1;
+        return -1;
+    }
+    const uint64_t decoded_end = playback->decoded_frames + packet_frames;
+    if(packet->end_of_page && !playback->have_granule_offset &&
+       packet->granule_position != UINT64_MAX) {
+        if(packet->granule_position >= decoded_end) {
+            playback->granule_offset = packet->granule_position - decoded_end;
+        }
+        else if(!packet->end_of_stream) {
+            playback->result = -1;
+            return -1;
+        }
+        playback->have_granule_offset = true;
+    }
+    if(UINT64_MAX - decoded_end < playback->granule_offset) {
+        playback->result = -1;
+        return -1;
+    }
+
+    size_t trim = 0U;
+    const opus_pcm_trim_result_t trim_result = opus_pcm_end_trim(
+        decoded_end + playback->granule_offset, packet->granule_position,
+        packet_frames, packet->end_of_stream, packet->end_of_page, &trim);
+    if(packet->end_of_stream && packet->end_of_page &&
+       trim_result != OPUS_PCM_TRIM_VALID) {
+        playback->result = -1;
+        return -1;
+    }
+    playback->decoded_frames = decoded_end;
+
+    const size_t skip = playback->pre_skip_frames < packet_frames
+        ? playback->pre_skip_frames : packet_frames;
     playback->pre_skip_frames -= skip;
-    frames -= skip;
+    if(trim > packet_frames - skip) {
+        playback->result = -1;
+        return -1;
+    }
+    const size_t frames = packet_frames - skip - trim;
     if(frames == 0U) return 0;
+
+    playback->result = opus_pcm_apply_gain_s16(
+        playback->pcm + skip * packet->channels, frames, packet->channels,
+        packet->output_gain_q8);
+    if(playback->result < 0) return -1;
 
     if(playback->sink.handle < 0) {
         playback->result = sink_open(&playback->sink, 48000U, packet->channels);
@@ -1459,7 +1511,17 @@ static int play_opus_reader(stream_read_fn read_stream, void * read_context,
     return SDL_AtomicGet(&g_stop_playback) ? 0 : result;
 }
 
-static int vorbis_read_more(stream_read_fn read_stream, void * read_context,
+static int ogg_stream_playback_result(const ogg_stream_t * stream)
+{
+    const ogg_stream_result_t status = ogg_stream_status(stream);
+    if(status == OGG_STREAM_CHAIN_END) return VORBIS_CHAIN_END;
+    if(status == OGG_STREAM_EOF) return -3;
+    if(status < OGG_STREAM_OK)
+        return OGG_STREAM_PLAYBACK_ERROR_BASE + (int)status;
+    return -1;
+}
+
+static int vorbis_read_more(ogg_stream_t * source,
                             uint8_t * stream, size_t * buffered)
 {
     if(*buffered >= VORBIS_STREAM_BUFFER_SIZE)
@@ -1467,10 +1529,9 @@ static int vorbis_read_more(stream_read_fn read_stream, void * read_context,
     const size_t remaining = VORBIS_STREAM_BUFFER_SIZE - *buffered;
     const size_t request_size = remaining < VORBIS_NETWORK_CHUNK_SIZE
         ? remaining : VORBIS_NETWORK_CHUNK_SIZE;
-    const int received = read_stream(
-        read_context, stream + *buffered, request_size);
-    if(received < 0) return received;
-    if(received == 0) return -3;
+    const int received = ogg_stream_read(
+        source, stream + *buffered, request_size);
+    if(received <= 0) return ogg_stream_playback_result(source);
     *buffered += (size_t)received;
     return 0;
 }
@@ -1480,26 +1541,45 @@ static int play_vorbis_reader(stream_read_fn read_stream, void * read_context,
 {
     uint8_t * stream = malloc(VORBIS_STREAM_BUFFER_SIZE);
     int16_t * pcm = malloc(VORBIS_PCM_BUFFER_SAMPLES * sizeof(*pcm));
-    if(stream == NULL || pcm == NULL) {
+    ogg_stream_t * source = malloc(sizeof(*source));
+    if(stream == NULL || pcm == NULL || source == NULL) {
+        free(source);
         free(pcm);
         free(stream);
         return -1;
     }
+    ogg_stream_init(source, read_stream, read_context);
 
     vorbis_decoder_t decoder;
     memset(&decoder, 0, sizeof(decoder));
     audio_sink_t sink;
     memset(&sink, 0, sizeof(sink));
     sink.handle = -1;
+    uint64_t total_output_frames = 0U;
     size_t buffered = 0U;
-    int result = vorbis_read_more(read_stream, read_context, stream, &buffered);
+    int result = vorbis_read_more(source, stream, &buffered);
     while(result >= 0 && !SDL_AtomicGet(&g_stop_playback)) {
+        if(result == VORBIS_CHAIN_END) {
+            if(decoder.handle == NULL) {
+                result = VORBIS_DECODER_UNSUPPORTED;
+                break;
+            }
+            total_output_frames += sink_close(&sink);
+            vorbis_decoder_close(&decoder);
+            buffered = 0U;
+            if(ogg_stream_next_chain(source) != OGG_STREAM_OK) {
+                result = OGG_STREAM_PLAYBACK_ERROR_BASE +
+                    (int)ogg_stream_status(source);
+                break;
+            }
+            result = vorbis_read_more(source, stream, &buffered);
+            continue;
+        }
         if(decoder.handle == NULL) {
             size_t consumed = 0U;
             result = vorbis_decoder_open(&decoder, stream, buffered, &consumed);
             if(result == VORBIS_DECODER_NEED_MORE) {
-                result = vorbis_read_more(
-                    read_stream, read_context, stream, &buffered);
+                result = vorbis_read_more(source, stream, &buffered);
                 continue;
             }
             if(result < 0) break;
@@ -1518,8 +1598,7 @@ static int play_vorbis_reader(stream_read_fn read_stream, void * read_context,
             &decoder, stream, buffered, &consumed,
             pcm, VORBIS_PCM_BUFFER_SAMPLES, &samples);
         if(result == VORBIS_DECODER_NEED_MORE) {
-            result = vorbis_read_more(
-                read_stream, read_context, stream, &buffered);
+            result = vorbis_read_more(source, stream, &buffered);
             continue;
         }
         if(result < 0) break;
@@ -1534,8 +1613,10 @@ static int play_vorbis_reader(stream_read_fn read_stream, void * read_context,
     }
 
     if(result < 0 || SDL_AtomicGet(&g_stop_playback)) sink_cancel(&sink);
-    *output_frames = sink_close(&sink);
+    total_output_frames += sink_close(&sink);
+    *output_frames = total_output_frames;
     vorbis_decoder_close(&decoder);
+    free(source);
     free(pcm);
     free(stream);
     return SDL_AtomicGet(&g_stop_playback) ? 0 : result;
@@ -1579,6 +1660,22 @@ static int play_flac_reader(stream_read_fn read_stream, void * read_context,
     flac_decoder_close(&decoder);
     free(pcm);
     return SDL_AtomicGet(&g_stop_playback) ? 0 : result;
+}
+
+static int play_ogg_flac_reader(stream_read_fn read_stream,
+                                void * read_context,
+                                uint64_t * output_frames)
+{
+    ogg_stream_t * source = malloc(sizeof(*source));
+    if(source == NULL) return -1;
+    ogg_stream_init(source, read_stream, read_context);
+    int result = play_flac_reader(
+        ogg_stream_read, source, output_frames);
+    const ogg_stream_result_t status = ogg_stream_status(source);
+    if(status < OGG_STREAM_OK)
+        result = OGG_STREAM_PLAYBACK_ERROR_BASE + (int)status;
+    free(source);
+    return result;
 }
 
 static size_t find_adts(const uint8_t * data, size_t size)
@@ -2020,8 +2117,15 @@ static int play_stream(const radio_station_t * station,
         result = play_opus_reader(http_stream_read, &request, output_frames);
     else if(strcasecmp(station->codec, "VORBIS") == 0)
         result = play_vorbis_reader(http_stream_read, &request, output_frames);
-    else if(strcasecmp(station->codec, "FLAC") == 0)
-        result = play_flac_reader(http_stream_read, &request, output_frames);
+    else if(strcasecmp(station->codec, "FLAC") == 0) {
+        prefixed_http_reader_t reader;
+        const int format = prefixed_http_open(&reader, request);
+        if(format == OGG_FORMAT_FLAC)
+            result = play_ogg_flac_reader(
+                prefixed_http_read, &reader, output_frames);
+        else result = play_flac_reader(
+            prefixed_http_read, &reader, output_frames);
+    }
     else if(strcasecmp(station->codec, "OGG") == 0) {
         prefixed_http_reader_t reader;
         const int format = prefixed_http_open(&reader, request);
@@ -2032,8 +2136,8 @@ static int play_stream(const radio_station_t * station,
             result = play_vorbis_reader(prefixed_http_read, &reader,
                                         output_frames);
         else if(format == OGG_FORMAT_FLAC)
-            result = play_flac_reader(prefixed_http_read, &reader,
-                                      output_frames);
+            result = play_ogg_flac_reader(prefixed_http_read, &reader,
+                                          output_frames);
         else result = format < 0 ? format : VORBIS_DECODER_UNSUPPORTED;
     }
     else {

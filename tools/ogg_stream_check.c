@@ -135,6 +135,13 @@ static void check_rejections(void)
     assert(ogg_stream_read(&stream, output, sizeof(output)) == -1);
     assert(ogg_stream_status(&stream) == OGG_STREAM_ERR_READ);
     assert(ogg_stream_next_chain(&stream) == OGG_STREAM_ERR_STATE);
+
+    size = make_page(input, 0x04U, 7U, 0U,
+                     (const uint8_t *)"no-bos", 6U);
+    source = (memory_source_t){input, size, 0U, 5U, 0};
+    ogg_stream_init(&stream, memory_read, &source);
+    assert(ogg_stream_read(&stream, output, sizeof(output)) == -1);
+    assert(ogg_stream_status(&stream) == OGG_STREAM_ERR_STREAM);
 }
 
 int main(void)

@@ -82,7 +82,8 @@ static int valid_opus_tags(const uint8_t * p, size_t size)
 }
 
 static ogg_opus_result_t complete_packet(ogg_opus_parser_t * parser,
-                                          const ogg_page_t * page)
+                                         const ogg_page_t * page,
+                                         int end_of_page)
 {
     ogg_opus_packet_t packet;
 
@@ -106,6 +107,7 @@ static ogg_opus_result_t complete_packet(ogg_opus_parser_t * parser,
         packet.pre_skip = parser->pre_skip;
         packet.output_gain_q8 = parser->output_gain_q8;
         packet.end_of_stream = (uint8_t)((page->flags & 0x04U) != 0U);
+        packet.end_of_page = (uint8_t)(end_of_page != 0);
         parser->audio_seen = 1;
         if(parser->on_packet != NULL &&
            parser->on_packet(&packet, parser->user_data) != 0)
@@ -164,7 +166,8 @@ static int page_ready(const ogg_page_t * page, void * user_data)
                lace);
         parser->packet_size += lace;
         body_at += lace;
-        if(lace < 255U && complete_packet(parser, page) != OGG_OPUS_OK)
+        if(lace < 255U && complete_packet(
+                parser, page, i + 1U == page->lace_count) != OGG_OPUS_OK)
             return -1;
     }
 
