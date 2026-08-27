@@ -469,7 +469,15 @@ void RadioApp::RefreshPlayback(const radio_service_status_t& status) {
         case RADIO_PLAYBACK_CONNECTING:
             text = "Connecting to station"; warning = true; break;
         case RADIO_PLAYBACK_BUFFERING:
-            text = "Buffering native audio"; warning = true; break;
+            if (status.sample_rate != 0U) {
+                std::snprintf(state_text, sizeof(state_text),
+                    "Buffering  |  %u Hz  |  %u ch",
+                    status.sample_rate, status.channels);
+                text = state_text;
+            } else {
+                text = "Buffering native audio";
+            }
+            warning = true; break;
         case RADIO_PLAYBACK_PLAYING:
             std::snprintf(state_text, sizeof(state_text), "Playing  |  %u Hz  |  %u ch",
                 status.sample_rate, status.channels);

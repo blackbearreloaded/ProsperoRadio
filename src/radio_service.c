@@ -35,6 +35,7 @@
 #define PCM_BUFFER_SIZE (2048U * 2U * 2U)
 #define OPUS_PCM_BUFFER_SIZE (5760U * 2U * sizeof(int16_t))
 #define VORBIS_STREAM_BUFFER_SIZE (256U * 1024U)
+#define VORBIS_NETWORK_CHUNK_SIZE (16U * 1024U)
 #define VORBIS_PCM_BUFFER_SAMPLES (VORBIS_DECODER_MAX_FRAME_FRAMES * 2U)
 #define OPEN_READ_ONLY 0x0000
 #define OPEN_WRITE_CREATE_TRUNCATE 0x0601
@@ -1434,9 +1435,11 @@ static int vorbis_read_more(stream_read_fn read_stream, void * read_context,
                             uint8_t * stream, size_t * buffered)
 {
     if(*buffered >= VORBIS_STREAM_BUFFER_SIZE) return VORBIS_DECODER_ERROR;
+    const size_t remaining = VORBIS_STREAM_BUFFER_SIZE - *buffered;
+    const size_t request_size = remaining < VORBIS_NETWORK_CHUNK_SIZE
+        ? remaining : VORBIS_NETWORK_CHUNK_SIZE;
     const int received = read_stream(
-        read_context, stream + *buffered,
-        VORBIS_STREAM_BUFFER_SIZE - *buffered);
+        read_context, stream + *buffered, request_size);
     if(received < 0) return received;
     if(received == 0) return -3;
     *buffered += (size_t)received;
