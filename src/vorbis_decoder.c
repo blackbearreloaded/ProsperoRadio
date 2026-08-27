@@ -78,7 +78,7 @@ int vorbis_decoder_open(vorbis_decoder_t * decoder,
     decoder->handle = handle;
     decoder->sample_rate = info.sample_rate;
     decoder->channels = (uint32_t)info.channels;
-    decoder->max_frame_frames = (uint32_t)info.max_frame_size;
+    decoder->max_frame_frames = VORBIS_DECODER_MAX_FRAME_FRAMES;
     decoder->last_error = 0;
     *consumed = (size_t)used;
     return VORBIS_DECODER_OK;

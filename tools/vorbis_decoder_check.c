@@ -33,8 +33,8 @@ int main(void)
     check(opened == VORBIS_DECODER_OK, "split headers open");
     check(decoder.sample_rate == 48000U, "48 kHz source rate");
     check(decoder.channels == 2U, "stereo source");
-    check(decoder.max_frame_frames <= VORBIS_DECODER_MAX_FRAME_FRAMES,
-          "bounded maximum frame");
+    check(decoder.max_frame_frames == VORBIS_DECODER_MAX_FRAME_FRAMES,
+          "decoder uses allocated frame capacity");
     check(consumed > 0U && consumed < VORBIS_FIXTURE_SIZE,
           "headers consume a bounded prefix");
 
