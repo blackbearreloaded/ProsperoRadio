@@ -14,11 +14,12 @@ codec path from a library name or a station's metadata.
 | Ogg Opus | `libSceOpusDec` and `libSceOpusCeltDec` reach AJMI/AJM and are hardware-validated in PSRadio. | Keep the native dual-decoder path. |
 | Ogg Vorbis | No Vorbis branch exists in the recovered AvPlayer decoder factory. The inspected AJM Vorbis helper prepares headers but exposes no PCM decode job. | Use a small redistributable software decoder; `stb_vorbis` is the selected candidate. |
 | FLAC | The firmware references an internal CPU FLAC plug-in, but it is absent from the inspected module inventory and cannot be loaded by the application. No AJM or AvPlayer FLAC decode branch was found. | Use a small redistributable software decoder; `dr_flac` is the selected candidate. |
-| HLS | HLS is segmented delivery, not an audio codec. A bounded playlist and MPEG-TS/AAC implementation already exists in the related PS5 IPTV work. | First support unencrypted, audio-only MPEG-TS HLS carrying AAC-LC. |
+| HLS | HLS is segmented delivery, not an audio codec. The bounded playlist and MPEG-TS/AAC path now passes host checks and PS5 lifecycle tests. | Keep unencrypted, audio-only MPEG-TS HLS carrying AAC; reject unsupported HLS shapes explicitly. |
 
 Vorbis and FLAC remain disabled until their software paths pass host and PS5
-validation. HLS remains disabled until its audio-only transport path passes the
-same lifecycle checks as direct streams.
+validation. Radio Browser HLS/AAC records are enabled after passing live
+playback, switching, stop, restart, and playlist-reload checks. Audible HE-AAC
+fallback fidelity and a live discontinuity remain release gates.
 
 ## Firmware and test boundary
 
@@ -143,11 +144,21 @@ PSRadio needs only a small adaptation that accepts an audio-only PMT with one
 AAC ADTS stream and submits complete ADTS frames to the already validated
 native AAC decoder.
 
-The first slice will reject encryption, byte ranges, fMP4/CMAF, low-latency
+The first slice rejects encryption, byte ranges, fMP4/CMAF, low-latency
 partial segments, alternate rendition groups, multi-program transport streams,
 and non-AAC audio. Those features can be added independently after the simple
 MPEG-TS/AAC path is stable. Simple non-HLS M3U and PLS indirection should be
 resolved before HLS because it requires no segment demuxer.
+
+The implemented parser preserves PES state when a repeated PMT announces the
+same AAC PID. Resetting that state at every PMT had truncated an AAC access unit
+in a current Radio Browser segment and surfaced only as generic AudioDec error
+`0x807f0000`. After the fix, the extracted ADTS bytes are identical to FFmpeg's
+demuxed output for the captured segment. For `mp4a.40.29` manifests, PSRadio
+also propagates the declared stereo intent into the existing native-decoder
+workaround. The stable path decodes the 24 kHz mono AAC core and normalizes it
+to the 48 kHz stereo AudioOut contract instead of enabling the native mode that
+produced slow-motion playback. See [HLS/AAC validation](HLS_VALIDATION.md).
 
 ## Validation gates
 

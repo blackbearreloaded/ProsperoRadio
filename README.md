@@ -73,8 +73,10 @@ Catalog requests advertise AAC, MP3, and explicitly identified Ogg Opus stations
 Radio Browser's generic OGG records are not exposed unless their resolved URL
 identifies Opus. Radio Browser AAC entries flagged as HLS are admitted through
 the bounded master/media-playlist and MPEG-TS transport path; custom stream URLs
-are intentionally outside the product scope. Host checks include a current live
-Radio Browser HLS segment, while PS5 hardware validation remains pending. The
+are intentionally outside the product scope. Live HLS/AAC playback, switching,
+stop, restart, and playlist reloads are validated on PS5 hardware. HE-AAC v2
+manifests use the stable AAC core plus the existing 48 kHz stereo output
+normalization; final audible fidelity confirmation remains a release gate. The
 hardware-first investigation found no callable native
 Vorbis or FLAC path on the current firmware baseline; small redistributable
 software candidates are selected but not yet bundled. See the
@@ -230,6 +232,7 @@ and can be removed at any time.
 | [Platform constraints](docs/PLATFORM_NOTES.md) | Loader, filesystem, and presentation boundaries |
 | [Native MP3 validation](docs/MP3_VALIDATION.md) | Codec-2 implementation and hardware evidence |
 | [Native Opus validation](docs/OPUS_VALIDATION.md) | Hardware decoder evidence and remaining device gates |
+| [HLS/AAC validation](docs/HLS_VALIDATION.md) | Bounded transport, AAC timing fix, and PS5 lifecycle evidence |
 | [Remaining codec investigation](docs/CODEC_INVESTIGATION.md) | Vorbis, FLAC, and HLS native evidence and implementation decisions |
 | [Roadmap](ROADMAP.md) | Planned codec and streaming support |
 | [Contributing](CONTRIBUTING.md) | Development workflow and validation checklist |

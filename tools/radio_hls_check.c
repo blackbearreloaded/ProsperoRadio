@@ -46,7 +46,7 @@ int main(int argc, char ** argv)
         "#EXT-X-SESSION-DATA:DATA-ID=\"radio.test.cdn\",VALUE=\"edge\"\n"
         "#EXT-X-STREAM-INF:BANDWIDTH=128000,CODECS=\"mp4a.40.2\"\n"
         "high/audio.m3u8\n"
-        "#EXT-X-STREAM-INF:BANDWIDTH=64000,CODECS=\"mp4a.40.2\"\n"
+        "#EXT-X-STREAM-INF:BANDWIDTH=64000,CODECS=\"mp4a.40.29\"\n"
         "low/audio.m3u8?token=x\n";
     check(radio_hls_parse(master, sizeof(master) - 1U,
                           "https://radio.test/live/master.m3u8", &playlist) ==
@@ -57,6 +57,8 @@ int main(int argc, char ** argv)
     check(selected == 1 && strcmp(playlist.variants[selected].url,
                                   "https://radio.test/live/low/audio.m3u8?token=x") == 0,
           "lowest-bandwidth audio variant selected");
+    check(playlist.variants[selected].source_channels == 2U,
+          "HE-AAC v2 variant retains its stereo intent");
 
     const char media[] =
         "#EXTM3U\r\n#EXT-X-TARGETDURATION:6\r\n"

@@ -121,8 +121,10 @@ HLS is a delivery protocol rather than a codec and is tracked separately.
   explicitly in the first release.
 - [x] Validate the parser against a current audio-only HLS entry and MPEG-TS
   segment returned by the Radio Browser catalog.
-- [ ] Validate live HLS/AAC playback, stop, switching, playlist reloads, and
-  discontinuities on PS5 hardware before release.
+- [x] Validate live HLS/AAC playback, stop, restart, station switching, and
+  playlist reloads on PS5 hardware.
+- [ ] Confirm audible HE-AAC fallback fidelity and hardware-exercise a live
+  discontinuity before the next release.
 
 ## Later improvements
 

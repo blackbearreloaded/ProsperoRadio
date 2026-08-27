@@ -30,6 +30,7 @@ typedef enum {
 typedef struct {
     char url[RADIO_HLS_URL_BYTES];
     uint64_t bandwidth;
+    uint32_t source_channels;
 } radio_hls_variant_t;
 
 typedef struct {

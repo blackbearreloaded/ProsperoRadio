@@ -125,9 +125,11 @@ static bool attribute(hls_slice_t list, const char * wanted,
     return false;
 }
 
-static bool audio_only_codecs(hls_slice_t attributes)
+static bool audio_only_codecs(hls_slice_t attributes,
+                              uint32_t * source_channels)
 {
     hls_slice_t codecs;
+    *source_channels = 0U;
     if(!attribute(attributes, "CODECS", &codecs)) return true;
     size_t position = 0;
     bool found_aac = false;
@@ -137,6 +139,7 @@ static bool audio_only_codecs(hls_slice_t attributes)
         hls_slice_t codec = trim((hls_slice_t){codecs.data + start,
                                                position - start});
         if(!starts_case(codec, "mp4a")) return false;
+        if(equal_case(codec, "mp4a.40.29")) *source_channels = 2U;
         found_aac = true;
         if(position < codecs.size) ++position;
     }
@@ -188,6 +191,7 @@ radio_hls_result_t radio_hls_parse(const char * data, size_t size,
     bool discontinuity = false;
     uint64_t sequence = 0;
     uint64_t variant_bandwidth = 0;
+    uint32_t variant_source_channels = 0U;
 
     size_t position = 0;
     while(position < size) {
@@ -214,7 +218,8 @@ radio_hls_result_t radio_hls_parse(const char * data, size_t size,
             if(playlist->kind == RADIO_HLS_MEDIA || pending_variant ||
                !attribute(value, "BANDWIDTH", &line) ||
                !parse_u64(line, &variant_bandwidth) || variant_bandwidth == 0 ||
-               !audio_only_codecs(value)) return RADIO_HLS_UNSUPPORTED;
+               !audio_only_codecs(value, &variant_source_channels))
+                return RADIO_HLS_UNSUPPORTED;
             playlist->kind = RADIO_HLS_MASTER;
             pending_variant = true;
         }
@@ -280,6 +285,7 @@ radio_hls_result_t radio_hls_parse(const char * data, size_t size,
                 radio_hls_variant_t * variant =
                     &playlist->variants[playlist->variant_count++];
                 variant->bandwidth = variant_bandwidth;
+                variant->source_channels = variant_source_channels;
                 const radio_hls_result_t result = resolve(
                     line, playlist_url, variant->url, sizeof(variant->url));
                 if(result != RADIO_HLS_OK) return result;

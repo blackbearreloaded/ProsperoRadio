@@ -71,9 +71,11 @@ static radio_ts_aac_result_t pmt_ready(radio_ts_aac_parser_t * parser,
                             section[at + 4U];
         if(at + 5U + info > entries_end) return RADIO_TS_AAC_MALFORMED;
         if(stream_type == 0x0fU) {
-            parser->aac_pid = pid;
-            parser->pes_started = 0U;
-            parser->pes_remaining = 0U;
+            if(parser->aac_pid != pid) {
+                parser->aac_pid = pid;
+                parser->pes_started = 0U;
+                parser->pes_remaining = 0U;
+            }
             return RADIO_TS_AAC_OK;
         }
         at += 5U + info;

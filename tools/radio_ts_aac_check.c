@@ -49,6 +49,7 @@ typedef struct {
     uint8_t data[64];
     size_t size;
     size_t total;
+    FILE * capture;
 } output_t;
 
 static int output_ready(const uint8_t * data, size_t size, void * user_data)
@@ -59,6 +60,9 @@ static int output_ready(const uint8_t * data, size_t size, void * user_data)
     memcpy(output->data + output->size, data, copy);
     output->size += copy;
     output->total += size;
+    if(output->capture != NULL)
+        check(fwrite(data, 1U, size, output->capture) == size,
+              "probe AAC capture writes");
     return 0;
 }
 
@@ -85,11 +89,15 @@ static size_t make_pmt(uint8_t * output, uint8_t stream_type)
     return sizeof(body) + 4U;
 }
 
-static int probe_file(const char * path)
+static int probe_file(const char * path, const char * capture_path)
 {
     FILE * file = fopen(path, "rb");
     check(file != NULL, "probe TS file opens");
-    output_t output = {{0}, 0U, 0U};
+    output_t output = {{0}, 0U, 0U, NULL};
+    if(capture_path != NULL) {
+        output.capture = fopen(capture_path, "wb");
+        check(output.capture != NULL, "probe AAC capture opens");
+    }
     radio_ts_aac_parser_t parser;
     radio_ts_aac_init(&parser, output_ready, &output);
     uint8_t data[4096];
@@ -100,6 +108,8 @@ static int probe_file(const char * path)
         if(ferror(file)) check(0, "probe TS file reads");
     }
     fclose(file);
+    if(output.capture != NULL) check(fclose(output.capture) == 0,
+                                     "probe AAC capture closes");
     check(output.total > 1024U, "probe emitted an AAC elementary stream");
     printf("radio_ts_aac_check: PROBE PASS (%zu AAC bytes)\n", output.total);
     return 0;
@@ -107,8 +117,10 @@ static int probe_file(const char * path)
 
 int main(int argc, char ** argv)
 {
-    if(argc == 2) return probe_file(argv[1]);
-    check(argc == 1, "usage: radio_ts_aac_check [segment.ts]");
+    if(argc == 2 || argc == 3)
+        return probe_file(argv[1], argc == 3 ? argv[2] : NULL);
+    check(argc == 1,
+          "usage: radio_ts_aac_check [segment.ts [output.aac]]");
     uint8_t bytes[RADIO_TS_PACKET_BYTES * 3U];
     uint8_t payload[184];
     payload[0] = 0U;
@@ -133,7 +145,7 @@ int main(int argc, char ** argv)
     packet(bytes + RADIO_TS_PACKET_BYTES * 2U, 0x101U, 1, payload,
            sizeof(pes_header) + sizeof(frame), 0U);
 
-    output_t output = {{0}, 0U, 0U};
+    output_t output = {{0}, 0U, 0U, NULL};
     radio_ts_aac_parser_t parser;
     radio_ts_aac_init(&parser, output_ready, &output);
     const size_t chunks[] = {1U, 13U, 211U, sizeof(bytes) - 225U};
@@ -146,6 +158,38 @@ int main(int argc, char ** argv)
     check(output.size >= sizeof(frame) &&
           memcmp(output.data, frame, sizeof(frame)) == 0,
           "AAC ADTS elementary stream emitted");
+
+    uint8_t continuity_bytes[RADIO_TS_PACKET_BYTES * 3U];
+    uint8_t long_frame[200];
+    memset(long_frame, 0x5a, sizeof(long_frame));
+    long_frame[0] = 0xffU;
+    long_frame[1] = 0xf1U;
+    long_frame[2] = 0x50U;
+    long_frame[3] = 0x80U;
+    long_frame[4] = 0x19U;
+    long_frame[5] = 0x1fU;
+    long_frame[6] = 0xfcU;
+    static const uint8_t long_pes_header[] = {
+        0x00U, 0x00U, 0x01U, 0xc0U, 0x00U, 0xcbU,
+        0x80U, 0x00U, 0x00U
+    };
+    memcpy(payload, long_pes_header, sizeof(long_pes_header));
+    memcpy(payload + sizeof(long_pes_header), long_frame, 175U);
+    packet(continuity_bytes, 0x101U, 1, payload, sizeof(payload), 1U);
+    payload[0] = 0U;
+    section = make_pmt(payload + 1U, 0x0fU);
+    packet(continuity_bytes + RADIO_TS_PACKET_BYTES, 0x100U, 1,
+           payload, section + 1U, 1U);
+    packet(continuity_bytes + RADIO_TS_PACKET_BYTES * 2U, 0x101U, 0,
+           long_frame + 175U, sizeof(long_frame) - 175U, 2U);
+    output.size = 0U;
+    output.total = 0U;
+    check(radio_ts_aac_feed(&parser, continuity_bytes,
+                            sizeof(continuity_bytes)) == RADIO_TS_AAC_OK,
+          "repeated PMT inside AAC PES parses");
+    check(output.total == sizeof(long_frame) &&
+          memcmp(output.data, long_frame, sizeof(output.data)) == 0,
+          "repeated PMT preserves the in-progress AAC PES");
 
     radio_ts_aac_reset(&parser);
     output.size = 0U;
