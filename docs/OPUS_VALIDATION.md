@@ -28,6 +28,13 @@ modules or a decoder implementation.
 | 2026-08-26 | 6.02 | `PPSA99648` production routing | The production-style dual decoder selected CELT from the packet TOC, completed every codec-16 setup stage, decoded the first packet, produced PCM, and remained crash-free for the observation window using the checked-in, hash-pinned import stub. |
 | 2026-08-26 | 6.02 | `PPSA99649` AAC regression | The same dual-decoder eboot auto-played an AAC station, opened AudioOut, produced decoded PCM, and remained crash-free for the observation window. |
 | 2026-08-26 | 6.02 | `PPSA99652` lifecycle validation | The hardened player reached 48 kHz stereo Opus output, stopped the first live station in 67 ms, switched to a second Opus station, and persisted `stage=passed`. The Game-category title remained stable for the 50-second observation, closed normally, and released its runtime layers. Eboot SHA-256: `07FDA2070F7E0893A2F5DA34DF500CA27855793460E4DEA2782E8B48E1C94292`. |
+| 2026-08-27 | 6.02 | `PPSA99695` cross-format matrix | Current Radio Browser station `64b357e7-d9e9-4cb6-99b5-4cb6cef785cc` reached native Opus playback at 48 kHz mono after HLS/AAC and MP3 had each played and stopped. Opus then returned to stopped state before the Vorbis case. |
+
+The shared `PPSA99695` matrix image used production audio source commit
+`4283866`. Its package SHA-256 was
+`525062C378A304A365BDC90D65E44204B2F0A087EA60C9AE434AD6092AAE07D0`;
+its `eboot.bin` SHA-256 was
+`83B5E2FF6CD6A8FB975E8672860081DC5A9BA9D8AAA459712C3880BE652A50EE`.
 
 Do not use `PPSA99640` through `PPSA99645` as decoder-crash evidence. Their
 disposable telemetry harness called `sceKernelDebugOutText` immediately after

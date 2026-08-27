@@ -61,6 +61,13 @@ TCP 3232, Chiaki-ng observation, and the exclusive investigation lock.
 | `PPSA99660` | Corrected TS demux entered sustained HLS playback and switched HLS -> MP3 -> HLS without a crash; exposed slow native HE timing. |
 | `PPSA99661` | Manifest channel intent selected the stable 24 kHz mono core path; HLS -> MP3 -> HLS switching completed normally. |
 | `PPSA99663` | HLS played for 40 seconds across playlist reloads, stopped, restarted, and remained in `Playing` state for the final capture; normal title close released runtime layers. |
+| `PPSA99695` | Current RTL HLS UUID `042d3140-227c-4fac-9387-4903b692d5f2` reached 24 kHz mono AAC-core playback, stopped, and later accepted a direct switch from 44.1 kHz stereo Vorbis before returning to stopped state. |
+
+The shared `PPSA99695` matrix image used production audio source commit
+`4283866`. Its package SHA-256 was
+`525062C378A304A365BDC90D65E44204B2F0A087EA60C9AE434AD6092AAE07D0`;
+its `eboot.bin` SHA-256 was
+`83B5E2FF6CD6A8FB975E8672860081DC5A9BA9D8AAA459712C3880BE652A50EE`.
 
 The final run produced no AudioDec failure, fatal signal, app-crash marker, or
 loader error. A synthetic host case covers discontinuity reset behavior, but a

@@ -50,7 +50,30 @@ The tested package SHA-256 was
 `eboot.bin` SHA-256 was
 `4CA6BE890BE15D87228F5AC1516D2FC74BFDBEEE467FC896F43BA9FAC50AFBE1`.
 
-This establishes basic supported-format playback and lifecycle behavior.
-Additional malformed-page coverage, chained streams, induced reconnects, rapid
-repeated switching, and a long-running soak remain robustness and
+Diagnostic matrix image `PPSA99695` independently replayed the same station at
+44.1 kHz stereo after stopping HLS/AAC, MP3, and native Opus streams. App-owned
+LAN telemetry then recorded a direct Vorbis-to-HLS/AAC switch through a normal
+stopped transition, followed by 24 kHz mono AAC-core playback. The final AAC
+stop returned to `state=0`. This matrix image used production audio source
+commit `4283866`; its package SHA-256 was
+`525062C378A304A365BDC90D65E44204B2F0A087EA60C9AE434AD6092AAE07D0`,
+and its `eboot.bin` SHA-256 was
+`83B5E2FF6CD6A8FB975E8672860081DC5A9BA9D8AAA459712C3880BE652A50EE`.
+
+Dedicated soak image `PPSA99696` used current Radio Browser station
+`648b2abd-92a0-11e9-a605-52543be04c81` (`Dance Wave!`). A host probe first
+identified the live payload as Vorbis. On PS5, app-owned LAN telemetry entered
+`state=3` at 44.1 kHz stereo and recorded no later rebuffer or error transition
+before the managed title close roughly 11 minutes 17 seconds later. ShadowMount
+then recorded the game stop at `03:12:51`, sandbox removal, and runtime-layer
+release at `03:12:52`.
+
+The sustained-run package SHA-256 was
+`B8403E6936CC5DDB99133C1174A29EFFBD8EE81E02FE03D5EDC1B83CFAF23132`;
+its `eboot.bin` SHA-256 was
+`4A2B9F47B12085BD2140B3ADBF9FC01DCA021AB19DC341CDA2CBDE34CAC240A2`.
+
+This establishes supported-format playback and lifecycle behavior. Additional
+malformed-page coverage, chained streams, induced reconnects, rapid repeated
+switching, and deliberate live-stream faults remain robustness and
 container-compliance work rather than a missing Vorbis decoder path.

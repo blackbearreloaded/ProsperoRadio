@@ -9,16 +9,15 @@ codec path from a library name or a station's metadata.
 
 | Format | Native investigation | Current decision |
 | --- | --- | --- |
-| AAC / HE-AAC | `libSceAudiodec` reaches the device-backed AJM service and is hardware-validated in PSRadio. | Keep the native decoder. |
+| AAC / HE-AAC | AAC through `libSceAudiodec` reaches the device-backed AJM service and is hardware-validated. The tested HE-AAC v2 stream needs the timing-safe AAC-core fallback; full-fidelity SBR/PS output is not yet confirmed. | Keep native AAC and the bounded HE-AAC core fallback without claiming full HE-AAC fidelity. |
 | MP3 | Public codec `0x0002` reaches AJM and is hardware-validated in PSRadio. | Keep the native decoder. |
 | Ogg Opus | `libSceOpusDec` and `libSceOpusCeltDec` reach AJMI/AJM and are hardware-validated in PSRadio. | Keep the native dual-decoder path. |
-| Ogg Vorbis | No Vorbis branch exists in the recovered AvPlayer decoder factory. The inspected AJM Vorbis helper prepares headers but exposes no PCM decode job. | Use the bundled, bounded `stb_vorbis` CPU decoder; live playback, stop, and AAC switching are validated. |
-| FLAC | The firmware references an internal CPU FLAC plug-in, but it is absent from the inspected module inventory and cannot be loaded by the application. No AJM or AvPlayer FLAC decode branch was found. | Use a small redistributable software decoder; `dr_flac` is the selected candidate. |
+| Ogg Vorbis | No Vorbis branch exists in the recovered AvPlayer decoder factory. The inspected AJM Vorbis helper prepares headers but exposes no PCM decode job. | Use the bundled, bounded `stb_vorbis` CPU decoder; live playback, stop, AAC switching, and an eleven-minute PS5 run are validated. |
+| FLAC | The firmware references an internal CPU FLAC plug-in, but it is absent from the inspected module inventory and cannot be loaded by the application. No AJM or AvPlayer FLAC decode branch was found. | Use the bundled, bounded `dr_flac` CPU decoder for native and Ogg-encapsulated FLAC; host and PS5 playback/lifecycle validation pass. |
 | HLS | HLS is segmented delivery, not an audio codec. The bounded playlist and MPEG-TS/AAC path now passes host checks and PS5 lifecycle tests. | Keep unencrypted, audio-only MPEG-TS HLS carrying AAC; reject unsupported HLS shapes explicitly. |
 
-Ogg Vorbis is enabled after its bundled software path passed host and PS5
-validation. FLAC remains disabled until its software path passes the same
-gates. Radio Browser HLS/AAC records are enabled after passing live
+Ogg Vorbis and FLAC are enabled after their bundled software paths passed host
+and PS5 validation. Radio Browser HLS/AAC records are enabled after passing live
 playback, switching, stop, restart, and playlist-reload checks. Audible HE-AAC
 fallback fidelity and a live discontinuity remain release gates.
 
@@ -69,10 +68,9 @@ of a callable PCM decode path in the inspected Vorbis helper.
 
 ## Selected software fallbacks
 
-The Ogg Vorbis fallback is bundled at an immutable upstream revision with its
-license and provenance. FLAC remains the selected but not yet bundled fallback.
-Both paths stay behind the same bounded playback worker and PCM queue used by
-the native codecs.
+The Ogg Vorbis and FLAC fallbacks are bundled at immutable upstream revisions
+with their licenses and provenance. Both paths stay behind the same bounded
+playback worker and PCM queue used by the native codecs.
 
 ### Ogg Vorbis: `stb_vorbis`
 
@@ -118,21 +116,23 @@ native and Ogg-encapsulated FLAC, custom read/seek/tell callbacks, incremental
 PCM reads, signed-16 output, and a relaxed open mode intended for broadcast or
 internet-radio streams that begin without a header.
 
-Implementation constraints:
+The production adapter uses strict opening, keeps CRC validation enabled, and
+bridges reads to the active cancellable HTTP request. It accepts one or two
+channels at 8 to 192 kHz, rejects source blocks above 8,192 frames, emits at
+most 4,096 signed-16 frames per call, and caps both decoder allocations and
+opening reads at 1 MiB. Seeking is forward-only and drains through the same
+bounded callback; standard file I/O is disabled. The shared sink performs
+channel normalization, 48 kHz resampling, queueing, cancellation, and output.
 
-- bridge its read callback to the active cancellable HTTP request;
-- use strict open when STREAMINFO is present and bounded relaxed open only for
-  a mid-stream start;
-- reject unsupported channel counts, sample rates, and unreasonable block
-  sizes before allocating output buffers;
-- keep CRC validation enabled;
-- normalize to the existing signed-16, 48 kHz stereo output contract;
-- measure CPU use, compressed-buffer peaks, and stop latency on PS5 before the
-  catalog advertises FLAC.
+Deterministic host checks cover native and Ogg-encapsulated FLAC, small split
+reads, truncation, invalid signatures, oversized source blocks, and a 1 MiB
+opening-scan ceiling. PS5 tests cover native FLAC and Ogg-FLAC playback, stop,
+AAC switching, and a ten-minute sustained Ogg-FLAC session. See
+[`FLAC_VALIDATION.md`](FLAC_VALIDATION.md).
 
-The decoder is CPU-based. Lossless streams also have materially higher network
-and PCM throughput than the current compressed formats, so device validation is
-a release gate rather than a formality.
+The decoder is CPU-based. Lossless streams have materially higher network and
+PCM throughput than the native compressed formats, so its explicit memory and
+stream-shape ceilings remain part of the supported boundary.
 
 ## HLS/AAC implementation boundary
 
@@ -170,18 +170,29 @@ produced slow-motion playback. See [HLS/AAC validation](HLS_VALIDATION.md).
 
 ## Validation gates
 
-Each new path must pass all of the following before its codec or delivery type
-is included in Radio Browser queries:
+A format is included in Radio Browser queries only after these core gates pass:
 
-1. Deterministic host tests for framing, split input, malformed data, bounded
-   memory, cancellation, and no-progress behavior.
-2. A clean game-category launch on the target PS5.
-3. Audible playback for representative mono/stereo and sample-rate variants.
-4. Stop while connecting, while blocked in a read, and with queued PCM.
-5. Direct switching to and from AAC and Opus without a crash.
-6. Reconnect, underrun recovery, and at least ten minutes of sustained playback.
-7. Persisted development-protocol evidence containing the decoder, output rate,
-   channel count, and terminal state.
+1. Redistribution terms and immutable decoder provenance are retained.
+2. Deterministic host tests cover valid split input, malformed/truncated data,
+   bounded memory, cancellation or no-progress behavior, and expected PCM.
+3. A game-category build plays the format on the target PS5 and records output
+   sample rate and channel count.
+4. Stop, switching to the AAC control, and clean title teardown succeed without
+   a runtime crash.
+5. A sustained playback run completes for the new decoder path.
+
+Representative sample-rate/channel variants, stop during each network stage,
+switching against every other decoder, induced reconnects and underruns, rapid
+repeated switching, and malformed live sources are tracked as extended
+robustness evidence. They refine the supported edge boundary without being
+misreported as a missing basic codec implementation.
+
+The shared reconnect policy permits three consecutive failures with bounded
+250, 500, and 1,000 ms backoff. An attempt is considered stable only after it
+has produced real AudioOut data and remained active for 30 seconds; a later
+transport failure then renews the consecutive-failure budget. Host checks cover
+the retry state machine, and the sustained Ogg-FLAC device run validates the
+long-lived behavior.
 
 The preferred implementation order is simple M3U/PLS resolution, HLS/AAC,
 Ogg Vorbis, and finally FLAC. This adds the broadest station coverage while

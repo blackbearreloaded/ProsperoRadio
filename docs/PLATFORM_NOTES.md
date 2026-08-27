@@ -65,7 +65,8 @@ environment.
 
 PSRadio uses SDL's CPU-rendered presentation path, native controller input and
 IME, native HTTP/TLS, `/download0` persistence, native AAC, MP3, and Opus
-decoding, and AudioOut. The `libSceAudiodec` MP3 codec-2 path and the
+decoding, bounded CPU Vorbis and FLAC decoding, and AudioOut. The
+`libSceAudiodec` MP3 codec-2 path and the
 `libSceOpusDec` and `libSceOpusCeltDec` packet-to-PCM paths are hardware-verified
 on firmware 6.02. CELT-only TOC modes use the dedicated codec-16 path; SILK and
 hybrid modes use the general codec-21 path. GPU
@@ -85,7 +86,7 @@ in the inspected firmware library set.
 Recovered AvPlayer initialization succeeded, but its source entry rejected
 Vorbis/WebM, Opus/WebM, and an AAC/M4A positive control equally with
 `0x806a0003`. That runtime result cannot distinguish codec support. The static
-AvPlayer decoder factory contains no Vorbis or FLAC branch, so PSRadio treats
-both formats as software-decoder work. See
+AvPlayer decoder factory contains no Vorbis or FLAC branch, so PSRadio uses
+the validated bounded `stb_vorbis` and `dr_flac` CPU paths. See
 [`CODEC_INVESTIGATION.md`](CODEC_INVESTIGATION.md) for the complete evidence and
-selected candidates.
+selected implementations.

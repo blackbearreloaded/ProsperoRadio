@@ -21,6 +21,7 @@ radio_service.c
   |        |        +--> /download0 cache and favorites
   |        +-----------> AAC / MP3 / Opus -> native decoders ---+
   |                       Ogg Vorbis -> bounded CPU decoder ------+-> PCM -> AudioOut
+  |                       FLAC / Ogg-FLAC -> bounded CPU decoder --+
   +--------------------> Radio Browser over native HTTP/TLS
 ```
 
@@ -83,17 +84,18 @@ Font sources and licenses are documented in [`NOTICE.md`](../NOTICE.md).
 ## Radio Browser and persistence
 
 [`src/radio_service.c`](../src/radio_service.c) uses native PS5 network, SSL, and
-HTTP services. Nine bounded Radio Browser feeds are merged into one station
-catalog. AAC, MP3, Opus, and Vorbis variants are requested for each ranking:
+HTTP services. Twelve bounded Radio Browser feeds are merged into one station
+catalog. AAC, MP3, OGG, and FLAC categories are requested for each ranking:
 
 - popular by click count;
 - trending by click trend;
 - top rated by vote count.
 
-The queries use `hidebroken=true`. Radio Browser currently reports Opus streams
-under its broader `OGG` codec label, so PSRadio admits only OGG entries whose
-resolved URL explicitly identifies Opus and normalizes their displayed codec to
-`OPUS` or `VORBIS`. AAC, MP3, and normalized Ogg entries are parsed into the fixed-size
+The queries use `hidebroken=true`. Radio Browser reports several Ogg payloads
+under its broader `OGG` codec label. URL or station-name hints normalize obvious
+Opus and Ogg-FLAC records during catalog parsing; ordinary Vorbis remains
+displayed as `OGG`. Generic OGG entries are probed at playback and routed by
+their actual stream signature. AAC, MP3, FLAC, and OGG entries are parsed into the fixed-size
 `radio_station_t` model, merged by station UUID, ranked across codecs, and
 capped at 480 stations. Catalog refresh runs on a background thread and
 publishes changes under an SDL mutex.
@@ -130,6 +132,7 @@ resolved station URL
        Opus -> incremental Ogg demux -> native libSceOpusDec
                                       -> bounded CELT decoder fallback on -502
        Vorbis -> bounded stb_vorbis push-data CPU decoder
+       FLAC / Ogg-FLAC -> bounded dr_flac callback CPU decoder
   -> channel conversion and 48 kHz resampling when required
   -> two-second decoded PCM ring
   -> dedicated PS5 AudioOut consumer
@@ -156,12 +159,13 @@ packets reach the platform decoder. Opus TOC configurations 16-31 are routed to
 the general decoder first. A CELT packet rejected with native result `-502` is
 retried once with `libSceOpusCeltDec`; decoder failover keeps the existing PCM
 sink alive and does not reapply the logical stream's pre-skip.
-AAC, MP3, Opus, and Vorbis are currently advertised; planned codec and delivery
+AAC, MP3, Opus, Vorbis, and FLAC are currently advertised; planned codec and delivery
 work is tracked in [`ROADMAP.md`](../ROADMAP.md). The completed hardware-first
 review found no callable native Vorbis or FLAC path on the current firmware
-baseline. Vorbis therefore uses the validated bounded `stb_vorbis` CPU path;
-FLAC's selected future path is bounded CPU decoding through `dr_flac`. See
-[`VORBIS_VALIDATION.md`](VORBIS_VALIDATION.md). HLS is a transport layer above the existing native AAC
+baseline. Vorbis therefore uses the validated bounded `stb_vorbis` CPU path,
+while native and Ogg-encapsulated FLAC use bounded CPU decoding through
+`dr_flac`. See [`VORBIS_VALIDATION.md`](VORBIS_VALIDATION.md) and
+[`FLAC_VALIDATION.md`](FLAC_VALIDATION.md). HLS is a transport layer above the existing native AAC
 decoder rather than another codec implementation. Its bounded subset supports
 relative master/media URLs, live media sequences, discontinuities, and MPEG-TS
 with ADTS AAC. It rejects encryption, byte ranges, fMP4/CMAF, low-latency parts,
@@ -201,6 +205,10 @@ PS5 hardware:
 - `tools/mp3_header_check.c`: MPEG version, rate, channel, and frame geometry;
 - `tools/ogg_opus_check.c`: split-input Ogg pages, packet continuation,
   chained streams, and malformed-input rejection;
+- `tools/vorbis_decoder_check.c`: incremental Vorbis decoding and bounded
+  malformed/no-progress behavior;
+- `tools/flac_decoder_check.c`: native and Ogg-FLAC decoding, split input,
+  truncation, malformed metadata, and memory/read ceilings;
 - `tools/radio_input_check.c`: controller edge, dead-zone, and repeat behavior;
 - `tools/radio_playlist_check.c`: M3U/PLS detection, URL resolution, bounds,
   scheme rejection, and HLS separation;

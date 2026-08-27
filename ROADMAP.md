@@ -1,14 +1,19 @@
 # Roadmap
 
-PSRadio's current release baseline includes the complete RmlUi interface,
+PSRadio's implemented playback baseline includes the complete RmlUi interface,
 Radio Browser catalog and search, persistent cache and favorites, native input
-and IME, AAC/HE-AAC, MP3, Ogg Opus, and Ogg Vorbis playback through PS5
-AudioOut.
+and IME, AAC, MP3, Ogg Opus, Ogg Vorbis, native-container FLAC, and Ogg-FLAC
+playback through PS5 AudioOut. HE-AAC currently uses a timing-safe AAC-core
+fallback; audible full-fidelity confirmation remains a release gate.
 
-New stream formats are enabled in Radio Browser queries only after they pass
-on-device playback, stop, station-switching, reconnect, and error-recovery
-checks. This prevents the catalog from advertising stations that the packaged
-player cannot use.
+New stream formats are enabled in Radio Browser queries only after bounded host
+checks plus on-device playback, stop, station switching, sustained playback,
+and clean lifecycle checks. Induced network faults and malformed live sources
+remain explicit hardening work after the basic codec/container path is proven.
+This keeps known unsupported codec categories out of the catalog while keeping
+edge-case claims evidence-based. Radio Browser's ambiguous generic `OGG`
+records remain visible and are signature-probed at playback; an unknown Ogg
+payload fails before it reaches a mismatched decoder.
 
 ## Hardware-first decoder policy
 
@@ -87,14 +92,15 @@ remain before the next release.
   sample rates for the current output path.
 - [x] Validate live 44.1 kHz stereo playback, stop, and direct switching back
   to AAC on PS5.
-- [ ] Validate additional malformed pages, chained streams, reconnects,
-  long-running playback, and rapid repeated station switching.
+- [ ] Validate additional malformed pages, chained streams, reconnects, and
+  rapid repeated station switching.
 
 The Opus packet-to-PCM probe produced the expected 960 stereo frames (3,840
 signed-16 PCM bytes) with nonzero output. Ogg Vorbis is enabled through the
 bounded `stb_vorbis` CPU fallback after passing incremental host checks and live
-PS5 playback, stop, and AAC-switch validation. Extended container-compliance
-and soak checks remain tracked separately from basic format support.
+PS5 playback, stop, AAC-switch, and sustained-playback validation. Extended
+container-compliance and fault-injection checks remain tracked separately from
+basic format support.
 
 ## 3. FLAC
 
@@ -102,11 +108,22 @@ and soak checks remain tracked separately from basic format support.
   callable FLAC path. The only discovered plug-in is CPU-based, absent from
   the inspected firmware set, and failed its runtime module-load probe.
 - [x] Select `dr_flac` as the smallest redistributable software candidate.
-- [ ] Vendor a pinned `dr_flac` revision and retain its MIT-0 license.
-- [ ] Integrate cancellable callback reads and signed-16 PCM output.
-- [ ] Size compressed and PCM buffers for higher-bitrate lossless streams.
-- [ ] Measure memory use, underrun behavior, and sustained playback on PS5.
-- [ ] Expose FLAC stations only when the runtime cost remains acceptable.
+- [x] Vendor a pinned `dr_flac` revision and retain its MIT-0 license.
+- [x] Integrate cancellable callback reads and signed-16 PCM output.
+- [x] Bound decoder allocations and opening reads to 1 MiB, source blocks to
+  8,192 frames, and PCM reads to 4,096 frames.
+- [x] Validate native FLAC and Ogg-FLAC playback, stop, and AAC switching on
+  PS5.
+- [x] Validate a ten-minute sustained Ogg-FLAC session on PS5.
+- [x] Expose FLAC stations after the bounded runtime passed device validation.
+- [ ] Add induced reconnect, underrun, malformed live-stream, and rapid-switch
+  evidence as robustness hardening.
+
+`dr_flac` is the bounded CPU fallback because firmware 6.02 exposes no callable
+native FLAC decoder to this application. Host checks cover native and
+Ogg-encapsulated FLAC, split reads, truncation, invalid signatures, oversized
+blocks, and bounded opening scans. See
+[`docs/FLAC_VALIDATION.md`](docs/FLAC_VALIDATION.md).
 
 ## 4. HLS and playlist delivery
 
