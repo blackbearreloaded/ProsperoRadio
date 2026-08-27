@@ -20,16 +20,23 @@ static PSRADIO_VORBIS_NO_OPT double vorbis_cos(double value)
     return cos(value);
 }
 
+static PSRADIO_VORBIS_NO_OPT double vorbis_ldexp(double value, int exponent)
+{
+    return scalbn(value, exponent);
+}
+
 #define STB_VORBIS_MAX_CHANNELS 2
 #define STB_VORBIS_NO_INTEGER_CONVERSION
 #define STB_VORBIS_NO_PULLDATA_API
 #define STB_VORBIS_NO_STDIO
 #define sin vorbis_sin
 #define cos vorbis_cos
+#define ldexp vorbis_ldexp
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunused-function"
 #include "../vendor/stb/stb_vorbis.c"
 #pragma clang diagnostic pop
+#undef ldexp
 #undef cos
 #undef sin
 #undef PSRADIO_VORBIS_NO_OPT
