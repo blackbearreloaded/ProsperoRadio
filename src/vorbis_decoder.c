@@ -62,7 +62,8 @@ int vorbis_decoder_open(vorbis_decoder_t * decoder,
     decoder->last_error = error;
     if(handle == NULL) {
         return error == VORBIS_need_more_data
-            ? VORBIS_DECODER_NEED_MORE : VORBIS_DECODER_ERROR;
+            ? VORBIS_DECODER_NEED_MORE
+            : VORBIS_DECODER_LIBRARY_ERROR_BASE - error;
     }
 
     const stb_vorbis_info info = stb_vorbis_get_info(handle);
@@ -102,8 +103,9 @@ int vorbis_decoder_decode(vorbis_decoder_t * decoder,
         decoder->handle, data, (int)size, &channels, &output, &frames);
     const int error = stb_vorbis_get_error(decoder->handle);
     decoder->last_error = error;
-    if(used < 0 || (size_t)used > size || frames < 0 ||
-       (error != VORBIS__no_error && error != VORBIS_need_more_data))
+    if(error != VORBIS__no_error && error != VORBIS_need_more_data)
+        return VORBIS_DECODER_LIBRARY_ERROR_BASE - error;
+    if(used < 0 || (size_t)used > size || frames < 0)
         return VORBIS_DECODER_ERROR;
     *consumed = (size_t)used;
     if(frames == 0)

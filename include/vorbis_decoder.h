@@ -14,6 +14,7 @@ extern "C" {
 #define VORBIS_DECODER_ERROR (-3001)
 #define VORBIS_DECODER_UNSUPPORTED (-3002)
 #define VORBIS_DECODER_OUTPUT_TOO_SMALL (-3003)
+#define VORBIS_DECODER_LIBRARY_ERROR_BASE (-3100)
 
 typedef struct {
     void * handle;
