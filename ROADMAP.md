@@ -2,7 +2,8 @@
 
 PSRadio's current release baseline includes the complete RmlUi interface,
 Radio Browser catalog and search, persistent cache and favorites, native input
-and IME, AAC/HE-AAC, MP3, and Ogg Opus playback through PS5 AudioOut.
+and IME, AAC/HE-AAC, MP3, Ogg Opus, and Ogg Vorbis playback through PS5
+AudioOut.
 
 New stream formats are enabled in Radio Browser queries only after they pass
 on-device playback, stop, station-switching, reconnect, and error-recovery
@@ -81,15 +82,19 @@ remain before the next release.
 - [x] Investigate AvPlayer, AJM helpers, and the firmware library inventory for
   a callable native Vorbis path; none was found.
 - [x] Select `stb_vorbis` as the smallest redistributable software candidate.
-- [ ] Vendor a pinned `stb_vorbis` revision and retain its MIT license.
-- [ ] Integrate bounded push-data decoding and normalize decoded channels and
+- [x] Vendor a pinned `stb_vorbis` revision and retain its MIT license.
+- [x] Integrate bounded push-data decoding and normalize decoded channels and
   sample rates for the current output path.
-- [ ] Validate malformed pages, chained streams, reconnects, long-running playback,
-  and rapid station switching.
+- [x] Validate live 44.1 kHz stereo playback, stop, and direct switching back
+  to AAC on PS5.
+- [ ] Validate additional malformed pages, chained streams, reconnects,
+  long-running playback, and rapid repeated station switching.
 
 The Opus packet-to-PCM probe produced the expected 960 stereo frames (3,840
-signed-16 PCM bytes) with nonzero output. Vorbis remains a separately gated
-capability and will not be advertised until its own decoder path is validated.
+signed-16 PCM bytes) with nonzero output. Ogg Vorbis is enabled through the
+bounded `stb_vorbis` CPU fallback after passing incremental host checks and live
+PS5 playback, stop, and AAC-switch validation. Extended container-compliance
+and soak checks remain tracked separately from basic format support.
 
 ## 3. FLAC
 

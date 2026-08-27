@@ -1,7 +1,7 @@
-# Remaining codec investigation
+# Codec investigation
 
-This document records the hardware-first investigation for the formats that
-PSRadio does not yet advertise. It separates decoder availability from
+This document records PSRadio's hardware-first codec investigation. It
+separates decoder availability from
 container and delivery support so the application does not infer a usable
 codec path from a library name or a station's metadata.
 
@@ -12,12 +12,13 @@ codec path from a library name or a station's metadata.
 | AAC / HE-AAC | `libSceAudiodec` reaches the device-backed AJM service and is hardware-validated in PSRadio. | Keep the native decoder. |
 | MP3 | Public codec `0x0002` reaches AJM and is hardware-validated in PSRadio. | Keep the native decoder. |
 | Ogg Opus | `libSceOpusDec` and `libSceOpusCeltDec` reach AJMI/AJM and are hardware-validated in PSRadio. | Keep the native dual-decoder path. |
-| Ogg Vorbis | No Vorbis branch exists in the recovered AvPlayer decoder factory. The inspected AJM Vorbis helper prepares headers but exposes no PCM decode job. | Use a small redistributable software decoder; `stb_vorbis` is the selected candidate. |
+| Ogg Vorbis | No Vorbis branch exists in the recovered AvPlayer decoder factory. The inspected AJM Vorbis helper prepares headers but exposes no PCM decode job. | Use the bundled, bounded `stb_vorbis` CPU decoder; live playback, stop, and AAC switching are validated. |
 | FLAC | The firmware references an internal CPU FLAC plug-in, but it is absent from the inspected module inventory and cannot be loaded by the application. No AJM or AvPlayer FLAC decode branch was found. | Use a small redistributable software decoder; `dr_flac` is the selected candidate. |
 | HLS | HLS is segmented delivery, not an audio codec. The bounded playlist and MPEG-TS/AAC path now passes host checks and PS5 lifecycle tests. | Keep unencrypted, audio-only MPEG-TS HLS carrying AAC; reject unsupported HLS shapes explicitly. |
 
-Vorbis and FLAC remain disabled until their software paths pass host and PS5
-validation. Radio Browser HLS/AAC records are enabled after passing live
+Ogg Vorbis is enabled after its bundled software path passed host and PS5
+validation. FLAC remains disabled until its software path passes the same
+gates. Radio Browser HLS/AAC records are enabled after passing live
 playback, switching, stop, restart, and playlist-reload checks. Audible HE-AAC
 fallback fidelity and a live discontinuity remain release gates.
 
@@ -68,10 +69,10 @@ of a callable PCM decode path in the inspected Vorbis helper.
 
 ## Selected software fallbacks
 
-No software decoder is bundled yet. When implementation begins, vendor an
-immutable upstream revision, retain its license beside the source, add it to
-`NOTICE.md`, and keep its integration behind the same bounded playback worker
-and PCM queue used by the native codecs.
+The Ogg Vorbis fallback is bundled at an immutable upstream revision with its
+license and provenance. FLAC remains the selected but not yet bundled fallback.
+Both paths stay behind the same bounded playback worker and PCM queue used by
+the native codecs.
 
 ### Ogg Vorbis: `stb_vorbis`
 
@@ -91,9 +92,16 @@ Implementation constraints:
 - recreate the decoder for a chained logical stream or reconnect;
 - fuzz truncated headers, malformed pages, and no-progress input on the host.
 
+The implementation keeps a 256 KiB compressed-input window, limits each live
+network read to 16 KiB, accepts one or two channels from 8 to 192 kHz, and caps
+decoded output at 8,192 frames per channel. It converts planar float samples to
+interleaved signed-16 PCM before the shared channel normalizer, resampler, and
+queue. The decoder is recreated after a reconnect. See
+[`VORBIS_VALIDATION.md`](VORBIS_VALIDATION.md) for host and PS5 evidence.
+
 The upstream API notes that the Vorbis specification does not bound an
-individual frame. PSRadio must therefore enforce its own memory ceiling and
-fail the station cleanly instead of growing buffers indefinitely.
+individual frame. PSRadio therefore enforces its own memory ceiling and fails
+the station cleanly instead of growing buffers indefinitely.
 
 [Tremor](https://xiph.org/vorbis/) remains a valid BSD-licensed, integer-only
 reference alternative. It is aimed at embedded systems without efficient

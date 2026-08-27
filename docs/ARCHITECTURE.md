@@ -19,7 +19,8 @@ radio_app.cpp <----> RmlUi document and RCSS
 radio_service.c
   |        |        |
   |        |        +--> /download0 cache and favorites
-  |        +-----------> AAC / MP3 / Ogg Opus -> native decoders -> PCM -> AudioOut
+  |        +-----------> AAC / MP3 / Opus -> native decoders ---+
+  |                       Ogg Vorbis -> bounded CPU decoder ------+-> PCM -> AudioOut
   +--------------------> Radio Browser over native HTTP/TLS
 ```
 
@@ -83,7 +84,7 @@ Font sources and licenses are documented in [`NOTICE.md`](../NOTICE.md).
 
 [`src/radio_service.c`](../src/radio_service.c) uses native PS5 network, SSL, and
 HTTP services. Nine bounded Radio Browser feeds are merged into one station
-catalog. AAC, MP3, and Opus variants are requested for each ranking:
+catalog. AAC, MP3, Opus, and Vorbis variants are requested for each ranking:
 
 - popular by click count;
 - trending by click trend;
@@ -92,7 +93,7 @@ catalog. AAC, MP3, and Opus variants are requested for each ranking:
 The queries use `hidebroken=true`. Radio Browser currently reports Opus streams
 under its broader `OGG` codec label, so PSRadio admits only OGG entries whose
 resolved URL explicitly identifies Opus and normalizes their displayed codec to
-`OPUS`. AAC, MP3, and normalized Opus entries are parsed into the fixed-size
+`OPUS` or `VORBIS`. AAC, MP3, and normalized Ogg entries are parsed into the fixed-size
 `radio_station_t` model, merged by station UUID, ranked across codecs, and
 capped at 480 stations. Catalog refresh runs on a background thread and
 publishes changes under an SDL mutex.
@@ -128,6 +129,7 @@ resolved station URL
        MP3  -> MPEG frame synchronization -> native MP3 decoder
        Opus -> incremental Ogg demux -> native libSceOpusDec
                                       -> bounded CELT decoder fallback on -502
+       Vorbis -> bounded stb_vorbis push-data CPU decoder
   -> channel conversion and 48 kHz resampling when required
   -> two-second decoded PCM ring
   -> dedicated PS5 AudioOut consumer
@@ -154,11 +156,12 @@ packets reach the platform decoder. Opus TOC configurations 16-31 are routed to
 the general decoder first. A CELT packet rejected with native result `-502` is
 retried once with `libSceOpusCeltDec`; decoder failover keeps the existing PCM
 sink alive and does not reapply the logical stream's pre-skip.
-AAC, MP3, and Opus are currently advertised; planned codec and delivery work is
-tracked in [`ROADMAP.md`](../ROADMAP.md). The completed hardware-first review
-found no callable native Vorbis or FLAC path on the current firmware baseline.
-Their selected future paths are bounded CPU decoding through `stb_vorbis` and
-`dr_flac`, respectively. HLS is a transport layer above the existing native AAC
+AAC, MP3, Opus, and Vorbis are currently advertised; planned codec and delivery
+work is tracked in [`ROADMAP.md`](../ROADMAP.md). The completed hardware-first
+review found no callable native Vorbis or FLAC path on the current firmware
+baseline. Vorbis therefore uses the validated bounded `stb_vorbis` CPU path;
+FLAC's selected future path is bounded CPU decoding through `dr_flac`. See
+[`VORBIS_VALIDATION.md`](VORBIS_VALIDATION.md). HLS is a transport layer above the existing native AAC
 decoder rather than another codec implementation. Its bounded subset supports
 relative master/media URLs, live media sequences, discontinuities, and MPEG-TS
 with ADTS AAC. It rejects encryption, byte ranges, fMP4/CMAF, low-latency parts,

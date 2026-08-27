@@ -14,7 +14,7 @@
 <p align="center">
   <img src="https://img.shields.io/badge/platform-PlayStation%205-003791?logo=playstation&amp;logoColor=white" alt="PlayStation 5">
   <img src="https://img.shields.io/badge/UI-RmlUi%20%2B%20SDL2-70E1DC" alt="RmlUi and SDL2">
-  <img src="https://img.shields.io/badge/audio-AAC%20%2B%20MP3%20%2B%20Opus-5DDFA4" alt="AAC, MP3, and Opus audio">
+  <img src="https://img.shields.io/badge/audio-AAC%20%2B%20MP3%20%2B%20Opus%20%2B%20Vorbis-5DDFA4" alt="AAC, MP3, Opus, and Vorbis audio">
   <a href="https://github.com/blackbearreloaded/psradio/releases/latest"><img src="https://img.shields.io/github/v/release/blackbearreloaded/psradio?display_name=tag&amp;sort=semver&amp;label=latest%20release" alt="Latest release"></a>
   <a href="https://github.com/blackbearreloaded/psradio/actions/workflows/build.yml"><img src="https://github.com/blackbearreloaded/psradio/actions/workflows/build.yml/badge.svg" alt="Build status"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue" alt="GPL-3.0-or-later"></a>
@@ -23,7 +23,8 @@
 PSRadio is a native C/C++ application for compatible PS5 homebrew environments.
 It queries the community-run [Radio Browser](https://www.radio-browser.info/)
 service, keeps a local station cache and favorites list, and decodes supported
-AAC, MP3, and Ogg Opus streams through the console's native audio facilities.
+AAC, MP3, and Ogg Opus streams through the console's native audio facilities,
+and Ogg Vorbis streams through a bounded bundled decoder.
 
 The television interface is authored in RML and RCSS. SDL2 provides the native
 window and software presentation path, while a custom RmlUi bitmap-font backend
@@ -47,7 +48,8 @@ radio client, controller-first interface, media stack, and bundled dependencies.
 - Cached catalog search with country, genre, language, and bitrate filters.
 - DualSense-friendly navigation using the D-pad or left analog stick.
 - Native PS5 on-screen keyboard for text search.
-- AAC, HE-AAC, MP3, and Ogg Opus playback through native PS5 decoders and AudioOut.
+- AAC, HE-AAC, MP3, and Ogg Opus playback through native PS5 decoders and
+  Ogg Vorbis playback through a bounded CPU decoder, all using PS5 AudioOut.
 - Bounded M3U, PLS, and audio-only HLS delivery for URLs returned by Radio Browser.
 - Persistent favorites and cached catalog data under `/download0`.
 - Responsive play, stop, station switching, paging, and refresh actions.
@@ -66,20 +68,22 @@ Ogg Opus playback is also hardware-validated: CELT-mode packets use the
 console's dedicated CELT decoder as a bounded fallback when the general native
 decoder rejects them, while SILK and hybrid modes retain the general decoder.
 The live path has bounded reconnects, immediate cancellation, and a measured
-67 ms Opus stop-to-stopped transition. The release display name is **PSRadio** and its stable
-application identity is `PPSA99001`.
+67 ms Opus stop-to-stopped transition. Bounded Ogg Vorbis playback is validated
+at 44.1 kHz stereo, including stop and switching back to AAC. The release
+display name is **PSRadio** and its stable application identity is `PPSA99001`.
 
-Catalog requests advertise AAC, MP3, and explicitly identified Ogg Opus stations.
-Radio Browser's generic OGG records are not exposed unless their resolved URL
-identifies Opus. Radio Browser AAC entries flagged as HLS are admitted through
+Catalog requests advertise AAC, MP3, and explicitly identified Ogg Opus and
+Ogg Vorbis stations. Radio Browser's generic OGG records are admitted only
+after their resolved stream identifies a supported Ogg codec. Radio Browser
+AAC entries flagged as HLS are admitted through
 the bounded master/media-playlist and MPEG-TS transport path; custom stream URLs
 are intentionally outside the product scope. Live HLS/AAC playback, switching,
 stop, restart, and playlist reloads are validated on PS5 hardware. HE-AAC v2
 manifests use the stable AAC core plus the existing 48 kHz stereo output
 normalization; final audible fidelity confirmation remains a release gate. The
-hardware-first investigation found no callable native
-Vorbis or FLAC path on the current firmware baseline; small redistributable
-software candidates are selected but not yet bundled. See the
+hardware-first investigation found no callable native Vorbis or FLAC path on
+the current firmware baseline. The selected Vorbis fallback is bundled and
+validated; FLAC remains gated pending its software implementation. See the
 [codec investigation](docs/CODEC_INVESTIGATION.md)
 and [roadmap](ROADMAP.md).
 
@@ -232,8 +236,9 @@ and can be removed at any time.
 | [Platform constraints](docs/PLATFORM_NOTES.md) | Loader, filesystem, and presentation boundaries |
 | [Native MP3 validation](docs/MP3_VALIDATION.md) | Codec-2 implementation and hardware evidence |
 | [Native Opus validation](docs/OPUS_VALIDATION.md) | Hardware decoder evidence and remaining device gates |
+| [Ogg Vorbis validation](docs/VORBIS_VALIDATION.md) | Bounded software decoder and PS5 lifecycle evidence |
 | [HLS/AAC validation](docs/HLS_VALIDATION.md) | Bounded transport, AAC timing fix, and PS5 lifecycle evidence |
-| [Remaining codec investigation](docs/CODEC_INVESTIGATION.md) | Vorbis, FLAC, and HLS native evidence and implementation decisions |
+| [Codec investigation](docs/CODEC_INVESTIGATION.md) | Hardware-first evidence and software-fallback decisions |
 | [Roadmap](ROADMAP.md) | Planned codec and streaming support |
 | [Contributing](CONTRIBUTING.md) | Development workflow and validation checklist |
 | [Notices](NOTICE.md) | Dependencies, fonts, artwork, and attribution |
