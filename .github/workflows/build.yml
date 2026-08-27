@@ -121,7 +121,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Radio HLS check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/radio_ts_aac_check.c src/radio_ts_aac.c -o /tmp/radio-ts-aac-check
           if ($LASTEXITCODE -ne 0) { throw "Radio MPEG-TS AAC check compilation failed." }
-          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/ogg_opus_check.c src/ogg_opus.c -o /tmp/ogg-opus-check
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/ogg_opus_check.c src/ogg_opus.c src/ogg_page.c -o /tmp/ogg-opus-check
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/vorbis_decoder_check.c src/vorbis_decoder.c -lm -o /tmp/vorbis-decoder-check
           if ($LASTEXITCODE -ne 0) { throw "Vorbis decoder check compilation failed." }

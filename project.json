@@ -17,6 +17,7 @@
     "src/radio_text.cpp",
     "src/radio_input.c",
     "src/radio_ime.c",
+    "src/ogg_page.c",
     "src/ogg_opus.c",
     "src/opus_decoder.c",
     "src/vorbis_decoder.c",
