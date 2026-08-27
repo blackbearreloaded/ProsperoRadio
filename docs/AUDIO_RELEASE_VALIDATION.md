@@ -61,6 +61,24 @@ release. Klog contained no title crash, fatal signal, or loader error. Host
 ASan, UBSan, parser, framing, container, metadata, discontinuity, and bounded
 failure checks passed against the same production source before this run.
 
+## Exact production smoke
+
+The final Game-category image was deployed as `/data/homebrew/PPSA99001.ffpfsc`
+and verified by downloading it back from the console:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `PPSA99001.ffpfsc` | `9CAEB2F691F6E12AE742203F7F9A411E63A32B5C520D7EA2B99FC0593BF3B115` |
+| Packaged `eboot.bin` | `3A8C27632D54477E81A59B9F8B52DEBD2E40C6EAB6B7200C69BA180584331F4D` |
+| Packaged `libc.prx` | `AF5DBB1C778135F63DAF07F225F84FB948B07034D6D0CD2E393528510F2236B4` |
+
+The production title displayed `v0.2.0`, fetched the live Radio Browser
+catalog, played the first station, switched to the second and fourth stations,
+and visibly reached MP3 playback at 48 kHz stereo. The bounded cycle then
+closed `PPSA99001`; ShadowMountPlus recorded the title stop, sandbox removal,
+runtime-layer release, and both image unmounts. All three declared console
+services remained reachable after cleanup, and the owned Chiaki process exited.
+
 ## Release conclusion
 
 All formats advertised by PSRadio have a working PS5 path and bounded failure
