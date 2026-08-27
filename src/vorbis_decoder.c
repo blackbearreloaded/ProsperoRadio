@@ -106,13 +106,13 @@ int vorbis_decoder_decode(vorbis_decoder_t * decoder,
     if(error != VORBIS__no_error && error != VORBIS_need_more_data)
         return VORBIS_DECODER_LIBRARY_ERROR_BASE - error;
     if(used < 0 || (size_t)used > size || frames < 0)
-        return VORBIS_DECODER_ERROR;
+        return VORBIS_DECODER_INPUT_BOUNDS;
     *consumed = (size_t)used;
     if(frames == 0)
         return used == 0 ? VORBIS_DECODER_NEED_MORE : VORBIS_DECODER_OK;
     if(channels != (int)decoder->channels || output == NULL ||
        (uint32_t)frames > decoder->max_frame_frames)
-        return VORBIS_DECODER_ERROR;
+        return VORBIS_DECODER_OUTPUT_SHAPE;
 
     const size_t samples = (size_t)frames * decoder->channels;
     if(samples > pcm_capacity_samples) return VORBIS_DECODER_OUTPUT_TOO_SMALL;

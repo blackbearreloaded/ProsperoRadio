@@ -1434,7 +1434,8 @@ static int play_opus_reader(stream_read_fn read_stream, void * read_context)
 static int vorbis_read_more(stream_read_fn read_stream, void * read_context,
                             uint8_t * stream, size_t * buffered)
 {
-    if(*buffered >= VORBIS_STREAM_BUFFER_SIZE) return VORBIS_DECODER_ERROR;
+    if(*buffered >= VORBIS_STREAM_BUFFER_SIZE)
+        return VORBIS_DECODER_BUFFER_FULL;
     const size_t remaining = VORBIS_STREAM_BUFFER_SIZE - *buffered;
     const size_t request_size = remaining < VORBIS_NETWORK_CHUNK_SIZE
         ? remaining : VORBIS_NETWORK_CHUNK_SIZE;
