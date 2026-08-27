@@ -177,6 +177,7 @@ typedef struct {
     SDL_Thread * thread;
     bool input_finished;
     bool cancel;
+    bool played;
     int output_result;
 } audio_sink_t;
 
@@ -268,7 +269,6 @@ static SDL_mutex * g_state_mutex;
 static SDL_mutex * g_request_mutex;
 static SDL_atomic_t g_refresh_running;
 static SDL_atomic_t g_playback_running;
-static SDL_atomic_t g_playback_epoch;
 static SDL_atomic_t g_stop_playback;
 static SDL_atomic_t g_shutting_down;
 static int g_playback_request = -1;
@@ -982,7 +982,6 @@ static void * refresh_thread(void * unused)
 static void set_playback_state(radio_playback_state_t state, int error,
                                unsigned sample_rate, unsigned channels)
 {
-    if(state == RADIO_PLAYBACK_PLAYING) SDL_AtomicAdd(&g_playback_epoch, 1);
     SDL_LockMutex(g_state_mutex);
     g_status.playback_state = state;
     g_status.error_code = error;
@@ -1065,6 +1064,7 @@ static int sink_audio_thread(void * argument)
         if(!started && !SDL_AtomicGet(&g_stop_playback)) {
             started = true;
             played = true;
+            sink->played = true;
             set_playback_state(RADIO_PLAYBACK_PLAYING, 0,
                                sink->input_rate, sink->channels);
         }
@@ -1204,9 +1204,9 @@ static int sink_push_pcm(audio_sink_t * sink, const int16_t * samples,
     return 0;
 }
 
-static void sink_close(audio_sink_t * sink)
+static bool sink_close(audio_sink_t * sink)
 {
-    if(sink->handle < 0) return;
+    if(sink->handle < 0) return false;
     if(sink->pending != 0 && !sink->cancel &&
        !SDL_AtomicGet(&g_stop_playback)) {
         memset(sink->block + sink->pending, 0,
@@ -1223,6 +1223,7 @@ static void sink_close(audio_sink_t * sink)
     SDL_CondBroadcast(sink->can_write);
     SDL_UnlockMutex(sink->mutex);
     SDL_WaitThread(sink->thread, NULL);
+    const bool played = sink->played;
 
     sceAudioOutOutput(sink->handle, NULL);
     sceAudioOutClose(sink->handle);
@@ -1232,6 +1233,7 @@ static void sink_close(audio_sink_t * sink)
     free(sink->queue_blocks);
     memset(sink, 0, sizeof(*sink));
     sink->handle = -1;
+    return played;
 }
 
 typedef struct {
@@ -1243,6 +1245,7 @@ typedef struct {
     int result;
     bool decoder_open;
     bool stream_open;
+    bool played;
 } opus_playback_t;
 
 typedef int (*stream_read_fn)(void * context, void * data, size_t size);
@@ -1333,7 +1336,7 @@ static void opus_decoder_reset(opus_playback_t * playback)
 static void opus_playback_reset(opus_playback_t * playback, bool discard)
 {
     if(discard) sink_cancel(&playback->sink);
-    sink_close(&playback->sink);
+    playback->played = sink_close(&playback->sink) || playback->played;
     opus_decoder_reset(playback);
     playback->stream_serial = 0;
     playback->pre_skip_frames = 0;
@@ -1402,7 +1405,8 @@ static int opus_packet_ready(const ogg_opus_packet_t * packet, void * user_data)
     return playback->result < 0 ? -1 : 0;
 }
 
-static int play_opus_reader(stream_read_fn read_stream, void * read_context)
+static int play_opus_reader(stream_read_fn read_stream, void * read_context,
+                            bool * played)
 {
     uint8_t * stream = malloc(STREAM_BUFFER_SIZE);
     ogg_opus_parser_t * parser = malloc(sizeof(*parser));
@@ -1438,6 +1442,7 @@ static int play_opus_reader(stream_read_fn read_stream, void * read_context)
 
     opus_playback_reset(&playback,
                         result < 0 || SDL_AtomicGet(&g_stop_playback));
+    *played = playback.played;
     free(playback.pcm);
     free(parser);
     free(stream);
@@ -1460,7 +1465,8 @@ static int vorbis_read_more(stream_read_fn read_stream, void * read_context,
     return 0;
 }
 
-static int play_vorbis_reader(stream_read_fn read_stream, void * read_context)
+static int play_vorbis_reader(stream_read_fn read_stream, void * read_context,
+                              bool * played)
 {
     uint8_t * stream = malloc(VORBIS_STREAM_BUFFER_SIZE);
     int16_t * pcm = malloc(VORBIS_PCM_BUFFER_SAMPLES * sizeof(*pcm));
@@ -1518,14 +1524,15 @@ static int play_vorbis_reader(stream_read_fn read_stream, void * read_context)
     }
 
     if(result < 0 || SDL_AtomicGet(&g_stop_playback)) sink_cancel(&sink);
-    sink_close(&sink);
+    *played = sink_close(&sink);
     vorbis_decoder_close(&decoder);
     free(pcm);
     free(stream);
     return SDL_AtomicGet(&g_stop_playback) ? 0 : result;
 }
 
-static int play_flac_reader(stream_read_fn read_stream, void * read_context)
+static int play_flac_reader(stream_read_fn read_stream, void * read_context,
+                            bool * played)
 {
     int16_t * pcm = malloc(FLAC_PCM_BUFFER_SAMPLES * sizeof(*pcm));
     if(pcm == NULL) return -1;
@@ -1558,7 +1565,7 @@ static int play_flac_reader(stream_read_fn read_stream, void * read_context)
     }
 
     if(result < 0 || SDL_AtomicGet(&g_stop_playback)) sink_cancel(&sink);
-    sink_close(&sink);
+    *played = sink_close(&sink);
     flac_decoder_close(&decoder);
     free(pcm);
     return SDL_AtomicGet(&g_stop_playback) ? 0 : result;
@@ -1797,7 +1804,8 @@ static int hls_stream_read(void * context, void * data, size_t capacity)
 
 static int play_audiodec_reader(stream_read_fn read_stream,
                                 void * read_context,
-                                unsigned source_channels, bool mp3)
+                                unsigned source_channels, bool mp3,
+                                bool * played)
 {
     uint8_t * stream = malloc(STREAM_BUFFER_SIZE);
     uint8_t * pcm = malloc(PCM_BUFFER_SIZE);
@@ -1956,7 +1964,7 @@ static int play_audiodec_reader(stream_read_fn read_stream,
     }
 
     if(result < 0 || SDL_AtomicGet(&g_stop_playback)) sink_cancel(&sink);
-    sink_close(&sink);
+    *played = sink_close(&sink);
     if(decoder >= 0) sceAudiodecDeleteDecoder(decoder);
     if(library_initialized) sceAudiodecTermLibrary(codec_type);
     if(module_loaded) sceSysmoduleUnloadModule(0x0088);
@@ -1965,8 +1973,9 @@ static int play_audiodec_reader(stream_read_fn read_stream,
     return result;
 }
 
-static int play_stream(const radio_station_t * station)
+static int play_stream(const radio_station_t * station, bool * played)
 {
+    *played = false;
     int connection = -1;
     int request = -1;
     char resolved_url[sizeof(station->url)];
@@ -1980,7 +1989,8 @@ static int play_stream(const radio_station_t * station)
         int result = hls_reader_open(&reader, resolved_url);
         if(result >= 0 && !SDL_AtomicGet(&g_stop_playback)) {
             result = play_audiodec_reader(hls_stream_read, &reader,
-                                          reader.source_channels, false);
+                                          reader.source_channels, false,
+                                          played);
         }
         hls_reader_close(&reader);
         return result;
@@ -1989,26 +1999,26 @@ static int play_stream(const radio_station_t * station)
     const unsigned source_channels = http_audio_channels(request);
     int result;
     if(strcasecmp(station->codec, "OPUS") == 0)
-        result = play_opus_reader(http_stream_read, &request);
+        result = play_opus_reader(http_stream_read, &request, played);
     else if(strcasecmp(station->codec, "VORBIS") == 0)
-        result = play_vorbis_reader(http_stream_read, &request);
+        result = play_vorbis_reader(http_stream_read, &request, played);
     else if(strcasecmp(station->codec, "FLAC") == 0)
-        result = play_flac_reader(http_stream_read, &request);
+        result = play_flac_reader(http_stream_read, &request, played);
     else if(strcasecmp(station->codec, "OGG") == 0) {
         prefixed_http_reader_t reader;
         const int format = prefixed_http_open(&reader, request);
         if(format == OGG_FORMAT_OPUS)
-            result = play_opus_reader(prefixed_http_read, &reader);
+            result = play_opus_reader(prefixed_http_read, &reader, played);
         else if(format == OGG_FORMAT_VORBIS)
-            result = play_vorbis_reader(prefixed_http_read, &reader);
+            result = play_vorbis_reader(prefixed_http_read, &reader, played);
         else if(format == OGG_FORMAT_FLAC)
-            result = play_flac_reader(prefixed_http_read, &reader);
+            result = play_flac_reader(prefixed_http_read, &reader, played);
         else result = format < 0 ? format : VORBIS_DECODER_UNSUPPORTED;
     }
     else {
         const bool mp3 = strcasecmp(station->codec, "MP3") == 0;
         result = play_audiodec_reader(http_stream_read, &request,
-                                      source_channels, mp3);
+                                      source_channels, mp3, played);
     }
     playback_request_clear(request);
     http_close(connection, request);
@@ -2021,13 +2031,13 @@ static void * playback_thread(void * station_copy)
     int result = -1;
     unsigned failures = 0U;
     for(;;) {
-        const int epoch = SDL_AtomicGet(&g_playback_epoch);
+        bool played = false;
         const uint32_t started = SDL_GetTicks();
-        result = play_stream(station);
+        result = play_stream(station, &played);
         if(result >= 0 || SDL_AtomicGet(&g_stop_playback) ||
            SDL_AtomicGet(&g_shutting_down)) break;
         const bool stable_playback =
-            SDL_AtomicGet(&g_playback_epoch) != epoch &&
+            played &&
             SDL_GetTicks() - started >= PLAYBACK_RETRY_RESET_MS;
         failures = playback_retry_next_failures(failures, stable_playback);
         if(!playback_retry_allowed(failures)) break;
@@ -2065,7 +2075,6 @@ bool radio_service_init(void)
     SDL_AtomicSet(&g_shutting_down, 0);
     SDL_AtomicSet(&g_stop_playback, 0);
     SDL_AtomicSet(&g_playback_running, 0);
-    SDL_AtomicSet(&g_playback_epoch, 0);
     SDL_AtomicSet(&g_refresh_running, 0);
     g_playback_request = -1;
     load_favorites();
