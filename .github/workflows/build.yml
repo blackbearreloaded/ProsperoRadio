@@ -121,6 +121,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/vorbis_decoder_check.c src/vorbis_decoder.c -lm -o /tmp/vorbis-decoder-check
           if ($LASTEXITCODE -ne 0) { throw "Vorbis decoder check compilation failed." }
+          wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/flac_decoder_check.c src/flac_decoder.c -o /tmp/flac-decoder-check
+          if ($LASTEXITCODE -ne 0) { throw "FLAC decoder check compilation failed." }
           wsl.exe --exec clang-18 -std=c11 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -Wl,--gc-sections -Iinclude -Ivendor/ps5/sdl/include/SDL2 tools/radio_service_json_check.c -o /tmp/radio-service-json-check
           if ($LASTEXITCODE -ne 0) { throw "Radio service JSON check compilation failed." }
           wsl.exe --exec clang++-18 -std=c++20 -Wall -Wextra -Werror -Isrc tools/radio_text_check.cpp src/radio_text.cpp -o /tmp/radio-text-check
@@ -147,6 +149,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Ogg Opus check failed." }
           wsl.exe --exec /tmp/vorbis-decoder-check
           if ($LASTEXITCODE -ne 0) { throw "Vorbis decoder check failed." }
+          wsl.exe --exec /tmp/flac-decoder-check
+          if ($LASTEXITCODE -ne 0) { throw "FLAC decoder check failed." }
           wsl.exe --exec /tmp/radio-service-json-check
           if ($LASTEXITCODE -ne 0) { throw "Radio service JSON check failed." }
           wsl.exe --exec /tmp/radio-text-check

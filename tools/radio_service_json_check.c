@@ -56,7 +56,17 @@ int main(void)
         "\"url_resolved\":\"https://example.invalid/lossless.ogg\","
         "\"codec\":\"OGG\",\"hls\":0,\"lastcheckok\":1}]";
     assert(parse_catalog(ogg_flac_catalog, sizeof(ogg_flac_catalog) - 1U,
-                         &station, 1U) == 0U);
+                         &station, 1U) == 1U);
+    assert(strcmp(station.codec, "FLAC") == 0);
+
+    static const char native_flac_catalog[] =
+        "[{\"stationuuid\":\"native-flac-test\",\"name\":\"Native FLAC\","
+        "\"url_resolved\":\"https://example.invalid/lossless.flac\","
+        "\"codec\":\"FLAC\",\"hls\":0,\"lastcheckok\":1}]";
+    assert(parse_catalog(native_flac_catalog,
+                         sizeof(native_flac_catalog) - 1U,
+                         &station, 1U) == 1U);
+    assert(strcmp(station.codec, "FLAC") == 0);
 
     static const char mislabeled_mp3_catalog[] =
         "[{\"stationuuid\":\"bad-ogg\",\"name\":\"Mislabeled OGG\","
@@ -80,6 +90,13 @@ int main(void)
     vorbis_page[28] = 1U;
     memcpy(vorbis_page + 29U, "vorbis", 6U);
     assert(ogg_probe(vorbis_page, sizeof(vorbis_page)) == OGG_FORMAT_VORBIS);
+    uint8_t flac_page[36] = {0};
+    memcpy(flac_page, "OggS", 4U);
+    flac_page[26] = 1U;
+    flac_page[27] = 8U;
+    flac_page[28] = 0x7fU;
+    memcpy(flac_page + 29U, "FLAC", 4U);
+    assert(ogg_probe(flac_page, sizeof(flac_page)) == OGG_FORMAT_FLAC);
 
     static const char hls_catalog[] =
         "[{\"stationuuid\":\"hls-test\",\"name\":\"HLS Test\","

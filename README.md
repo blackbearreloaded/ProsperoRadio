@@ -203,6 +203,8 @@ src/radio_app.cpp            UI state, navigation, search, and station actions
 src/radio_service.c          Radio Browser, persistence, audio streams, and AudioOut
 src/ogg_opus.c               Incremental Ogg Opus demuxing
 src/opus_decoder.c           Native PS5 general-Opus/CELT decoder adapter
+src/vorbis_decoder.c         Bounded stb_vorbis CPU decoder adapter
+src/flac_decoder.c           Bounded dr_flac CPU decoder adapter
 src/radio_input.c            Native controller adapter
 src/radio_ime.c              Native on-screen keyboard adapter
 src/radio_text.cpp           Arabic shaping and visual RTL ordering
@@ -265,6 +267,8 @@ wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/ogg_opus_chec
 wsl /tmp/ogg-opus-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/vorbis_decoder_check.c src/vorbis_decoder.c -lm -o /tmp/vorbis-decoder-check
 wsl /tmp/vorbis-decoder-check
+wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -Iinclude tools/flac_decoder_check.c src/flac_decoder.c -o /tmp/flac-decoder-check
+wsl /tmp/flac-decoder-check
 wsl --exec clang-18 -std=c11 -Wall -Wextra -Werror -ffunction-sections -fdata-sections -Wl,--gc-sections -Iinclude -Ivendor/ps5/sdl/include/SDL2 tools/radio_service_json_check.c -o /tmp/radio-service-json-check
 wsl /tmp/radio-service-json-check
 wsl --exec clang++-18 -std=c++20 -Wall -Wextra -Werror -Isrc tools/radio_text_check.cpp src/radio_text.cpp -o /tmp/radio-text-check

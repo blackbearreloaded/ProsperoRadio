@@ -85,6 +85,16 @@ single-file decoder from commit
 file digest are recorded in `vendor/stb/README.md`. Vorbis decoding is CPU-based
 because the hardware-first investigation found no callable native PS5 route.
 
+## dr_flac
+
+[`dr_flac`](https://github.com/mackron/dr_libs) by David Reid is distributed
+under the MIT No Attribution license retained in
+`vendor/dr_flac/LICENSE.txt`. PSRadio vendors the single-file decoder from
+commit `b55a0d9a30b91ad8901f89ecf05f76a33186c185`; exact provenance and tracked
+file digests are recorded in `vendor/dr_flac/README.md`. FLAC decoding is
+CPU-based because the firmware's internal CPU FLAC plug-in is unavailable to
+the app and no callable native offload path was found.
+
 ## Radio Browser
 
 Station discovery, metadata, and stream URLs are provided by the free and open

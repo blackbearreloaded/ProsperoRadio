@@ -1,6 +1,7 @@
 #include "radio_service.h"
 
 #include "aac_timing.h"
+#include "flac_decoder.h"
 #include "mp3_header.h"
 #include "ogg_opus.h"
 #include "opus_decoder.h"
@@ -37,6 +38,7 @@
 #define VORBIS_STREAM_BUFFER_SIZE (256U * 1024U)
 #define VORBIS_NETWORK_CHUNK_SIZE (16U * 1024U)
 #define VORBIS_PCM_BUFFER_SAMPLES (VORBIS_DECODER_MAX_FRAME_FRAMES * 2U)
+#define FLAC_PCM_BUFFER_SAMPLES (FLAC_DECODER_READ_FRAMES * 2U)
 #define OPEN_READ_ONLY 0x0000
 #define OPEN_WRITE_CREATE_TRUNCATE 0x0601
 #define FILE_MODE_0666 0x01b6
@@ -194,12 +196,15 @@ static const catalog_feed_source_t CATALOG_FEEDS[] = {
     {CATALOG_URL("AAC", "clickcount"), FEED_POPULAR},
     {CATALOG_URL("MP3", "clickcount"), FEED_POPULAR},
     {CATALOG_URL("OGG", "clickcount"), FEED_POPULAR},
+    {CATALOG_URL("FLAC", "clickcount"), FEED_POPULAR},
     {CATALOG_URL("AAC", "clicktrend"), FEED_TRENDING},
     {CATALOG_URL("MP3", "clicktrend"), FEED_TRENDING},
     {CATALOG_URL("OGG", "clicktrend"), FEED_TRENDING},
+    {CATALOG_URL("FLAC", "clicktrend"), FEED_TRENDING},
     {CATALOG_URL("AAC", "votes"), FEED_VOTED},
     {CATALOG_URL("MP3", "votes"), FEED_VOTED},
     {CATALOG_URL("OGG", "votes"), FEED_VOTED},
+    {CATALOG_URL("FLAC", "votes"), FEED_VOTED},
 };
 
 extern int sceKernelOpen(const char * path, int flags, uint16_t mode);
@@ -455,8 +460,12 @@ static int http_open(const char * url, bool streaming, const char * codec,
     sceHttpSetRecvTimeOut(*request, streaming ? 2000000U : 5000000U);
     const char * accept = "application/json";
     if(streaming) {
-        if(codec != NULL && strcasecmp(codec, "OPUS") == 0)
-            accept = "audio/ogg, audio/opus, */*";
+        if(codec != NULL &&
+           (strcasecmp(codec, "OPUS") == 0 ||
+            strcasecmp(codec, "VORBIS") == 0 ||
+            strcasecmp(codec, "OGG") == 0 ||
+            strcasecmp(codec, "FLAC") == 0))
+            accept = "audio/ogg, audio/opus, audio/flac, audio/x-flac, */*";
         else if(codec != NULL && strcasecmp(codec, "MP3") == 0)
             accept = "audio/mpeg, audio/mp3, */*";
         else accept = "application/vnd.apple.mpegurl, application/x-mpegURL, "
@@ -721,15 +730,18 @@ static bool contains_ascii_case_insensitive(const char * text, const char * need
 static bool normalize_supported_codec(radio_station_t * station)
 {
     if(strcasecmp(station->codec, "AAC") == 0 ||
-       strcasecmp(station->codec, "MP3") == 0) return true;
+       strcasecmp(station->codec, "MP3") == 0 ||
+       strcasecmp(station->codec, "FLAC") == 0) return true;
     if(strcasecmp(station->codec, "OGG") == 0) {
         const bool opus = contains_ascii_case_insensitive(station->url, "opus") ||
                           contains_ascii_case_insensitive(station->name, "opus");
-        if(!opus && (contains_ascii_case_insensitive(station->url, "flac") ||
-                     contains_ascii_case_insensitive(station->name, "flac") ||
-                     contains_ascii_case_insensitive(station->url, ".mp3")))
+        const bool flac = contains_ascii_case_insensitive(station->url, "flac") ||
+                          contains_ascii_case_insensitive(station->name, "flac");
+        if(!opus && !flac &&
+           contains_ascii_case_insensitive(station->url, ".mp3"))
             return false;
         if(opus) SDL_strlcpy(station->codec, "OPUS", sizeof(station->codec));
+        else if(flac) SDL_strlcpy(station->codec, "FLAC", sizeof(station->codec));
         return true;
     }
     return false;
@@ -1512,6 +1524,45 @@ static int play_vorbis_reader(stream_read_fn read_stream, void * read_context)
     return SDL_AtomicGet(&g_stop_playback) ? 0 : result;
 }
 
+static int play_flac_reader(stream_read_fn read_stream, void * read_context)
+{
+    int16_t * pcm = malloc(FLAC_PCM_BUFFER_SAMPLES * sizeof(*pcm));
+    if(pcm == NULL) return -1;
+
+    flac_decoder_t decoder;
+    memset(&decoder, 0, sizeof(decoder));
+    audio_sink_t sink;
+    memset(&sink, 0, sizeof(sink));
+    sink.handle = -1;
+    int result = flac_decoder_open(&decoder, read_stream, read_context);
+    if(result >= 0) {
+        result = sink_open(&sink, decoder.sample_rate, decoder.channels);
+        if(result >= 0) {
+            set_playback_state(RADIO_PLAYBACK_BUFFERING, 0,
+                               decoder.sample_rate, decoder.channels);
+        }
+    }
+    while(result >= 0 && !SDL_AtomicGet(&g_stop_playback)) {
+        size_t samples = 0U;
+        result = flac_decoder_read_pcm(
+            &decoder, pcm, FLAC_PCM_BUFFER_SAMPLES, &samples);
+        if(result == FLAC_DECODER_EOF) {
+            result = -3;
+            break;
+        }
+        if(result < 0) break;
+        if(samples != 0U) {
+            result = sink_push_pcm(&sink, pcm, (unsigned)samples);
+        }
+    }
+
+    if(result < 0 || SDL_AtomicGet(&g_stop_playback)) sink_cancel(&sink);
+    sink_close(&sink);
+    flac_decoder_close(&decoder);
+    free(pcm);
+    return SDL_AtomicGet(&g_stop_playback) ? 0 : result;
+}
+
 static size_t find_adts(const uint8_t * data, size_t size)
 {
     for(size_t i = 0; i + 1U < size; ++i) {
@@ -1940,6 +1991,8 @@ static int play_stream(const radio_station_t * station)
         result = play_opus_reader(http_stream_read, &request);
     else if(strcasecmp(station->codec, "VORBIS") == 0)
         result = play_vorbis_reader(http_stream_read, &request);
+    else if(strcasecmp(station->codec, "FLAC") == 0)
+        result = play_flac_reader(http_stream_read, &request);
     else if(strcasecmp(station->codec, "OGG") == 0) {
         prefixed_http_reader_t reader;
         const int format = prefixed_http_open(&reader, request);
@@ -1947,6 +2000,8 @@ static int play_stream(const radio_station_t * station)
             result = play_opus_reader(prefixed_http_read, &reader);
         else if(format == OGG_FORMAT_VORBIS)
             result = play_vorbis_reader(prefixed_http_read, &reader);
+        else if(format == OGG_FORMAT_FLAC)
+            result = play_flac_reader(prefixed_http_read, &reader);
         else result = format < 0 ? format : VORBIS_DECODER_UNSUPPORTED;
     }
     else {
