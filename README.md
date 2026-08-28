@@ -29,7 +29,7 @@ RCSS, SDL2, and deterministic bitmap fonts.
 | Shell title | `PS5 Radio` |
 | Title ID | `PPSA99001` |
 | Category | Media |
-| Current release version | `01.000.002` |
+| Current release version | `01.000.003` |
 | Release-version source | [`sce_sys/param.json`](sce_sys/param.json) |
 | Writable data | `/download0` only |
 
@@ -173,8 +173,8 @@ uses PS5's exact `NN.NNN.NNN` format without a `v` prefix.
 
 ```bash
 # After updating sce_sys/param.json and passing the local gates.
-git tag 01.000.003
-git push origin main 01.000.003
+git tag 01.000.004
+git push origin main 01.000.004
 ```
 
 The workflow rejects a mismatched tag. Full field meanings, Game/Media

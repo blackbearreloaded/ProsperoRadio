@@ -83,8 +83,8 @@ exact PS5 format NN.NNN.NNN, with no v prefix.
 Keep PPSA99001 stable for PS5 Radio updates. Increment contentVersion before
 creating a release tag:
 
-    git tag 01.000.003
-    git push origin main 01.000.003
+    git tag 01.000.004
+    git push origin main 01.000.004
 
 GitHub Actions rejects a tag that does not exactly match contentVersion and
 publishes the verified FFPFSC image with its SHA-256 checksum.
