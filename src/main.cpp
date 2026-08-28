@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <limits>
+#include <memory>
 #include <new>
 #include <pthread.h>
 #include <vector>
@@ -315,7 +316,8 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
         const bool header_read = std::fread(header, 1, sizeof(header), file) == sizeof(header);
         int width = 0;
         int height = 0;
-        std::vector<unsigned char> pixels;
+        SdlBuffer pixels;
+        std::size_t pixel_bytes = 0;
         bool decoded = false;
 
         if (header_read && std::memcmp(header, "RTA1", 4) == 0)
@@ -330,9 +332,15 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
                 expected_pixels <= std::numeric_limits<std::size_t>::max() / 4 &&
                 payload_length <= expected_pixels * 2 && fseeko(file, 16, SEEK_SET) == 0)
             {
-                std::vector<unsigned char> payload(payload_length);
-                if (std::fread(payload.data(), 1, payload.size(), file) == payload.size())
-                    decoded = DecodeRadioAtlas(payload, expected_pixels, pixels);
+                SdlBuffer payload(static_cast<unsigned char *>(SDL_malloc(payload_length)));
+                pixels.reset(static_cast<unsigned char *>(SDL_malloc(expected_pixels * 4)));
+                pixel_bytes = expected_pixels * 4;
+                if (payload && pixels &&
+                    std::fread(payload.get(), 1, payload_length, file) == payload_length)
+                {
+                    decoded = DecodeRadioAtlas(payload.get(), payload_length, expected_pixels,
+                                               pixels.get());
+                }
             }
         }
         else
@@ -346,9 +354,10 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
                 static_cast<std::size_t>(width) <= std::numeric_limits<std::size_t>::max() /
                                                        (static_cast<std::size_t>(height) * 4))
             {
-                pixels.resize(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) *
-                              4);
-                decoded = std::fread(pixels.data(), 1, pixels.size(), file) == pixels.size();
+                pixel_bytes =
+                    static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4;
+                pixels.reset(static_cast<unsigned char *>(SDL_malloc(pixel_bytes)));
+                decoded = pixels && std::fread(pixels.get(), 1, pixel_bytes, file) == pixel_bytes;
             }
         }
         std::fclose(file);
@@ -356,7 +365,7 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
             return false;
 
         SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormatFrom(
-            pixels.data(), width, height, 32, width * 4, SDL_PIXELFORMAT_BGRA32);
+            pixels.get(), width, height, 32, width * 4, SDL_PIXELFORMAT_BGRA32);
         if (!surface)
             return false;
 
@@ -372,23 +381,23 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
             return false;
         }
 
-        auto *app_texture = new AppTexture;
+        auto *app_texture = new (std::nothrow) AppTexture;
+        if (!app_texture)
+        {
+            SDL_DestroyTexture(texture);
+            return false;
+        }
         app_texture->texture = texture;
         app_texture->width = width;
         app_texture->height = height;
         app_texture->exact_pixels = source.find("lvgl-bitmap") != Rml::String::npos;
-        app_texture->rgba.resize(pixels.size());
-        for (std::size_t i = 0; i < pixels.size(); i += 4)
-        {
-            app_texture->rgba[i + 0] = pixels[i + 2];
-            app_texture->rgba[i + 1] = pixels[i + 1];
-            app_texture->rgba[i + 2] = pixels[i + 0];
-            app_texture->rgba[i + 3] = pixels[i + 3];
-        }
         if (app_texture->exact_pixels)
         {
+            for (std::size_t i = 0; i < pixel_bytes; i += 4)
+                std::swap(pixels.get()[i], pixels.get()[i + 2]);
+            app_texture->rgba = std::move(pixels);
             app_texture->surface = SDL_CreateRGBSurfaceWithFormatFrom(
-                app_texture->rgba.data(), width, height, 32, width * 4, SDL_PIXELFORMAT_RGBA32);
+                app_texture->rgba.get(), width, height, 32, width * 4, SDL_PIXELFORMAT_RGBA32);
             if (!app_texture->surface ||
                 SDL_SetSurfaceBlendMode(app_texture->surface, SDL_BLENDMODE_BLEND) != 0)
             {
@@ -423,12 +432,15 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
         if (!texture)
             return false;
 
-        auto *app_texture = new AppTexture;
+        auto *app_texture = new (std::nothrow) AppTexture;
+        if (!app_texture)
+        {
+            SDL_DestroyTexture(texture);
+            return false;
+        }
         app_texture->texture = texture;
         app_texture->width = dimensions.x;
         app_texture->height = dimensions.y;
-        app_texture->rgba.assign(source, source + static_cast<std::size_t>(dimensions.x) *
-                                                      static_cast<std::size_t>(dimensions.y) * 4);
         texture_handle = reinterpret_cast<Rml::TextureHandle>(app_texture);
         return true;
     }
@@ -457,6 +469,16 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
     }
 
   private:
+    struct SdlFree
+    {
+        void operator()(void *allocation) const noexcept
+        {
+            SDL_free(allocation);
+        }
+    };
+
+    using SdlBuffer = std::unique_ptr<unsigned char, SdlFree>;
+
     struct AppTexture
     {
         SDL_Texture *texture = nullptr;
@@ -464,7 +486,7 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
         int width = 0;
         int height = 0;
         bool exact_pixels = false;
-        std::vector<Rml::byte> rgba;
+        SdlBuffer rgba;
     };
 
     static std::uint16_t ReadLe16(const unsigned char *value)
@@ -479,13 +501,13 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
                (static_cast<std::uint32_t>(value[3]) << 24);
     }
 
-    static bool DecodeRadioAtlas(const std::vector<unsigned char> &payload, std::size_t pixel_count,
-                                 std::vector<unsigned char> &pixels)
+    static bool DecodeRadioAtlas(const unsigned char *payload, std::size_t payload_size,
+                                 std::size_t pixel_count, unsigned char *pixels)
     {
-        pixels.assign(pixel_count * 4, 255);
+        std::memset(pixels, 255, pixel_count * 4);
         std::size_t input = 0;
         std::size_t output = 0;
-        while (input < payload.size() && output < pixel_count)
+        while (input < payload_size && output < pixel_count)
         {
             const unsigned char token = payload[input++];
             const std::size_t length = static_cast<std::size_t>(token & 0x7f) + 1;
@@ -499,7 +521,7 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
             else
             {
                 const std::size_t bytes = (length + 1) / 2;
-                if (bytes > payload.size() - input)
+                if (bytes > payload_size - input)
                     return false;
                 for (std::size_t index = 0; index < length; ++index)
                 {
@@ -513,7 +535,7 @@ class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
             }
             output += length;
         }
-        return input == payload.size() && output == pixel_count;
+        return input == payload_size && output == pixel_count;
     }
 
     struct PixelCopy
