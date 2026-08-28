@@ -149,8 +149,8 @@ The PS5-only boundary is documented in [Testing](docs/TESTING.md).
 
 GitHub Actions runs linting, every host test, deterministic runtime
 reproduction, and an FFPFSC build. When an exact `contentVersion` tag is
-pushed, the workflow publishes only the verified `.ffpfsc` image and its
-SHA-256 checksum.
+pushed, the workflow carries the build-time `SHA256SUMS` forward, verifies it
+again, and publishes exactly the `.ffpfsc` image and checksum file.
 
 ## Source layout
 

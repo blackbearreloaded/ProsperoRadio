@@ -164,7 +164,12 @@ class ToolTests(unittest.TestCase):
         self.assertIn("run: make ffpfsc", workflow)
         self.assertNotIn("make packages", workflow)
         self.assertNotIn(".ffpkg", workflow)
-        self.assertIn('assets=("$IMAGE" "release/SHA256SUMS")', workflow)
+        self.assertIn('sha256sum "$TITLE_ID.ffpfsc" > SHA256SUMS', workflow)
+        self.assertIn("dist/SHA256SUMS", workflow)
+        self.assertIn("Expected exactly one FFPFSC image and SHA256SUMS.", workflow)
+        self.assertIn("sha256sum -c SHA256SUMS", workflow)
+        self.assertIn('assets=("release/$IMAGE" "release/$CHECKSUM")', workflow)
+        self.assertIn("gh release delete-asset", workflow)
 
 
 if __name__ == "__main__":
