@@ -265,6 +265,14 @@ fi
     -L "$sdk_root/target/lib" -e _start -o "$build/llvm-pie.elf" "${link_inputs[@]}" \
     "${linker_import_flags[@]}" \
     --as-needed "$sdk_root"/target/lib/*.so
+readelf_tool=$(command -v llvm-readelf-18 || command -v llvm-readelf || command -v readelf)
+for compatibility_symbol in fchown lstat; do
+    if "$readelf_tool" --symbols --wide "$build/llvm-pie.elf" |
+        grep -Eq "UND[[:space:]]+$compatibility_symbol$"; then
+        echo "SQLite compatibility symbol remained unresolved: $compatibility_symbol" >&2
+        exit 2
+    fi
+done
 "$tool" link --in "$build/llvm-pie.elf" --out "$build/eboot.elf" \
     --stub-dir "$sdk_root/target/lib" "${builder_stub_args[@]}" --module-sdk "$module_sdk" \
     --companion-sdk "$companion_sdk" --file-name eboot.elf

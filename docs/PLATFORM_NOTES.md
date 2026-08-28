@@ -33,6 +33,12 @@ environment.
 - SaveData setup is not included. Use `/download0` for ordinary configuration
   and provide export/import for data that must survive title removal or cache
   management.
+- On the tested title sandbox, `lstat("/download0")` returns `EPERM` while
+  `stat("/download0")` succeeds. PacBrew SQLite canonicalizes every database
+  path component with `lstat`, so PSRadio supplies a narrow compatibility
+  implementation that delegates `lstat` to `stat` for its fixed
+  `/download0/radio-browser.sqlite3` path. The build fails if this shim or the
+  required `fchown` shim is not linked locally.
 
 ## Home-screen presentation
 

@@ -133,3 +133,16 @@ Nothing is installed globally by these optional bootstrappers.
 
 Keep a positive `downloadDataSize` in `sce_sys/param.json`, rebuild, and stage the
 new generated directory. Do not attempt to write to `/app0`.
+
+## PSRadio reports `Database unavailable`
+
+- Confirm `/download0` is mounted and writable for `PPSA99001`.
+- Build the current source instead of linking an older `sqlite_compat.cpp`.
+  `make app` verifies that both `lstat` and `fchown` resolve to PSRadio's local
+  SQLite compatibility boundary.
+- On the tested PS5 sandbox, native `lstat("/download0")` fails with `EPERM`.
+  Without the compatibility boundary, SQLite reports `SQLITE_CANTOPEN` even
+  though ordinary files can be created there.
+- A first launch builds `radio-browser-next.sqlite3` before atomically promoting
+  it to `radio-browser.sqlite3`. Leave the app running while this initial sync
+  is in progress; do not force-close the title during active database writes.
