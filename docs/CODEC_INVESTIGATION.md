@@ -5,6 +5,11 @@ separates decoder availability from
 container and delivery support so the application does not infer a usable
 codec path from a library name or a station's metadata.
 
+The complete reusable research record—including reverse-engineering notes,
+native API probes, recovered interfaces, and device evidence—is published in
+[PS5 Audio Decoding Research](https://github.com/blackbearreloaded/ps5-audio-decoding-research).
+This document keeps the PSRadio-specific decisions and integration boundaries.
+
 ## Decision summary
 
 | Format | Native investigation | Current decision |

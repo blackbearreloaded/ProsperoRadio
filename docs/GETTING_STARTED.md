@@ -12,8 +12,8 @@ On Ubuntu, Debian, or WSL:
     sudo apt install curl git make pkg-config python3 python3-venv tar unzip wget \
       clang-18 clang-format-18 clang-tidy-18 lld-18 libsqlite3-dev
 
-Install .NET SDK 8 or newer only when building an FFPKG package. The FFPFSC
-target uses the pinned MkPFS bootstrapper instead.
+The production FFPFSC target uses the pinned MkPFS bootstrapper. .NET SDK 8 or
+newer is needed only for the optional local FFPKG target.
 
 ## 2. Clone and inspect
 
@@ -53,16 +53,16 @@ metadata, shell deployment dry runs, formatting, and static analysis.
 
 ## 5. Build release forms
 
-    make packages
+    make ffpfsc
 
 This produces:
 
     dist/PPSA99001/           development title folder
-    dist/PPSA99001.ffpkg      UFS2 package
     dist/PPSA99001.ffpfsc     compressed package
 
 The full title folder is the preferred development artifact. Never deploy only
-eboot.bin.
+eboot.bin. `make ffpkg` remains available for optional local UFS2 packaging,
+but CI and GitHub Releases intentionally contain only FFPFSC.
 
 ## 6. Deploy a development folder
 
@@ -88,8 +88,7 @@ creating a release tag:
     git push origin main 01.000.003
 
 GitHub Actions rejects a tag that does not exactly match contentVersion and
-publishes the verified title folder archive, FFPKG, FFPFSC, runtime companion,
-and checksums.
+publishes the verified FFPFSC image with its SHA-256 checksum.
 
 For source architecture, dependencies, and PS5-only validation, continue with
 [Architecture](ARCHITECTURE.md), [Template port notes](TEMPLATE_PORT.md),

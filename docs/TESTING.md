@@ -13,7 +13,8 @@ Browser server.
 | make test-integration | Run tool/UI Python tests and every host codec/catalogue regression. |
 | make test | Run the complete host suite. |
 | make check | Run linting, all host tests, and a full title-folder build. |
-| make packages | Build the folder, FFPKG, and FFPFSC release forms. |
+| make ffpfsc | Build the production folder and compressed FFPFSC image. |
+| make ffpkg | Build the optional local UFS2 image; CI does not publish it. |
 
 The host suite requires clang-18, clang++-18, and libsqlite3-dev.
 GoogleTest is fetched into ignored .deps/test/ and is never included in a PS5
@@ -92,8 +93,8 @@ Run:
 
     make lint
     make test
-    make packages
+    make ffpfsc
 
 A release tag must exactly equal contentVersion in sce_sys/param.json, for
 example 01.000.003. GitHub Actions repeats the same host gates and publishes
-only artifacts produced by the verified tag build.
+only the verified FFPFSC image and its SHA-256 checksum.

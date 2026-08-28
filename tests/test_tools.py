@@ -3,7 +3,7 @@
 # Copyright (C) 2026 BlackBearReloaded
 # SPDX-License-Identifier: GPL-3.0-or-later
 #
-# Exercises identity initialization and deployment resolution without a console.
+# Exercises identity, deployment, and release-workflow contracts without a console.
 
 import json
 import os
@@ -158,6 +158,13 @@ class ToolTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertIn("/data/homebrew/PPSA12345.ffpkg", result.stdout)
             self.assertIn("no network request was sent", result.stdout)
+
+    def test_release_workflow_builds_only_ffpfsc(self):
+        workflow = (ROOT / ".github/workflows/tooling.yml").read_text(encoding="utf-8")
+        self.assertIn("run: make ffpfsc", workflow)
+        self.assertNotIn("make packages", workflow)
+        self.assertNotIn(".ffpkg", workflow)
+        self.assertIn('assets=("$IMAGE" "release/SHA256SUMS")', workflow)
 
 
 if __name__ == "__main__":

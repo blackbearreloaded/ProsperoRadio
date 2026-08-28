@@ -198,15 +198,14 @@ resolved station URL
        Vorbis -> bounded stb_vorbis push-data CPU decoder
        FLAC / Ogg-FLAC -> bounded dr_flac callback CPU decoder
   -> channel conversion and 48 kHz resampling when required
-  -> eight-second decoded PCM ring
+  -> two-second decoded PCM ring
   -> dedicated PS5 AudioOut consumer
 ```
 
-The producer primes three seconds of decoded audio before initial playback and
-two seconds after an underrun. Network reads and decoding therefore continue
-independently of AudioOut's synchronous pacing, while the bounded eight-second
-capacity absorbs ordinary internet-stream delivery jitter without allowing
-unlimited latency or memory growth.
+The producer primes one second of decoded audio before initial playback and
+half a second after an underrun. Network reads and decoding therefore continue
+independently of AudioOut's synchronous pacing, while the bounded two-second
+capacity prevents unlimited latency or memory growth.
 
 An HLS discontinuity drains the old PCM sink, recreates the native AAC decoder,
 and clears partial transport/framing state before the next segment. This lets
@@ -260,8 +259,9 @@ The project is built directly from a clone of
 [`ps5-native-app-boilerplate`](https://github.com/blackbearreloaded/ps5-native-app-boilerplate).
 Clang 18 and lld build the C++20 application; the template-owned native C++
 toolchain then validates PS5 imports and writes the development FSELF. `make`,
-`make test`, `make lint`, `make packages`, and `make deploy` are the supported
-entry points. `.NET` is needed only for the optional UFS2 `.ffpkg` tool.
+`make test`, `make lint`, `make ffpfsc`, and `make deploy` are the primary
+entry points. `.NET` is needed only for the optional local UFS2 `.ffpkg` tool;
+CI and GitHub Releases build only FFPFSC.
 
 RmlUi requires RTTI in its static library, so PSRadio adds `-frtti` after the
 template's conservative C++ flags. Exceptions remain disabled. The template

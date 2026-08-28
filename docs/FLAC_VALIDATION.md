@@ -28,7 +28,7 @@ the same callback. The production limits are:
 - source blocks no larger than 8,192 PCM frames;
 - signed-16 output in chunks no larger than 4,096 frames;
 - CRC validation retained;
-- channel normalization, 48 kHz resampling, and the shared eight-second PCM
+- channel normalization, 48 kHz resampling, and the shared two-second PCM
   queue after decoding.
 
 Stop and station switching use the shared HTTP abort and PCM-discard path. A

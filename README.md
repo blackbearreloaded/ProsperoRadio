@@ -10,12 +10,19 @@ catalogue on the console, and plays supported live streams through the PS5
 audio stack. The fixed, controller-first interface is built with RmlUi HTML and
 RCSS, SDL2, and deterministic bitmap fonts.
 
-This branch is a template-based port: it starts from a clean clone of
-[`ps5-native-app-boilerplate`](https://github.com/blackbearreloaded/ps5-native-app-boilerplate)
-and preserves its C++20 build, test, FSELF, packaging, deployment, and release
-workflow. The completed PSRadio application is then layered on top. The port
-builds and passes all host regressions; perform a final hardware smoke test of
-the exact produced artifact before publishing a new release.
+## Project foundations
+
+> [!IMPORTANT]
+> **Built on the [PS5 Native App Boilerplate](https://github.com/blackbearreloaded/ps5-native-app-boilerplate).**
+> PSRadio preserves the template's modern C++20 structure, `.hpp` interfaces,
+> reproducible runtime, FSELF tooling, tests, deployment flow, and release
+> automation.
+
+> [!IMPORTANT]
+> **Audio work is documented in [PS5 Audio Decoding Research](https://github.com/blackbearreloaded/ps5-audio-decoding-research).**
+> The companion repository records the hardware-first decoder investigation,
+> reverse-engineering notes, native API probes, codec boundaries, and device
+> validation that informed PSRadio's audio implementation.
 
 | Identity | Value |
 | --- | --- |
@@ -43,10 +50,11 @@ the exact produced artifact before publishing a new release.
 - Resolve bounded M3U/PLS indirection, strip ICY metadata, and support the
   audio-only AAC HLS subset.
 
-Codec limits and the hardware-first decoder investigation are documented in
+App-specific codec limits and validation are documented in
 [Architecture](docs/ARCHITECTURE.md),
 [Codec investigation](docs/CODEC_INVESTIGATION.md), and
-[Roadmap](ROADMAP.md).
+[Roadmap](ROADMAP.md). The complete reusable research record lives in
+[PS5 Audio Decoding Research](https://github.com/blackbearreloaded/ps5-audio-decoding-research).
 
 ## Requirements
 
@@ -58,9 +66,9 @@ sudo apt install curl git make pkg-config python3 python3-venv tar unzip wget \
   clang-18 clang-format-18 clang-tidy-18 lld-18 libsqlite3-dev
 ```
 
-The optional `.ffpkg` target also needs .NET SDK 8 or newer. The repository
-downloads, verifies, and caches the public PS5 Payload SDK, zlib, PacBrew's
-SQLite port, GoogleTest, and optional packaging tools below ignored `.deps/`.
+The production `.ffpfsc` target uses the pinned MkPFS bootstrapper. The
+repository downloads, verifies, and caches the public PS5 Payload SDK, zlib,
+PacBrew's SQLite port, GoogleTest, and packaging tools below ignored `.deps/`.
 No proprietary SDK, system module, key, or game asset is included or fetched.
 
 Run a read-only prerequisite check before building:
@@ -79,20 +87,23 @@ change `PPSA99001` when updating PSRadio: changing it produces a separate PS5
 title rather than an update.
 
 ```bash
-# Folder for fast development deployment.
-make
+# Production release image (also assembles the complete title folder).
+make ffpfsc
 
-# Folder, .ffpkg, and .ffpfsc release outputs.
-make packages
+# Faster folder-only build for development deployment.
+make
 ```
 
 Outputs are written to:
 
 ```text
 dist/PPSA99001/           complete title folder
-dist/PPSA99001.ffpkg      UFS2 package
 dist/PPSA99001.ffpfsc     compressed package
 ```
+
+An optional local UFS2 `.ffpkg` target remains available for development; it
+is intentionally excluded from CI and GitHub Releases. See
+[Package formats](docs/FFPKG.md).
 
 The app is deliberately a **Game** category title so audio remains available
 while using Remote Play/Chiaki-ng. Stage the whole folder, not `eboot.bin`
@@ -113,7 +124,7 @@ each file through a temporary name, then publishes `eboot.bin` and
 make test            # C++ unit tests, UI/metadata tests, 16 codec/catalogue checks
 make lint            # formatting, static analysis, metadata, and shell checks
 make check           # lint + all host tests + complete folder build
-make packages        # folder + FFPKG + FFPFSC outputs
+make ffpfsc          # production folder + FFPFSC image
 ```
 
 The test suite runs entirely on the host and never contacts a console. It
@@ -123,9 +134,9 @@ Vorbis, FLAC, HLS/MPEG-TS, controller input, and Arabic/RTL text ordering.
 The PS5-only boundary is documented in [Testing](docs/TESTING.md).
 
 GitHub Actions runs linting, every host test, deterministic runtime
-reproduction, both package formats, and releases the verified FFPFSC, FFPKG,
-title-folder archive, runtime companion, and SHA-256 checksums when an exact
-`contentVersion` tag is pushed.
+reproduction, and an FFPFSC build. When an exact `contentVersion` tag is
+pushed, the workflow publishes only the verified `.ffpfsc` image and its
+SHA-256 checksum.
 
 ## Source layout
 

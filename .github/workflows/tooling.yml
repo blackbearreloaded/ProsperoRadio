@@ -1,4 +1,4 @@
-# ps5-native-app-boilerplate - Lint, build, and release validation.
+# PSRadio - Lint, test, build, and release validation.
 # Copyright (C) 2026 BlackBearReloaded
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   build:
-    name: Lint, build, and package
+    name: Lint, test, and build FFPFSC
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
@@ -34,11 +34,6 @@ jobs:
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.13"
-
-      - name: Set up .NET
-        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
-        with:
-          dotnet-version: "8.0.x"
 
       - name: Install native toolchain
         run: |
@@ -74,18 +69,14 @@ jobs:
       - name: Verify generated runtime is unchanged
         run: cd runtime && sha256sum -c libc.prx.sha256
 
-      - name: Build all output formats
-        run: make packages
+      - name: Build compressed FFPFSC
+        run: make ffpfsc
 
       - name: Upload build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: psradio-${{ github.sha }}
-          path: |
-            dist/${{ env.TITLE_ID }}/
-            dist/${{ env.TITLE_ID }}.ffpkg
-            dist/${{ env.TITLE_ID }}.ffpfsc
-            runtime/libc.prx
+          name: psradio-${{ github.sha }}-ffpfsc
+          path: dist/${{ env.TITLE_ID }}.ffpfsc
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
@@ -106,7 +97,7 @@ jobs:
         run: >-
           gh run download "$GITHUB_RUN_ID"
           --repo "$GITHUB_REPOSITORY"
-          --name "psradio-$GITHUB_SHA"
+          --name "psradio-$GITHUB_SHA-ffpfsc"
           --dir release
 
       - name: Prepare release assets
@@ -114,39 +105,23 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cd release
-          shopt -s nullglob
-          images=(dist/PPSA*.ffpfsc)
-          ufs_images=(dist/PPSA*.ffpkg)
-          app_dirs=(dist/PPSA*/)
-          runtime="runtime/libc.prx"
-          if (( ${#images[@]} != 1 || ${#ufs_images[@]} != 1 || ${#app_dirs[@]} != 1 )) || [[ ! -f $runtime ]]; then
-            echo "Expected one FFPFSC image, one FFPKG image, one app folder, and libc.prx." >&2
+          mapfile -d '' images < <(find release -type f -name 'PPSA*.ffpfsc' -print0)
+          if (( ${#images[@]} != 1 )); then
+            echo "Expected exactly one FFPFSC image." >&2
             exit 1
           fi
-          title_id="${app_dirs[0]#dist/}"
-          title_id="${title_id%/}"
-          folder_archive="${title_id}-folder.zip"
-          (cd dist && python3 -m zipfile -c "../$folder_archive" "$title_id")
-          sha256sum "${images[0]}" "${ufs_images[0]}" "$folder_archive" |
-            sed 's#  dist/#  #' > SHA256SUMS
-          sha256sum "$runtime" | sed 's#  runtime/libc.prx#  libc.prx#' >> SHA256SUMS
+          image_name=$(basename "${images[0]}")
+          (cd "$(dirname "${images[0]}")" && sha256sum "$image_name") > release/SHA256SUMS
           echo "image=${images[0]}" >> "$GITHUB_OUTPUT"
-          echo "ufs_image=${ufs_images[0]}" >> "$GITHUB_OUTPUT"
-          echo "folder=$folder_archive" >> "$GITHUB_OUTPUT"
-          echo "runtime=$runtime" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           IMAGE: ${{ steps.package.outputs.image }}
-          UFS_IMAGE: ${{ steps.package.outputs.ufs_image }}
-          FOLDER: ${{ steps.package.outputs.folder }}
-          RUNTIME: ${{ steps.package.outputs.runtime }}
         shell: bash
         run: |
           set -euo pipefail
-          assets=("release/$IMAGE" "release/$UFS_IMAGE" "release/$FOLDER" "release/$RUNTIME" "release/SHA256SUMS")
+          assets=("$IMAGE" "release/SHA256SUMS")
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber --repo "$GITHUB_REPOSITORY"
           else

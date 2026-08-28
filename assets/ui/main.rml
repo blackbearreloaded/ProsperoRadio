@@ -6,8 +6,8 @@
     <body>
         <div id="app-shell">
             <header id="header">
-                <img id="brand-mark" src="icons/psradio.tga" width="64" height="64" alt="" />
-                <span class="brand-name">PSRadio</span>
+                <img id="brand-mark" src="icons/psradio.tga" width="56" height="56" alt="" />
+                <span id="brand-name">PSRadio</span>
                 <span id="brand-version">v{{PSRADIO_VERSION}}</span>
                 <span class="browse-l1">L1</span>
                 <span class="browse-label">Browse</span>

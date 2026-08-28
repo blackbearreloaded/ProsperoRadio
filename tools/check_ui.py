@@ -22,7 +22,7 @@ FIXED_IDS = {
     "play-button", "play-icon", "play-label", "now-art", "now-badge", "now-name",
     "now-meta", "now-state", "credit-button", "connection-dot", "connection-label",
     "search-overlay", "search-query", "search-query-label", "search-reset", "search-apply",
-    "credits-overlay", "credits-close", "brand-mark", "brand-version",
+    "credits-overlay", "credits-close", "brand-mark", "brand-name", "brand-version",
 }
 
 
@@ -57,6 +57,9 @@ def main() -> int:
     assert re.fullmatch(r"[0-9]{2}\.[0-9]{3}\.[0-9]{3}", project["contentVersion"])
     assert re.fullmatch(r"[0-9]{2}\.[0-9]{2}", project["masterVersion"])
     assert project["titleId"] == "PPSA99001"
+    brand_mark = root.find(".//*[@id='brand-mark']")
+    assert (brand_mark.get("width"), brand_mark.get("height")) == ("56", "56")
+    assert root.find(".//*[@id='brand-name']").text == "PSRadio"
     assert root.find(".//*[@id='brand-version']").text == "v{{PSRADIO_VERSION}}"
     for source in ("src/radio_app.cpp", "src/radio_input.cpp", "src/radio_ime.cpp",
                    "src/radio_service.cpp", "src/radio_text.cpp"):
@@ -91,6 +94,9 @@ def main() -> int:
 
     css = (ui / "styles" / "app.rcss").read_text(encoding="utf-8")
     assert "left: 240px;" in css and "width: 1440px;" in css
+    assert "#brand-name" in css and "#brand-version" in css
+    assert css.count("left: 140px;") >= 2
+    assert "top: 52px;" in css
     assert "#search-query.focused" in css and "#search-apply.focused" in css
     assert "#credit-button.focused" in css and "#play-button.focused" in css
     play_icon = root.find(".//*[@id='play-icon']")

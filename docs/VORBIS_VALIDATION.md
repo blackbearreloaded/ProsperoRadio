@@ -15,7 +15,7 @@ push-data API over the active cancellable HTTP request. Its fixed ceilings are:
 - one or two channels at 8 to 192 kHz;
 - 8,192 decoded frames per channel per call;
 - planar float to interleaved signed-16 conversion before the shared channel
-  normalizer, 48 kHz resampler, and eight-second PCM queue.
+  normalizer, 48 kHz resampler, and two-second PCM queue.
 
 Stop and station switching use the existing HTTP abort and queue-discard path.
 A reconnect recreates the decoder instead of carrying codec state across the

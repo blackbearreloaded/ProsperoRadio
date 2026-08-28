@@ -13,4 +13,4 @@ This directory contains the complete RmlUi interface shipped with PSRadio.
 
 Native state and controller behavior are implemented in `src/radio_app.cpp`.
 The document performs no networking, persistence, or audio work. See
-[`docs/ARCHITECTURE.md`](../docs/ARCHITECTURE.md) for the complete runtime flow.
+[`docs/ARCHITECTURE.md`](../../docs/ARCHITECTURE.md) for the complete runtime flow.

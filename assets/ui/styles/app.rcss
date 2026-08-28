@@ -57,33 +57,34 @@ button {
 #brand-mark {
     position: absolute;
     left: 64px;
-    top: 16px;
-    width: 64px;
-    height: 64px;
+    top: 20px;
+    width: 56px;
+    height: 56px;
 }
 
-.brand-name {
+#brand-name {
     position: absolute;
-    left: 144px;
-    top: 23px;
-    width: 300px;
-    height: 50px;
+    left: 140px;
+    top: 14px;
+    width: 250px;
+    height: 38px;
     overflow: visible;
     color: #f1f5f7;
     font-size: 32px;
-    line-height: 50px;
+    line-height: 38px;
+    letter-spacing: 1px;
 }
 
 #brand-version {
     position: absolute;
-    left: 286px;
-    top: 30px;
-    width: 100px;
-    height: 36px;
+    left: 140px;
+    top: 52px;
+    width: 180px;
+    height: 30px;
     overflow: visible;
     color: #6cdbd9;
     font-size: 20px;
-    line-height: 32px;
+    line-height: 30px;
 }
 
 .browse-l1, .browse-r1 {
