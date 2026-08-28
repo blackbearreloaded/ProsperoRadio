@@ -1547,7 +1547,7 @@ static bool recover_staging_store_if_available(void)
     SDL_LockMutex(g_store_mutex);
     const size_t active_count = radio_catalog_store_station_count(&g_catalog_store);
     SDL_UnlockMutex(g_store_mutex);
-    if (active_count != 0U || access(CATALOG_STAGING_PATH, F_OK) != 0)
+    if (active_count != 0U)
         return false;
 
     radio_catalog_store_t staging;

@@ -682,9 +682,8 @@ void RadioApp::RefreshConnection(const radio_service_status_t &status)
     }
     else if (status.catalog_state == RADIO_CATALOG_ERROR)
     {
-        std::snprintf(progress, sizeof(progress), "%s | %d",
-                      status.catalog_size ? "Offline cache" : "Database unavailable",
-                      status.error_code);
+        std::snprintf(progress, sizeof(progress), "%s %d",
+                      status.catalog_size ? "Offline cache" : "DB error", status.error_code);
         text = progress;
         error = true;
     }
