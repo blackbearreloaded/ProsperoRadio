@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="sce_sys/icon0.png" width="128" alt="PS5 Radio icon">
+</p>
+
 # PS5 Radio
 
 [![Build](https://github.com/blackbearreloaded/ps5-radio/actions/workflows/tooling.yml/badge.svg)](https://github.com/blackbearreloaded/ps5-radio/actions/workflows/tooling.yml)
