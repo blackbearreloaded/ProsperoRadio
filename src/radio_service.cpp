@@ -44,6 +44,7 @@
 #define FAVORITES_TEMP_PATH "/download0/radio-browser-favorites.tmp"
 #define CATALOG_DATABASE_PATH "/download0/radio-browser.sqlite3"
 #define CATALOG_STAGING_PATH "/download0/radio-browser-next.sqlite3"
+#define AUDIO_TELEMETRY_PATH "/download0/psradio-audio-telemetry.txt"
 #define CATALOG_PAGE_LIMIT 10000U
 #define CATALOG_WRITE_BATCH 256U
 #define CATALOG_VIEW_CAPACITY 16U
@@ -217,7 +218,23 @@ struct audio_sink_t
     bool input_finished;
     bool cancel;
     uint64_t output_frames;
+    uint64_t max_output_gap_ms;
+    size_t min_gap_queue_blocks;
+    unsigned output_gap_count;
+    unsigned queue_underruns;
     int output_result;
+};
+
+struct audio_telemetry_t
+{
+    uint64_t output_frames;
+    uint64_t max_output_gap_ms;
+    uint64_t http_reads;
+    uint64_t max_http_read_ms;
+    size_t min_gap_queue_blocks;
+    unsigned output_gap_count;
+    unsigned queue_underruns;
+    unsigned http_stall_count;
 };
 
 struct catalog_task_t
@@ -312,6 +329,7 @@ static int g_net_pool = -1;
 static int g_ssl_context = -1;
 static int g_http_context = -1;
 static int g_http_template = -1;
+static audio_telemetry_t g_audio_telemetry;
 
 static void playback_request_set(int request);
 static void playback_request_clear(int request);
@@ -1690,8 +1708,7 @@ static int sink_audio_thread(void *argument)
         if (started && sink->queue.count == 0U && !sink->input_finished && !sink->cancel &&
             !SDL_AtomicGet(&g_stop_playback))
         {
-            fprintf(stderr, "[PSRadio][audio] queue underrun after %llu output frames\n",
-                    static_cast<unsigned long long>(sink->output_frames));
+            ++sink->queue_underruns;
             started = false;
             SDL_UnlockMutex(sink->mutex);
             if (!SDL_AtomicGet(&g_stop_playback))
@@ -1725,9 +1742,12 @@ static int sink_audio_thread(void *argument)
         if (previous_output_tick != 0U &&
             output_tick - previous_output_tick >= AUDIO_OUTPUT_GAP_LOG_MS)
         {
-            fprintf(stderr, "[PSRadio][audio] output gap=%llums queued=%zu\n",
-                    static_cast<unsigned long long>(output_tick - previous_output_tick),
-                    queued_blocks);
+            const uint64_t gap = output_tick - previous_output_tick;
+            ++sink->output_gap_count;
+            if (gap > sink->max_output_gap_ms)
+                sink->max_output_gap_ms = gap;
+            if (queued_blocks < sink->min_gap_queue_blocks)
+                sink->min_gap_queue_blocks = queued_blocks;
         }
         previous_output_tick = output_tick;
         const int result = sceAudioOutOutput(sink->handle, block);
@@ -1780,6 +1800,7 @@ static int sink_open(audio_sink_t *sink, uint32_t input_rate, uint32_t channels)
         sink->can_write == nullptr)
         goto fail;
     pcm_queue_init(&sink->queue, AUDIO_QUEUE_BLOCKS);
+    sink->min_gap_queue_blocks = AUDIO_QUEUE_BLOCKS;
 
     sceAudioOutInit();
     sink->handle =
@@ -1923,6 +1944,17 @@ static uint64_t sink_close(audio_sink_t *sink)
     SDL_WaitThread(sink->thread, nullptr);
     const uint64_t output_frames = sink->output_frames;
 
+    g_audio_telemetry.output_frames += sink->output_frames;
+    g_audio_telemetry.output_gap_count += sink->output_gap_count;
+    g_audio_telemetry.queue_underruns += sink->queue_underruns;
+    if (sink->max_output_gap_ms > g_audio_telemetry.max_output_gap_ms)
+        g_audio_telemetry.max_output_gap_ms = sink->max_output_gap_ms;
+    if (sink->output_gap_count != 0U &&
+        sink->min_gap_queue_blocks < g_audio_telemetry.min_gap_queue_blocks)
+    {
+        g_audio_telemetry.min_gap_queue_blocks = sink->min_gap_queue_blocks;
+    }
+
     sceAudioOutOutput(sink->handle, nullptr);
     sceAudioOutClose(sink->handle);
     SDL_DestroyCond(sink->can_write);
@@ -1957,11 +1989,11 @@ static int http_stream_read(void *context, void *data, size_t size)
     const uint64_t started_at = SDL_GetTicks64();
     const int result = sceHttpReadData(*(const int *)context, data, size);
     const uint64_t elapsed = SDL_GetTicks64() - started_at;
+    ++g_audio_telemetry.http_reads;
+    if (elapsed > g_audio_telemetry.max_http_read_ms)
+        g_audio_telemetry.max_http_read_ms = elapsed;
     if (elapsed >= AUDIO_HTTP_STALL_LOG_MS)
-    {
-        fprintf(stderr, "[PSRadio][audio] HTTP read stalled=%llums requested=%zu received=%d\n",
-                static_cast<unsigned long long>(elapsed), size, result);
-    }
+        ++g_audio_telemetry.http_stall_count;
     return result;
 }
 
@@ -2991,9 +3023,32 @@ static int play_stream(const radio_station_t *station, uint64_t *output_frames)
     return result;
 }
 
+static void write_audio_telemetry(const radio_station_t *station, int result)
+{
+    FILE *file = fopen(AUDIO_TELEMETRY_PATH, "w");
+    if (file == nullptr)
+        return;
+    fprintf(file,
+            "station=%s\ncodec=%s\nresult=%d\noutput_frames=%llu\n"
+            "queue_underruns=%u\noutput_gaps=%u\nmax_output_gap_ms=%llu\n"
+            "min_gap_queue_blocks=%zu\nhttp_reads=%llu\nhttp_stalls=%u\n"
+            "max_http_read_ms=%llu\n",
+            station->name, station->codec, result,
+            static_cast<unsigned long long>(g_audio_telemetry.output_frames),
+            g_audio_telemetry.queue_underruns, g_audio_telemetry.output_gap_count,
+            static_cast<unsigned long long>(g_audio_telemetry.max_output_gap_ms),
+            g_audio_telemetry.min_gap_queue_blocks,
+            static_cast<unsigned long long>(g_audio_telemetry.http_reads),
+            g_audio_telemetry.http_stall_count,
+            static_cast<unsigned long long>(g_audio_telemetry.max_http_read_ms));
+    fclose(file);
+}
+
 static void *playback_thread(void *station_copy)
 {
     auto *station = static_cast<radio_station_t *>(station_copy);
+    memset(&g_audio_telemetry, 0, sizeof(g_audio_telemetry));
+    g_audio_telemetry.min_gap_queue_blocks = AUDIO_QUEUE_BLOCKS;
     int result = -1;
     unsigned failures = 0U;
     for (;;)
@@ -3015,6 +3070,7 @@ static void *playback_thread(void *station_copy)
             SDL_Delay(25U);
         }
     }
+    write_audio_telemetry(station, result);
     free(station);
     if (SDL_AtomicGet(&g_stop_playback) || SDL_AtomicGet(&g_shutting_down))
     {
