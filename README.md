@@ -10,7 +10,9 @@ catalogue on the console, and plays supported live streams through the PS5
 audio stack. The fixed, controller-first interface is built with RmlUi HTML and
 RCSS, SDL2, and deterministic bitmap fonts.
 
-![PS5 Radio browsing and playing a live station](docs/images/ps5-radio.png)
+Demo available by clicking on the image below.
+
+[![PS5 Radio browsing and playing a live station](docs/images/ps5-radio.png)](https://i.imgur.com/JfsM4Ok.mp4)
 
 ## Project foundations
 
