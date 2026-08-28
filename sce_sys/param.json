@@ -9,7 +9,7 @@
   "attribute3": 0,
   "conceptId": "99001",
   "contentBadgeType": 1,
-  "contentId": "UP9000-PPSA99001_00-PSRADIOAPP000001",
+  "contentId": "UP9000-PPSA99001_00-PS5RADIOAPP00001",
   "contentVersion": "01.000.002",
   "downloadDataSize": 256,
   "gameIntent": {
@@ -22,7 +22,7 @@
   "localizedParameters": {
     "defaultLanguage": "en-US",
     "en-US": {
-      "titleName": "PSRadio"
+      "titleName": "PS5 Radio"
     }
   },
   "masterVersion": "01.00",

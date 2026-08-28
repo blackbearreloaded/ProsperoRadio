@@ -1,6 +1,6 @@
 # FLAC validation
 
-PSRadio decodes native-container FLAC and Ogg-encapsulated FLAC with a bounded CPU
+PS5 Radio decodes native-container FLAC and Ogg-encapsulated FLAC with a bounded CPU
 fallback. The hardware-first firmware investigation found no callable native
 FLAC decoder: the referenced `libSceAudiodecCpuFlac.prx` plug-in is CPU-based,
 absent from the inspected firmware set, and internal module `0x80000053`

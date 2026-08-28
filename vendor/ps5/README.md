@@ -1,7 +1,7 @@
 # PS5 dependency snapshot
 
 This directory contains the PS5 headers, static archives, and import stubs used
-by the validated PSRadio build. They are checked in so a repository clone uses
+by the validated PS5 Radio build. They are checked in so a repository clone uses
 the same application-facing dependency set.
 
 - SDL2 headers and `libSDL2.a` provide the PS5 window, software renderer, and

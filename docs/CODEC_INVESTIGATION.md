@@ -1,6 +1,6 @@
 # Codec investigation
 
-This document records PSRadio's hardware-first codec investigation. It
+This document records PS5 Radio's hardware-first codec investigation. It
 separates decoder availability from
 container and delivery support so the application does not infer a usable
 codec path from a library name or a station's metadata.
@@ -8,15 +8,15 @@ codec path from a library name or a station's metadata.
 The complete reusable research record—including reverse-engineering notes,
 native API probes, recovered interfaces, and device evidence—is published in
 [PS5 Audio Decoding Research](https://github.com/blackbearreloaded/ps5-audio-decoding-research).
-This document keeps the PSRadio-specific decisions and integration boundaries.
+This document keeps the PS5 Radio-specific decisions and integration boundaries.
 
 ## Decision summary
 
 | Format | Native investigation | Current decision |
 | --- | --- | --- |
 | AAC / HE-AAC | AAC through `libSceAudiodec` reaches the device-backed AJM service. A dedicated HE-AAC v2 probe confirms 48 kHz SBR reconstruction, but every valid public configuration exposes Parametric Stereo as mono. | Keep native AAC. Use the timing-safe AAC-core fallback and stereo normalization for HE-AAC v2; do not claim unavailable native PS stereo. |
-| MP3 | Public codec `0x0002` reaches AJM and is hardware-validated in PSRadio. | Keep the native decoder. |
-| Ogg Opus | `libSceOpusDec` and `libSceOpusCeltDec` reach AJMI/AJM and are hardware-validated in PSRadio. | Keep the native dual-decoder path. |
+| MP3 | Public codec `0x0002` reaches AJM and is hardware-validated in PS5 Radio. | Keep the native decoder. |
+| Ogg Opus | `libSceOpusDec` and `libSceOpusCeltDec` reach AJMI/AJM and are hardware-validated in PS5 Radio. | Keep the native dual-decoder path. |
 | Ogg Vorbis | No Vorbis branch exists in the recovered AvPlayer decoder factory. The inspected AJM Vorbis helper prepares headers but exposes no PCM decode job. | Use the bundled, bounded `stb_vorbis` CPU decoder; live playback, stop, AAC switching, and an eleven-minute PS5 run are validated. |
 | FLAC | The firmware references an internal CPU FLAC plug-in, but it is absent from the inspected module inventory and cannot be loaded by the application. No AJM or AvPlayer FLAC decode branch was found. | Use the bundled, bounded `dr_flac` CPU decoder for native and Ogg-encapsulated FLAC; host and PS5 playback/lifecycle validation pass. |
 | HLS | HLS is segmented delivery, not an audio codec. The bounded playlist and MPEG-TS/AAC path now passes host checks and PS5 lifecycle tests. | Keep unencrypted, audio-only MPEG-TS HLS carrying AAC; reject unsupported HLS shapes explicitly. |
@@ -41,7 +41,7 @@ valid HE configuration still reported one decoded channel. The AvPlayer-style
 of AvPlayer confirmed its 28-byte internal parameter shape, but did not expose
 a callable public path that returns Parametric Stereo as two channels.
 
-This is a measured platform boundary, not a container-parser failure. PSRadio
+This is a measured platform boundary, not a container-parser failure. PS5 Radio
 retains native AAC offload, correct timing, and bounded stereo normalization;
 it does not add a software HE-AAC decoder solely to synthesize PS stereo.
 
@@ -63,7 +63,7 @@ and the plug-in itself was absent from the inspected firmware library set.
 stable for the observation window. The receipt was:
 
 ```text
-PSRADIO_FLAC_NATIVE module=0x80000053 load=-2141581312 load_hex=0x805a1000 unload=0
+PS5_RADIO_FLAC_NATIVE module=0x80000053 load=-2141581312 load_hex=0x805a1000 unload=0
 ```
 
 The module therefore was not loadable from the tested application context.
@@ -102,7 +102,7 @@ playback worker and PCM queue used by the native codecs.
 single-file decoder available under public-domain or MIT terms. Its push-data
 API accepts caller-buffered Ogg bytes, reports exactly how many bytes it
 consumed, and supports resynchronization after discontinuous input. This maps
-directly to PSRadio's cancellable network producer without adding libogg or a
+directly to PS5 Radio's cancellable network producer without adding libogg or a
 new I/O abstraction.
 
 Implementation constraints:
@@ -122,7 +122,7 @@ queue. The decoder is recreated after a reconnect. See
 [`VORBIS_VALIDATION.md`](VORBIS_VALIDATION.md) for host and PS5 evidence.
 
 The upstream API notes that the Vorbis specification does not bound an
-individual frame. PSRadio therefore enforces its own memory ceiling and fails
+individual frame. PS5 Radio therefore enforces its own memory ceiling and fails
 the station cleanly instead of growing buffers indefinitely.
 
 [Tremor](https://xiph.org/vorbis/) remains a valid BSD-licensed, integer-only
@@ -172,7 +172,7 @@ bounded components for:
 - MPEG-TS PAT, PMT, PES, and ADTS extraction.
 
 That transport parser currently requires a video PID and accepts optional AAC.
-PSRadio needs only a small adaptation that accepts an audio-only PMT with one
+PS5 Radio needs only a small adaptation that accepts an audio-only PMT with one
 AAC ADTS stream and submits complete ADTS frames to the already validated
 native AAC decoder.
 
@@ -186,7 +186,7 @@ The implemented parser preserves PES state when a repeated PMT announces the
 same AAC PID. Resetting that state at every PMT had truncated an AAC access unit
 in a current Radio Browser segment and surfaced only as generic AudioDec error
 `0x807f0000`. After the fix, the extracted ADTS bytes are identical to FFmpeg's
-demuxed output for the captured segment. For `mp4a.40.29` manifests, PSRadio
+demuxed output for the captured segment. For `mp4a.40.29` manifests, PS5 Radio
 also propagates the declared stereo intent into the existing native-decoder
 workaround. The stable path decodes the 24 kHz mono AAC core and normalizes it
 to the 48 kHz stereo AudioOut contract instead of enabling the native mode that

@@ -1,4 +1,4 @@
-// PSRadio - Native PlayStation 5 radio application.
+// PS5 Radio - Native PlayStation 5 radio application.
 // Copyright (C) 2026 BlackBearReloaded
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -9,22 +9,22 @@
 #include <string.h>
 
 #if defined(__clang__)
-#define PSRADIO_VORBIS_NO_OPT __attribute__((noinline, optnone))
+#define PS5_RADIO_VORBIS_NO_OPT __attribute__((noinline, optnone))
 #else
-#define PSRADIO_VORBIS_NO_OPT
+#define PS5_RADIO_VORBIS_NO_OPT
 #endif
 
-static PSRADIO_VORBIS_NO_OPT double vorbis_sin(double value)
+static PS5_RADIO_VORBIS_NO_OPT double vorbis_sin(double value)
 {
     return sin(value);
 }
 
-static PSRADIO_VORBIS_NO_OPT double vorbis_cos(double value)
+static PS5_RADIO_VORBIS_NO_OPT double vorbis_cos(double value)
 {
     return cos(value);
 }
 
-static PSRADIO_VORBIS_NO_OPT double vorbis_ldexp(double value, int exponent)
+static PS5_RADIO_VORBIS_NO_OPT double vorbis_ldexp(double value, int exponent)
 {
     return scalbn(value, exponent);
 }
@@ -43,7 +43,7 @@ static PSRADIO_VORBIS_NO_OPT double vorbis_ldexp(double value, int exponent)
 #undef ldexp
 #undef cos
 #undef sin
-#undef PSRADIO_VORBIS_NO_OPT
+#undef PS5_RADIO_VORBIS_NO_OPT
 
 static int16_t float_to_s16(float sample)
 {

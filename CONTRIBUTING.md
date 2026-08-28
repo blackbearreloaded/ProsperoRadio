@@ -1,6 +1,6 @@
 # Contributing
 
-Keep PSRadio reproducible, responsive on the console, and compatible with the
+Keep PS5 Radio reproducible, responsive on the console, and compatible with the
 native-app-boilerplate build contract.
 
 Before opening a change:

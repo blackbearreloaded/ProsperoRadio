@@ -30,7 +30,7 @@ ADTS fixture. The fixture SHA-256 was
 
 The probe confirms SBR reconstruction and rejects a stronger claim: no valid
 public configuration returned the HE-AAC v2 Parametric Stereo source as two
-channels. PSRadio keeps the hardware AAC path and safely normalizes mono output
+channels. PS5 Radio keeps the hardware AAC path and safely normalizes mono output
 for the PS5 stereo sink.
 
 ## Fault-injected PS5 matrix
@@ -86,12 +86,12 @@ passed through a low-cost capture card. A 64-second AAC diagnostic run recorded
 zero decoded-PCM queue underruns, zero AudioOut submission gaps of 25 ms or
 more, no HTTP stalls, and a maximum HTTP read time of 53 ms. Bypassing the
 capture card eliminated the audible glitches. The temporary instrumentation
-and enlarged diagnostic buffer were removed; PSRadio retains its two-second
+and enlarged diagnostic buffer were removed; PS5 Radio retains its two-second
 PCM queue and one-second startup reserve.
 
 ## Release conclusion
 
-All formats advertised by PSRadio have a working PS5 path and bounded failure
+All formats advertised by PS5 Radio have a working PS5 path and bounded failure
 behavior. The known fidelity boundary is HE-AAC v2 Parametric Stereo: SBR is
 firmware-decoded, but the public API returns mono. This limitation is documented
 and does not affect timing, stability, or the stereo AudioOut contract.

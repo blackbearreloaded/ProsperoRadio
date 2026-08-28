@@ -1,10 +1,10 @@
-# PSRadio
+# PS5 Radio
 
-[![Build](https://github.com/blackbearreloaded/psradio/actions/workflows/tooling.yml/badge.svg)](https://github.com/blackbearreloaded/psradio/actions/workflows/tooling.yml)
-[![Latest release](https://img.shields.io/github/v/release/blackbearreloaded/psradio?display_name=tag)](https://github.com/blackbearreloaded/psradio/releases/latest)
+[![Build](https://github.com/blackbearreloaded/ps5-radio/actions/workflows/tooling.yml/badge.svg)](https://github.com/blackbearreloaded/ps5-radio/actions/workflows/tooling.yml)
+[![Latest release](https://img.shields.io/github/v/release/blackbearreloaded/ps5-radio?display_name=tag)](https://github.com/blackbearreloaded/ps5-radio/releases/latest)
 [![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
 
-PSRadio is a native PlayStation 5 Internet-radio application. It browses and
+PS5 Radio is a native PlayStation 5 Internet-radio application. It browses and
 searches the public Radio Browser catalogue, keeps a resilient disk-backed
 catalogue on the console, and plays supported live streams through the PS5
 audio stack. The fixed, controller-first interface is built with RmlUi HTML and
@@ -14,7 +14,7 @@ RCSS, SDL2, and deterministic bitmap fonts.
 
 > [!IMPORTANT]
 > **Built on the [PS5 Native App Boilerplate](https://github.com/blackbearreloaded/ps5-native-app-boilerplate).**
-> PSRadio preserves the template's modern C++20 structure, `.hpp` interfaces,
+> PS5 Radio preserves the template's modern C++20 structure, `.hpp` interfaces,
 > reproducible runtime, FSELF tooling, tests, deployment flow, and release
 > automation.
 
@@ -22,11 +22,11 @@ RCSS, SDL2, and deterministic bitmap fonts.
 > **Audio work is documented in [PS5 Audio Decoding Research](https://github.com/blackbearreloaded/ps5-audio-decoding-research).**
 > The companion repository records the hardware-first decoder investigation,
 > reverse-engineering notes, native API probes, codec boundaries, and device
-> validation that informed PSRadio's audio implementation.
+> validation that informed PS5 Radio's audio implementation.
 
 | Identity | Value |
 | --- | --- |
-| Shell title | `PSRadio` |
+| Shell title | `PS5 Radio` |
 | Title ID | `PPSA99001` |
 | Category | Game |
 | Current release version | `01.000.002` |
@@ -83,7 +83,7 @@ See [Getting started](docs/GETTING_STARTED.md) and
 ## Build
 
 `sce_sys/param.json` is the only identity and release-version source. Do not
-change `PPSA99001` when updating PSRadio: changing it produces a separate PS5
+change `PPSA99001` when updating PS5 Radio: changing it produces a separate PS5
 title rather than an update.
 
 ```bash
@@ -155,7 +155,7 @@ sce_sys/param.json            Shell metadata, title identity, and release versio
 docs/                         Architecture, testing, codec, build, and deployment documentation
 ```
 
-PSRadio is a C++20 application throughout. Repository-owned interfaces use the
+PS5 Radio is a C++20 application throughout. Repository-owned interfaces use the
 boilerplate's `.hpp` convention; portable codec, demux, persistence, input, and
 service modules are independently testable C++ translation units. Vendored
 single-file decoders retain their upstream filenames and are compiled through
@@ -179,7 +179,7 @@ metadata, and the import-linking configuration are in
 
 ## Credits, licences, and AI disclosure
 
-PSRadio uses Radio Browser for station metadata and URLs; Radio Browser does
+PS5 Radio uses Radio Browser for station metadata and URLs; Radio Browser does
 not host the individual station streams. The project also uses or references
 the PS5 Payload SDK, PacBrew SQLite, LLVM/Clang/lld, RmlUi, SDL2, FreeType,
 GoogleTest, stb_vorbis, dr_flac, MkPFS, and UFS2Tool. Their provenance and
@@ -191,5 +191,5 @@ some original interface artwork. All resulting changes, dependencies, and
 generated visual assets are reviewed and maintained by the project owner.
 Generated controller prompts are not official Sony artwork.
 
-PSRadio is GPL-3.0-or-later. See [LICENSE](LICENSE), [NOTICE.md](NOTICE.md),
+PS5 Radio is GPL-3.0-or-later. See [LICENSE](LICENSE), [NOTICE.md](NOTICE.md),
 and [Contributing](CONTRIBUTING.md).

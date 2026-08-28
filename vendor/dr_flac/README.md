@@ -9,6 +9,6 @@ D947F54784467160D30DCA540542BF92CED94965703E5DEEB9E82DB2EC5E0C02  dr_flac.h
 DD1C647E6F767F8FF4B2DFAE0FED314726600A01E0CF1EF556AFDDD5FA96FF15  LICENSE.txt
 ```
 
-PSRadio distributes the decoder under the retained MIT No Attribution
+PS5 Radio distributes the decoder under the retained MIT No Attribution
 (MIT-0) option. Standard file I/O is disabled; streaming uses bounded custom
 read, forward-seek, and allocation callbacks.

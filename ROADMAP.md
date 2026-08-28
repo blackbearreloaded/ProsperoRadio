@@ -1,6 +1,6 @@
 # Roadmap
 
-PSRadio's implemented playback baseline includes the complete RmlUi interface,
+PS5 Radio's implemented playback baseline includes the complete RmlUi interface,
 Radio Browser catalog and search, persistent cache and favorites, native input
 and IME, AAC, MP3, Ogg Opus, Ogg Vorbis, native-container FLAC, and Ogg-FLAC
 playback through PS5 AudioOut. Hardware probing confirms native HE-AAC SBR
@@ -139,7 +139,7 @@ HLS is a delivery protocol rather than a codec and is tracked separately.
 - [x] Identify reusable bounded master/media playlist and MPEG-TS/AAC components
   in the related PS5 IPTV implementation.
 - [x] Adapt the TS parser to accept audio-only PMTs and submit ADTS AAC frames to
-  PSRadio's native decoder.
+  PS5 Radio's native decoder.
 - [x] Fetch segments and follow live updates while supporting only codecs
   already validated by the continuous-stream player.
 - [x] Handle cancellation, variant selection, discontinuities, retries, and stale

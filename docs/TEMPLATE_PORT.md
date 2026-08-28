@@ -1,13 +1,13 @@
 # Template port notes
 
-PSRadio is layered on a clean clone of
+PS5 Radio is layered on a clean clone of
 [`ps5-native-app-boilerplate`](https://github.com/blackbearreloaded/ps5-native-app-boilerplate)
 at upstream revision `a15ab71d1a5ba6d37c6af28f65bb51520a588005`. The
 boilerplate remains responsible for application startup, runtime-shim
 reproduction, ELF/FSELF validation, output assembly, package creation,
 FTP deployment, formatting, linting, host-test bootstrap, CI, and releases.
 
-The PSRadio layer supplies the RmlUi/SDL2 UI, Radio Browser service, SQLite
+The PS5 Radio layer supplies the RmlUi/SDL2 UI, Radio Browser service, SQLite
 catalogue, controller/IME flow, codecs, and its presentation assets. This
 separation keeps application changes independent of the native format tooling.
 
@@ -31,7 +31,7 @@ application's tracked allocator through `SDL_SetMemoryFunctions`.
 
 ## Build inputs
 
-The root [Makefile](../Makefile) declares the PSRadio-specific build inputs:
+The root [Makefile](../Makefile) declares the PS5 Radio-specific build inputs:
 
 | Input | Reason |
 | --- | --- |
@@ -53,8 +53,8 @@ against the original manifest.
 AAC/MP3 decoding and the PS5 IME require `libSceAudiodec` and
 `libSceCommonDialog`, which are not exposed as public SDK link archives in the
 current payload SDK. Their minimal build-only facades are explicit in
-`tooling/native/psradio_import_stub_*.cpp`; they declare only the C ABI
-symbols PSRadio actually imports. They contain no decoder implementation,
+`tooling/native/ps5_radio_import_stub_*.cpp`; they declare only the C ABI
+symbols PS5 Radio actually imports. They contain no decoder implementation,
 firmware code, or copied Sony library.
 
 The application symbol map deliberately hides static C++ definitions from the
@@ -66,7 +66,7 @@ undefined PS5 imports it must validate.
 
 All RmlUi assets live under `assets/ui/`, so the packaged application reads
 them from `/app0/assets/ui/`. During assembly, `tools/build.sh` replaces the
-single `{{PSRADIO_VERSION}}` placeholder in the copied RML document with
+single `{{PS5_RADIO_VERSION}}` placeholder in the copied RML document with
 `contentVersion` from `sce_sys/param.json`. The source document retains the
 placeholder; no second version file exists.
 

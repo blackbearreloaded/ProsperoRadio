@@ -75,10 +75,10 @@ The BlackBear icon, selection artwork, and default selection track
 (C) 2026 BlackBearReloaded, and distributed under GPL-3.0-or-later. The track
 is titled `Night Drive`.
 
-## PSRadio application dependencies
+## PS5 Radio application dependencies
 
 The checked-in `vendor/` snapshot contains application-facing headers, static
-archives, and source needed by the PSRadio build:
+archives, and source needed by the PS5 Radio build:
 
 - [SDL2](https://github.com/libsdl-org/SDL/tree/SDL2), Copyright 1997-2025
   Sam Lantinga and contributors, is distributed under the zlib license retained
@@ -100,13 +100,13 @@ The static C++ runtime inputs and public PS5 import stubs originate from the
 open-source PS5 Payload SDK. The project retains only public headers, static
 link inputs, and import metadata. No proprietary Sony SDK library, firmware
 module, encryption key, or extracted game file is present. The temporary
-link-only facades under `tooling/native/psradio_import_stub_*.cpp` contain only
+link-only facades under `tooling/native/ps5_radio_import_stub_*.cpp` contain only
 the application-imported C symbol declarations; they do not implement or copy
 PS5 decoder or system-module code.
 
 ## SQLite catalogue storage
 
-PSRadio declares the public [PS5 PacBrew](https://github.com/ps5-payload-dev/pacbrew-repo)
+PS5 Radio declares the public [PS5 PacBrew](https://github.com/ps5-payload-dev/pacbrew-repo)
 SQLite 3.46.1 port. The build verifies and extracts it into ignored `.deps/`;
 the application links its static archive but does not commit PacBrew's binary.
 SQLite is dedicated to the public domain.
@@ -124,7 +124,7 @@ the Noto/Source Han faces are under the SIL Open Font License 1.1; complete
 licence texts accompany `assets/ui/fonts/lvgl-bitmap/` and its multilingual
 pages. The `.rta` atlas container is a project-authored lossless alpha encoding.
 
-PSRadio launcher artwork and controller prompts used OpenAI image-generation
+PS5 Radio launcher artwork and controller prompts used OpenAI image-generation
 assistance, then received project-specific review and adaptation. The prompts
 are visual aids, not official Sony artwork. Play/stop symbols are independently
 authored geometric assets.

@@ -1,14 +1,14 @@
 <rml>
     <head>
-        <title>PSRadio</title>
+        <title>PS5 Radio</title>
         <link type="text/rcss" href="styles/app.rcss" />
     </head>
     <body>
         <div id="app-shell">
             <header id="header">
-                <img id="brand-mark" src="icons/psradio.tga" width="56" height="56" alt="" />
-                <span id="brand-name">PSRadio</span>
-                <span id="brand-version">v{{PSRADIO_VERSION}}</span>
+                <img id="brand-mark" src="icons/ps5-radio.tga" width="56" height="56" alt="" />
+                <span id="brand-name">PS5 Radio</span>
+                <span id="brand-version">v{{PS5_RADIO_VERSION}}</span>
                 <span class="browse-l1">L1</span>
                 <span class="browse-label">Browse</span>
                 <span class="browse-r1">R1</span>
@@ -153,10 +153,10 @@
                 <div class="credits-panel">
                     <span class="credits-kicker">POWERED BY</span>
                     <span class="credits-title">Radio Browser</span>
-                    <span class="credits-copy credits-copy-0">PSRadio's station catalog, metadata, search, and discovery<br />are powered by the free and open Radio Browser community.</span>
-                    <span class="credits-copy credits-copy-1">Thank you to the maintainers and contributors. PSRadio would<br />not be possible without their work.</span>
+                    <span class="credits-copy credits-copy-0">PS5 Radio's station catalog, metadata, search, and discovery<br />are powered by the free and open Radio Browser community.</span>
+                    <span class="credits-copy credits-copy-1">Thank you to the maintainers and contributors. PS5 Radio would<br />not be possible without their work.</span>
                     <span class="credits-url">www.radio-browser.info</span>
-                    <button id="credits-close"><span>Back to PSRadio</span></button>
+                    <button id="credits-close"><span>Back to PS5 Radio</span></button>
                 </div>
             </section>
         </div>

@@ -1,4 +1,4 @@
-// PSRadio - Native PlayStation 5 radio application.
+// PS5 Radio - Native PlayStation 5 radio application.
 // Copyright (C) 2026 BlackBearReloaded
 // SPDX-License-Identifier: GPL-3.0-or-later
 

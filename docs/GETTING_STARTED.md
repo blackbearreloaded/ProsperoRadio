@@ -1,6 +1,6 @@
 # Getting started
 
-This repository is PSRadio on top of a clean clone of the native-app
+This repository is PS5 Radio on top of a clean clone of the native-app
 boilerplate. Build it from Linux, WSL, or Linux CI; do not use a proprietary
 SDK checkout or copy runtime libraries into the repository.
 
@@ -17,8 +17,8 @@ newer is needed only for the optional local FFPKG target.
 
 ## 2. Clone and inspect
 
-    git clone git@github.com:blackbearreloaded/psradio.git
-    cd psradio
+    git clone git@github.com:blackbearreloaded/ps5-radio.git
+    cd ps5-radio
     make doctor
 
 The doctor command is read-only. It reports missing requirements without
@@ -38,7 +38,7 @@ It then creates:
       sce_sys/param.json
       assets/ui/
 
-The title is PSRadio, title ID PPSA99001, and a Game-category application. The
+The title is PS5 Radio, title ID PPSA99001, and a Game-category application. The
 category is intentional for Remote Play/Chiaki-ng audio behaviour.
 
 ## 4. Run host checks
@@ -78,10 +78,10 @@ screenshots, Remote Play cleanup, and any shared-console coordination.
 ## Version and title identity
 
 sce_sys/param.json is the single version source. Its contentVersion appears in
-the packaged metadata, PSRadio top bar, Git tag, and GitHub Release. Use the
+the packaged metadata, PS5 Radio top bar, Git tag, and GitHub Release. Use the
 exact PS5 format NN.NNN.NNN, with no v prefix.
 
-Keep PPSA99001 stable for PSRadio updates. Increment contentVersion before
+Keep PPSA99001 stable for PS5 Radio updates. Increment contentVersion before
 creating a release tag:
 
     git tag 01.000.003

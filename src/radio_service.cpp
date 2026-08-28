@@ -1,4 +1,4 @@
-// PSRadio - Native PlayStation 5 radio application.
+// PS5 Radio - Native PlayStation 5 radio application.
 // Copyright (C) 2026 BlackBearReloaded
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -60,7 +60,7 @@
 #define CATALOG_REFRESH_SECONDS (12 * 60 * 60)
 #define CATALOG_THREAD_STACK_SIZE (4U * 1024U * 1024U)
 #define CATALOG_PAGE_CACHE_SIZE (64U * 1024U * 1024U)
-#define USER_AGENT "PSRadio/0.2.0 (+https://www.radio-browser.info/)"
+#define USER_AGENT "PS5-Radio/0.2.0 (+https://www.radio-browser.info/)"
 #define JSON_CAPACITY (16U * 1024U * 1024U)
 #define STREAM_BUFFER_SIZE (64U * 1024U)
 #define PCM_BUFFER_SIZE (2048U * 2U * 2U)
@@ -1125,7 +1125,7 @@ static int api_read(catalog_http_client_t *client, const char *path, char *outpu
         if (round + 1U < CATALOG_API_RETRY_ROUNDS)
             SDL_Delay(CATALOG_API_RETRY_DELAY_MS * (round + 1U));
     }
-    fprintf(stderr, "[PSRadio][catalog] API request failed path=%s error=%d\n", path, last_error);
+    fprintf(stderr, "[PS5 Radio][catalog] API request failed path=%s error=%d\n", path, last_error);
     return last_error;
 }
 
@@ -1264,7 +1264,7 @@ static int sync_station_query(radio_catalog_store_t *store, const radio_catalog_
         const unsigned count = parse_catalog(json, length, page, CATALOG_PAGE_LIMIT);
         total_count += count;
         fprintf(stderr,
-                "[PSRadio][catalog] page offset=%u bytes=%zu objects=%u accepted=%u total=%llu\n",
+                "[PS5 Radio][catalog] page offset=%u bytes=%zu objects=%u accepted=%u total=%llu\n",
                 offset, length, objects, count, (unsigned long long)total_count);
         SDL_LockMutex(g_state_mutex);
         g_status.sync_station_count = total_count > UINT_MAX ? UINT_MAX : (unsigned)total_count;
@@ -1330,7 +1330,7 @@ static int sync_station_query(radio_catalog_store_t *store, const radio_catalog_
             error = -3000 - store_error;
     }
     if (error != 0)
-        fprintf(stderr, "[PSRadio][catalog] station sync failed error=%d total=%llu\n", error,
+        fprintf(stderr, "[PS5 Radio][catalog] station sync failed error=%d total=%llu\n", error,
                 (unsigned long long)total_count);
     SDL_free(page);
     return error != 0 ? error : 0;
@@ -1597,7 +1597,8 @@ static void *refresh_thread(void *task_data)
         }
         SDL_free(json);
         if (error != 0)
-            fprintf(stderr, "[PSRadio][catalog] refresh failed phase=%s error=%d\n", phase, error);
+            fprintf(stderr, "[PS5 Radio][catalog] refresh failed phase=%s error=%d\n", phase,
+                    error);
         if (error == 0 && !SDL_AtomicGet(&g_shutting_down))
         {
             load_catalog_summary(RADIO_CATALOG_READY);

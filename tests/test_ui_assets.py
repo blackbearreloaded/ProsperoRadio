@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# PSRadio - Packaged RmlUi asset regression test.
+# PS5 Radio - Packaged RmlUi asset regression test.
 # Copyright (C) 2026 BlackBearReloaded
 # SPDX-License-Identifier: GPL-3.0-or-later
 

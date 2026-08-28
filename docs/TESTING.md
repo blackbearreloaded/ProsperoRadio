@@ -1,6 +1,6 @@
 # Testing
 
-PSRadio separates deterministic host regressions from behaviour that only a
+PS5 Radio separates deterministic host regressions from behaviour that only a
 real PS5 can prove. Host tests never contact a console or a public Radio
 Browser server.
 

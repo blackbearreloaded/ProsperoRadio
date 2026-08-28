@@ -1,4 +1,4 @@
-// PSRadio - Native PlayStation 5 radio application.
+// PS5 Radio - Native PlayStation 5 radio application.
 // Copyright (C) 2026 BlackBearReloaded
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -33,7 +33,7 @@ int main(void)
     assert(page_cache != nullptr);
     assert(radio_catalog_store_global_init(page_cache, page_cache_bytes));
     char path[96];
-    snprintf(path, sizeof(path), "/tmp/psradio-catalog-%ld.sqlite3",
+    snprintf(path, sizeof(path), "/tmp/ps5-radio-catalog-%ld.sqlite3",
              (long)getpid());
     unlink(path);
     radio_catalog_store_t store;

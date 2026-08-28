@@ -1,5 +1,5 @@
 /*
- * PSRadio - Link-only standard-ELF facade for the native Opus manifest.
+ * PS5 Radio - Link-only standard-ELF facade for the native Opus manifest.
  * Copyright (C) 2026 BlackBearReloaded
  * SPDX-License-Identifier: GPL-3.0-or-later
  */

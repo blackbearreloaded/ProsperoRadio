@@ -73,7 +73,7 @@ entitlements.
 Every `.cpp` file below `src/` is compiled automatically. Move experiments
 outside `src/` when they should not enter the build. All repository-owned code
 uses C++20 and `.hpp` interfaces. Exceptions remain disabled. RmlUi requires
-type information in its static library, so the PSRadio Makefile deliberately
+type information in its static library, so the PS5 Radio Makefile deliberately
 adds `-frtti` after the template default.
 
 The generated `runtime/libc.prx` is always included and verified against
