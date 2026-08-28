@@ -1125,6 +1125,7 @@ static int api_read(catalog_http_client_t *client, const char *path, char *outpu
         if (round + 1U < CATALOG_API_RETRY_ROUNDS)
             SDL_Delay(CATALOG_API_RETRY_DELAY_MS * (round + 1U));
     }
+    fprintf(stderr, "[PSRadio][catalog] API request failed path=%s error=%d\n", path, last_error);
     return last_error;
 }
 
@@ -1262,6 +1263,9 @@ static int sync_station_query(radio_catalog_store_t *store, const radio_catalog_
             break;
         const unsigned count = parse_catalog(json, length, page, CATALOG_PAGE_LIMIT);
         total_count += count;
+        fprintf(stderr,
+                "[PSRadio][catalog] page offset=%u bytes=%zu objects=%u accepted=%u total=%llu\n",
+                offset, length, objects, count, (unsigned long long)total_count);
         SDL_LockMutex(g_state_mutex);
         g_status.sync_station_count = total_count > UINT_MAX ? UINT_MAX : (unsigned)total_count;
         SDL_UnlockMutex(g_state_mutex);
@@ -1325,6 +1329,9 @@ static int sync_station_query(radio_catalog_store_t *store, const radio_catalog_
         if (!ok)
             error = -3000 - store_error;
     }
+    if (error != 0)
+        fprintf(stderr, "[PSRadio][catalog] station sync failed error=%d total=%llu\n", error,
+                (unsigned long long)total_count);
     SDL_free(page);
     return error != 0 ? error : 0;
 }
@@ -1535,6 +1542,37 @@ static bool promote_staging_store(radio_catalog_store_t *staging)
     return replaced && valid && favorites_copied;
 }
 
+static bool recover_staging_store_if_available(void)
+{
+    SDL_LockMutex(g_store_mutex);
+    const size_t active_count = radio_catalog_store_station_count(&g_catalog_store);
+    SDL_UnlockMutex(g_store_mutex);
+    if (active_count != 0U || access(CATALOG_STAGING_PATH, F_OK) != 0)
+        return false;
+
+    radio_catalog_store_t staging;
+    memset(&staging, 0, sizeof(staging));
+    if (!radio_catalog_store_open(&staging, CATALOG_STAGING_PATH) ||
+        !radio_catalog_store_integrity_check(&staging))
+    {
+        radio_catalog_store_close(&staging);
+        return false;
+    }
+    const size_t staging_count = radio_catalog_store_station_count(&staging);
+    if (staging_count == 0U)
+    {
+        radio_catalog_store_close(&staging);
+        return false;
+    }
+    if (!promote_staging_store(&staging))
+    {
+        fprintf(stderr, "[PSRadio][catalog] staging recovery failed stations=%zu\n", staging_count);
+        return false;
+    }
+    fprintf(stderr, "[PSRadio][catalog] recovered staging cache stations=%zu\n", staging_count);
+    return true;
+}
+
 static void *refresh_thread(void *task_data)
 {
     catalog_task_t task = *(catalog_task_t *)task_data;
@@ -1548,23 +1586,30 @@ static void *refresh_thread(void *task_data)
         radio_catalog_store_t staging;
         memset(&staging, 0, sizeof(staging));
         auto *json = static_cast<char *>(SDL_malloc(JSON_CAPACITY));
+        const char *phase = "allocate response buffer";
         int error = json == nullptr ? -1301 : 0;
+        phase = "open staging database";
         if (error == 0 && task.full_sync && !open_staging_store(&staging))
             error = -1304;
         if (error == 0)
         {
             catalog_http_client_t client = {-1, UINT_MAX};
+            phase = "refresh mirrors";
             refresh_mirrors(&client, json);
+            phase = "sync facets";
             if (task.full_sync)
                 sync_facets(&staging, &client, json);
             radio_catalog_store_t *target = task.full_sync ? &staging : &g_catalog_store;
+            phase = "sync stations";
             error = sync_station_query(target, task.full_sync ? nullptr : &task.query,
                                        task.full_sync, !task.full_sync, json, &client);
             catalog_http_close(&client);
+            phase = "copy favorites";
             if (error == 0 && task.full_sync && !copy_favorites_to_store(&staging))
                 error = -1305;
             if (error == 0)
             {
+                phase = "store refresh status";
                 if (!task.full_sync)
                     SDL_LockMutex(g_store_mutex);
                 const bool stored =
@@ -1575,12 +1620,15 @@ static void *refresh_thread(void *task_data)
                 if (!stored)
                     error = -3000 - store_error;
             }
+            phase = "promote staging database";
             if (error == 0 && task.full_sync && !promote_staging_store(&staging))
                 error = -1306;
             else if (error != 0 && task.full_sync)
                 radio_catalog_store_close(&staging);
         }
         SDL_free(json);
+        if (error != 0)
+            fprintf(stderr, "[PSRadio][catalog] refresh failed phase=%s error=%d\n", phase, error);
         if (error == 0 && !SDL_AtomicGet(&g_shutting_down))
         {
             load_catalog_summary(RADIO_CATALOG_READY);
@@ -3038,6 +3086,7 @@ bool radio_service_init(void)
         g_status.playback_state = RADIO_PLAYBACK_STOPPED;
         return false;
     }
+    recover_staging_store_if_available();
     migrate_legacy_catalog();
     load_favorites();
     const bool cached = load_catalog_summary(RADIO_CATALOG_CACHED);

@@ -146,3 +146,11 @@ new generated directory. Do not attempt to write to `/app0`.
 - A first launch builds `radio-browser-next.sqlite3` before atomically promoting
   it to `radio-browser.sqlite3`. Leave the app running while this initial sync
   is in progress; do not force-close the title during active database writes.
+- If a launch was interrupted after stations were committed, PSRadio validates
+  and recovers the staging database as an offline cache on the next launch. It
+  then retries a fresh full sync in the background, so browsing remains
+  available while Radio Browser or the network recovers.
+- Catalog refresh diagnostics are emitted to klog with the
+  `[PSRadio][catalog]` prefix. Page offsets, accepted station totals, the failing
+  phase, and the native error code are included without writing a diagnostic
+  file to `/download0`.
