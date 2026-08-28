@@ -128,6 +128,10 @@ Nothing is installed globally by these optional bootstrappers.
 - Run `tools/inspect.ps1 dist/<TITLE_ID>/eboot.bin` and resolve every error.
 - Consult loader diagnostics; the home-screen message alone is not a root
   cause.
+- A `SIGILL` at the allocation-failure trap in `operator new` is an exhausted
+  libc heap, not an unsupported CPU instruction. If the backtrace includes
+  `DecodeRadioAtlas`, deploy a current build: multilingual atlas pixels are
+  allocated through SDL's mmap-backed allocator and retained as one buffer.
 
 ## `/download0` is missing
 
@@ -146,3 +150,7 @@ new generated directory. Do not attempt to write to `/app0`.
 - A first launch builds `radio-browser-next.sqlite3` before atomically promoting
   it to `radio-browser.sqlite3`. Leave the app running while this initial sync
   is in progress; do not force-close the title during active database writes.
+- The footer remains `Updating database` while the paginated sync is active.
+  On the validated development catalogue, promotion completed in about 100
+  seconds and exposed 56,273 supported stations; the exact total varies with
+  Radio Browser's live data.

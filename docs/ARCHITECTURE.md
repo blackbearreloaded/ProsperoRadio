@@ -45,6 +45,14 @@ keeps behavior consistent with the SDL backend already validated on the target.
 Ordinary RmlUi geometry uses `SDL_RenderGeometry`; bitmap-font atlas quads take
 a pixel-aligned copy path to prevent filtering and subpixel resampling.
 
+Each multilingual `.rta` page expands to a 16 MiB RGBA atlas. The texture
+loader allocates that buffer through SDL's mmap-backed allocator, converts it
+in place after creating the SDL texture, and retains the same buffer for exact
+pixel compositing. It does not keep separate decoded BGRA and RGBA copies.
+This matters on the target because the small libc heap is not suitable for
+repeated full-atlas allocations even when the process still has ample virtual
+memory.
+
 ## RmlUi document and application state
 
 [`assets/ui/main.rml`](../assets/ui/main.rml) contains the complete document and

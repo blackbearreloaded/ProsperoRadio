@@ -79,6 +79,13 @@ Do not claim hardware support from passing host tests alone. See
 [Deployment](DEPLOYMENT.md), [Architecture](ARCHITECTURE.md), and the
 project's PS5 homebrew-development protocol for the console procedure.
 
+The 2026-08-28 migration smoke test froze commit `9b710fb`, atomically deployed
+the complete `PPSA99001` folder, and kept `/download0` intact. The title
+rendered through RmlUi/SDL, loaded the existing 29,578-station cache, completed
+a full Radio Browser refresh to 56,273 supported stations in about 100 seconds,
+showed `Database ready`, and closed without a title crash. The count is an
+observation of that live catalogue, not a fixed product limit.
+
 ## Before review or release
 
 Run:
