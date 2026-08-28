@@ -86,6 +86,8 @@
 #define AUDIO_START_BLOCKS 563U
 #define AUDIO_RESTART_BLOCKS 375U
 #define AUDIO_WAIT_MS 20U
+#define AUDIO_OUTPUT_GAP_LOG_MS 25U
+#define AUDIO_HTTP_STALL_LOG_MS 500U
 #define PLAYLIST_BUFFER_SIZE (64U * 1024U)
 #define PLAYLIST_REDIRECT_LIMIT 3U
 #define STREAM_OPEN_DIRECT 0
@@ -1680,6 +1682,7 @@ static int sink_audio_thread(void *argument)
     int16_t block[AUDIO_OUT_GRAIN * 2U];
     bool started = false;
     bool played = false;
+    uint64_t previous_output_tick = 0U;
 
     for (;;)
     {
@@ -1687,6 +1690,8 @@ static int sink_audio_thread(void *argument)
         if (started && sink->queue.count == 0U && !sink->input_finished && !sink->cancel &&
             !SDL_AtomicGet(&g_stop_playback))
         {
+            fprintf(stderr, "[PSRadio][audio] queue underrun after %llu output frames\n",
+                    static_cast<unsigned long long>(sink->output_frames));
             started = false;
             SDL_UnlockMutex(sink->mutex);
             if (!SDL_AtomicGet(&g_stop_playback))
@@ -1710,11 +1715,21 @@ static int sink_audio_thread(void *argument)
         }
 
         size_t index = 0;
+        const size_t queued_blocks = sink->queue.count;
         pcm_queue_pop(&sink->queue, &index);
         memcpy(block, sink->queue_blocks + index * AUDIO_OUT_GRAIN * 2U, sizeof(block));
         SDL_CondSignal(sink->can_write);
         SDL_UnlockMutex(sink->mutex);
 
+        const uint64_t output_tick = SDL_GetTicks64();
+        if (previous_output_tick != 0U &&
+            output_tick - previous_output_tick >= AUDIO_OUTPUT_GAP_LOG_MS)
+        {
+            fprintf(stderr, "[PSRadio][audio] output gap=%llums queued=%zu\n",
+                    static_cast<unsigned long long>(output_tick - previous_output_tick),
+                    queued_blocks);
+        }
+        previous_output_tick = output_tick;
         const int result = sceAudioOutOutput(sink->handle, block);
         if (result < 0)
         {
@@ -1939,7 +1954,15 @@ using stream_read_fn = int (*)(void *context, void *data, size_t size);
 
 static int http_stream_read(void *context, void *data, size_t size)
 {
-    return sceHttpReadData(*(const int *)context, data, size);
+    const uint64_t started_at = SDL_GetTicks64();
+    const int result = sceHttpReadData(*(const int *)context, data, size);
+    const uint64_t elapsed = SDL_GetTicks64() - started_at;
+    if (elapsed >= AUDIO_HTTP_STALL_LOG_MS)
+    {
+        fprintf(stderr, "[PSRadio][audio] HTTP read stalled=%llums requested=%zu received=%d\n",
+                static_cast<unsigned long long>(elapsed), size, result);
+    }
+    return result;
 }
 
 struct prefixed_http_reader_t
