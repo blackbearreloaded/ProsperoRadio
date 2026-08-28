@@ -198,14 +198,15 @@ resolved station URL
        Vorbis -> bounded stb_vorbis push-data CPU decoder
        FLAC / Ogg-FLAC -> bounded dr_flac callback CPU decoder
   -> channel conversion and 48 kHz resampling when required
-  -> two-second decoded PCM ring
+  -> eight-second decoded PCM ring
   -> dedicated PS5 AudioOut consumer
 ```
 
-The producer primes one second of decoded audio before initial playback and
-half a second after an underrun. Network reads and decoding therefore continue
-independently of AudioOut's synchronous pacing, while the bounded two-second
-capacity prevents unlimited latency or memory growth.
+The producer primes three seconds of decoded audio before initial playback and
+two seconds after an underrun. Network reads and decoding therefore continue
+independently of AudioOut's synchronous pacing, while the bounded eight-second
+capacity absorbs ordinary internet-stream delivery jitter without allowing
+unlimited latency or memory growth.
 
 An HLS discontinuity drains the old PCM sink, recreates the native AAC decoder,
 and clears partial transport/framing state before the next segment. This lets

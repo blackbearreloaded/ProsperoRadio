@@ -161,6 +161,10 @@ int main(void)
     assert(sink_ready_target(false, false) == AUDIO_START_BLOCKS);
     assert(sink_ready_target(false, true) == AUDIO_RESTART_BLOCKS);
     assert(sink_ready_target(true, false) == 1U);
+    assert(AUDIO_QUEUE_BLOCKS * AUDIO_OUT_GRAIN == 8U * AUDIO_OUT_RATE);
+    assert(AUDIO_START_BLOCKS * AUDIO_OUT_GRAIN >= 3U * AUDIO_OUT_RATE);
+    assert((AUDIO_START_BLOCKS - 1U) * AUDIO_OUT_GRAIN < 3U * AUDIO_OUT_RATE);
+    assert(AUDIO_RESTART_BLOCKS * AUDIO_OUT_GRAIN == 2U * AUDIO_OUT_RATE);
     static const uint8_t celt_packet[] = {0xf8U};
     static const uint8_t silk_packet[] = {0x78U};
     assert(opus_packet_is_celt(celt_packet, sizeof(celt_packet)));
