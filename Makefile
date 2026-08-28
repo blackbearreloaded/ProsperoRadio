@@ -8,8 +8,10 @@ SHELL := /bin/bash
 -include .env
 
 APP_DEFINITIONS ?=
+APP_CXXFLAGS ?=
 APP_INCLUDE_PATHS ?=
 APP_STATIC_ARCHIVES ?=
+APP_IMPORT_STUBS ?=
 APP_RUNTIME_MODULES ?=
 PACBREW_PACKAGES ?=
 PACBREW_INCLUDE_PATHS ?=
@@ -29,7 +31,7 @@ HOST_TEST_CXXFLAGS ?= -std=c++20 -O2 -Wall -Wextra -Wpedantic -Werror \
 	-ffunction-sections -fdata-sections
 HOST_TEST_LDFLAGS ?= -Wl,--gc-sections
 GTEST_ARGS ?=
-export APP_DEFINITIONS APP_INCLUDE_PATHS APP_STATIC_ARCHIVES APP_RUNTIME_MODULES
+export APP_DEFINITIONS APP_CXXFLAGS APP_INCLUDE_PATHS APP_STATIC_ARCHIVES APP_IMPORT_STUBS APP_RUNTIME_MODULES
 export PACBREW_PACKAGES PACBREW_INCLUDE_PATHS PACBREW_STATIC_ARCHIVES
 export PS5_HOST FTP_PORT DEPLOY_FORMAT PS5_FTP_USER PS5_FTP_PASSWORD DEPLOY_DRY_RUN
 export TITLE_ID APP_NAME APP_CATEGORY CONTENT_SUFFIX
@@ -38,7 +40,15 @@ RUNTIME := runtime/libc.prx
 RUNTIME_INPUTS := tools/rebuild-libc.sh \
 	$(wildcard tooling/native/*.cpp tooling/native/*.hpp) \
 	$(wildcard tooling/native/runtime/*.txt)
-HOST_UNIT_TEST := build/tests/demo_renderer_tests
+APP_DEFINITIONS += SDL_MAIN_HANDLED SDL_STATIC_LIB USING_GENERATED_CONFIG_H RMLUI_STATIC_LIB ITLIB_FLAT_MAP_NO_THROW
+APP_CXXFLAGS += -frtti
+APP_INCLUDE_PATHS += include vendor/ps5/sdl/include vendor/ps5/sdl/include/SDL2 vendor/ps5/rmlui/include
+APP_STATIC_ARCHIVES += vendor/ps5/sdl/lib/libSDL2.a vendor/ps5/rmlui/lib/librmlui.a vendor/ps5/freetype/lib/libfreetype.a vendor/ps5/sdk/lib/libunwind.a vendor/ps5/sdk/lib/libcxx.a vendor/ps5/sdk/lib/libcxxabi.a
+APP_IMPORT_STUBS += vendor/ps5/sdk/stubs/libSceOpusDec_stub.a vendor/ps5/sdk/stubs/libSceOpusCeltDec_stub.a
+PACBREW_INCLUDE_PATHS += include
+PACBREW_STATIC_ARCHIVES += lib/libsqlite3.a
+
+HOST_UNIT_TEST := build/tests/radio_text_tests
 
 .PHONY: all app build init doctor test test-deps test-unit test-integration libc deps pacbrew pacbrew-list assets-check format format-check tidy lint check ffpkg ffpfsc packages deploy undeploy clean distclean help
 
@@ -63,7 +73,7 @@ test-unit: $(HOST_UNIT_TEST)
 	@printf '%s\n' '==> [test-unit] Running host-native GoogleTest application tests'
 	@$(HOST_UNIT_TEST) $(GTEST_ARGS)
 
-$(HOST_UNIT_TEST): tests/test_demo_renderer.cpp src/demo_renderer.cpp src/demo_renderer.hpp tools/setup-test-dependencies.sh | test-deps
+$(HOST_UNIT_TEST): tests/test_radio_text.cpp tests/test_import_stubs.cpp src/radio_text.cpp src/radio_text.hpp tooling/native/elf_object.cpp tooling/native/elf_object.hpp tools/setup-test-dependencies.sh | test-deps
 	@printf '%s\n' '==> [test-unit] Compiling the host-native GoogleTest binary'
 	@mkdir -p -- $(@D)
 	@gtest=$$(bash tools/setup-test-dependencies.sh); \
@@ -73,15 +83,16 @@ $(HOST_UNIT_TEST): tests/test_demo_renderer.cpp src/demo_renderer.cpp src/demo_r
 		$(HOST_CXX) -std=c++20 -O2 -pthread \
 			-isystem "$$gtest/googletest/include" -I"$$gtest/googletest" \
 			-c "$$gtest/googletest/src/gtest_main.cc" -o $(@D)/gtest-main.o; \
-		$(HOST_CXX) $(HOST_TEST_CXXFLAGS) -pthread -Isrc \
+		$(HOST_CXX) $(HOST_TEST_CXXFLAGS) -pthread -Isrc -Itooling/native \
 			-isystem "$$gtest/googletest/include" \
-			tests/test_demo_renderer.cpp src/demo_renderer.cpp \
+			tests/test_radio_text.cpp tests/test_import_stubs.cpp src/radio_text.cpp tooling/native/elf_object.cpp \
 			$(@D)/gtest-all.o $(@D)/gtest-main.o \
 			$(HOST_TEST_LDFLAGS) -o $@
 
 test-integration:
-	@printf '%s\n' '==> [test-integration] Running host tooling integration tests'
+	@printf '%s\n' '==> [test-integration] Running host tooling, UI, and codec regression tests'
 	@python3 -m unittest discover -s tests -p 'test_*.py' -v
+	@bash tools/run-radio-checks.sh
 
 deps: test-deps
 	@printf '%s\n' '==> [deps] Fetching declared native dependencies'
@@ -161,7 +172,7 @@ distclean: clean
 
 help:
 	@printf '%s\n' \
-	  'make                 Generate libc.prx and build the Hello World folder' \
+	  'make                 Generate libc.prx and build the PSRadio folder' \
 	  'make init TITLE_ID=PPSA12345 APP_NAME="My App"  Configure app identity' \
 	  'make doctor          Check required and optional Linux/WSL tools' \
 	  'make test            Run all host unit and integration tests' \
@@ -183,7 +194,7 @@ help:
 	  'make packages        Build folder, .ffpkg, and .ffpfsc outputs' \
 	  'make deploy PS5_HOST=<address>  Build and FTP-deploy the app folder' \
 	  'make undeploy PS5_HOST=<address>  Remove this title from /data/homebrew' \
-	  'Build variables:     APP_DEFINITIONS, APP_INCLUDE_PATHS, APP_STATIC_ARCHIVES, APP_RUNTIME_MODULES' \
+	  'Build variables:     APP_DEFINITIONS, APP_CXXFLAGS, APP_INCLUDE_PATHS, APP_STATIC_ARCHIVES, APP_IMPORT_STUBS, APP_RUNTIME_MODULES' \
 	  'PacBrew variables:   PACBREW_PACKAGES, PACBREW_INCLUDE_PATHS, PACBREW_STATIC_ARCHIVES' \
 	  'Deploy variables:    FTP_PORT=2121, DEPLOY_FORMAT=folder|ffpfsc|ffpkg, DEPLOY_DRY_RUN=0|1' \
 	  'Local defaults:      Copy .env.example to the ignored .env file' \

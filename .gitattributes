@@ -14,6 +14,8 @@ Makefile text eol=lf
 .clang-format text eol=lf
 .clang-tidy text eol=lf
 tooling/prospero-clang18 text eol=lf
+assets/ui/fonts/** -whitespace
+vendor/** -whitespace
 *.ps1 text eol=crlf
 *.png binary
 *.dds binary

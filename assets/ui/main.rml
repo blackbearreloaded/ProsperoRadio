@@ -1,0 +1,164 @@
+<rml>
+    <head>
+        <title>PSRadio</title>
+        <link type="text/rcss" href="styles/app.rcss" />
+    </head>
+    <body>
+        <div id="app-shell">
+            <header id="header">
+                <img id="brand-mark" src="icons/psradio.tga" width="64" height="64" alt="" />
+                <span class="brand-name">PSRadio</span>
+                <span id="brand-version">v{{PSRADIO_VERSION}}</span>
+                <span class="browse-l1">L1</span>
+                <span class="browse-label">Browse</span>
+                <span class="browse-r1">R1</span>
+            </header>
+
+            <main id="catalog-screen">
+                <span id="heading">Popular stations</span>
+                <span id="subtitle">Most played on Radio Browser in the last 24 hours</span>
+
+                <button id="tab-0" class="tab tab-0 active"><span>Popular</span></button>
+                <button id="tab-1" class="tab tab-1"><span>Trending</span></button>
+                <button id="tab-2" class="tab tab-2"><span>Top rated</span></button>
+                <button id="tab-3" class="tab tab-3"><span>Favorites</span></button>
+                <button id="tab-4" class="tab tab-4"><span>Discover</span></button>
+
+                <button id="card-0" class="station-card card-0 selected focused">
+                    <span id="art-0" class="station-art art-green"><span id="badge-0" class="station-badge">US</span></span>
+                    <span id="name-0" class="station-name">102.7 KIIS FM</span>
+                    <span id="meta-0" class="station-meta">US  |  pop  |  AAC 0 kbps</span>
+                    <span id="rank-0" class="station-rank">#1  1002 plays</span>
+                    <span id="favorite-0" class="favorite-mark"></span>
+                    <span id="live-0" class="live-mark hidden">LIVE</span>
+                </button>
+
+                <button id="card-1" class="station-card card-1">
+                    <span id="art-1" class="station-art art-blue"><span id="badge-1" class="station-badge">US</span></span>
+                    <span id="name-1" class="station-name">Radio Paradise Main Mix</span>
+                    <span id="meta-1" class="station-meta">US  |  california  |  AAC 320 kbps</span>
+                    <span id="rank-1" class="station-rank">#2  497 plays</span>
+                    <span id="favorite-1" class="favorite-mark"></span>
+                    <span id="live-1" class="live-mark hidden">LIVE</span>
+                </button>
+
+                <button id="card-2" class="station-card card-2">
+                    <span id="art-2" class="station-art art-purple"><span id="badge-2" class="station-badge">US</span></span>
+                    <span id="name-2" class="station-name">Z100 - New York's #1 Hit Music</span>
+                    <span id="meta-2" class="station-meta">US  |  iheart  |  AAC 0 kbps</span>
+                    <span id="rank-2" class="station-rank">#3  402 plays</span>
+                    <span id="favorite-2" class="favorite-mark"></span>
+                    <span id="live-2" class="live-mark hidden">LIVE</span>
+                </button>
+
+                <button id="card-3" class="station-card card-3">
+                    <span id="art-3" class="station-art art-olive"><span id="badge-3" class="station-badge">FR</span></span>
+                    <span id="name-3" class="station-name">Europe 1</span>
+                    <span id="meta-3" class="station-meta">FR  |  aac  |  AAC 128 kbps</span>
+                    <span id="rank-3" class="station-rank">#4  348 plays</span>
+                    <span id="favorite-3" class="favorite-mark"></span>
+                    <span id="live-3" class="live-mark hidden">LIVE</span>
+                </button>
+
+                <div id="pagination-rail">
+                    <button id="page-prev" class="page-action">
+                        <img id="page-prev-icon" class="page-arrow" src="icons/page-up.tga" width="18" height="18" alt="" />
+                        <span id="page-prev-label">Previous page</span>
+                    </button>
+                    <span id="page-label">Page 1 of 30  /  1-4 of 117 stations</span>
+                    <button id="page-next" class="page-action available">
+                        <span id="page-next-label">Next page</span>
+                        <img id="page-next-icon" class="page-arrow" src="icons/page-down.tga" width="18" height="18" alt="" />
+                    </button>
+                    <span class="page-track"><span id="page-thumb"></span></span>
+                </div>
+
+                <div id="discover-panel" class="hidden">
+                    <span class="discover-heading">BROWSE<br />BY</span>
+                    <button id="discover-0" class="discover-button discover-button-0"><span id="discover-label-0">Country</span></button>
+                    <button id="discover-1" class="discover-button discover-button-1"><span id="discover-label-1">Genre</span></button>
+                    <button id="discover-2" class="discover-button discover-button-2"><span id="discover-label-2">Language</span></button>
+                </div>
+
+                <aside id="detail-panel">
+                    <span class="detail-heading">SELECTED</span>
+                    <span id="detail-art" class="detail-art art-green"><span id="detail-badge">US</span></span>
+                    <span id="detail-name">102.7 KIIS FM</span>
+                    <span id="detail-meta">The United States Of America / Los Angeles</span>
+                    <span id="detail-codec">pop  |  AAC 0 kbps</span>
+                    <span id="detail-metric">1002 daily plays  |  2378 votes</span>
+                    <span id="detail-status-dot" class="status-dot"></span>
+                    <span id="detail-status">Ready to play</span>
+                    <button id="play-button">
+                        <span id="play-icon" aria-hidden="true">
+                            <img class="play-glyph" src="icons/play.tga" width="24" height="24" alt="" />
+                            <img class="stop-glyph" src="icons/stop.tga" width="24" height="24" alt="" />
+                        </span>
+                        <span id="play-label">Play station</span>
+                    </button>
+                </aside>
+
+                <section id="now-panel">
+                    <span id="now-art" class="now-art">
+                        <span id="now-badge">--</span>
+                        <span id="eq-0" class="eq-bar eq-0"></span>
+                        <span id="eq-1" class="eq-bar eq-1"></span>
+                        <span id="eq-2" class="eq-bar eq-2"></span>
+                        <span id="eq-3" class="eq-bar eq-3"></span>
+                        <span id="eq-4" class="eq-bar eq-4"></span>
+                    </span>
+                    <span class="now-heading">NOW PLAYING</span>
+                    <span id="now-name">Nothing playing</span>
+                    <span id="now-meta">Choose a station and press Cross</span>
+                    <span id="now-state">Native AAC audio ready</span>
+                </section>
+            </main>
+
+            <footer id="controller-footer">
+                <span class="controller-hint hint-play"><img src="icons/cross.tga" width="40" height="40" alt="" /><span>Play</span></span>
+                <span class="controller-hint hint-back"><img src="icons/circle.tga" width="40" height="40" alt="" /><span>Back</span></span>
+                <span class="controller-hint hint-favorite"><img src="icons/square.tga" width="40" height="40" alt="" /><span>Favorite</span></span>
+                <span class="controller-hint hint-search"><img src="icons/triangle.tga" width="40" height="40" alt="" /><span>Search</span></span>
+                <span class="controller-hint hint-refresh"><img src="icons/options.tga" width="40" height="40" alt="" /><span>Refresh</span></span>
+                <button id="credit-button"><span>Data by Radio Browser</span></button>
+                <span id="connection-dot" class="status-dot"></span>
+                <span id="connection-label">Database ready</span>
+            </footer>
+
+            <section id="search-overlay" class="overlay hidden">
+                <div class="search-panel">
+                    <span class="overlay-title">EXPLORE &amp; SEARCH</span>
+                    <span class="overlay-subtitle">Search the cached catalog or browse by country, genre, and language</span>
+                    <span class="search-help-title">D-PAD / LEFT STICK</span>
+                    <span class="search-help-copy">Move between search, filters, and actions</span>
+                    <span class="search-help-filter">D-pad Left / Right changes a filter</span>
+
+                    <button id="search-query"><span id="search-query-label">Press Cross to type a station, genre, language, or country...</span></button>
+                    <span class="quick-title">QUICK SEARCH</span>
+                    <span class="quick-copy">Use the PS5 system keyboard for names and free-form terms.</span>
+                    <span class="browse-title">BROWSE</span>
+                    <span class="browse-copy">Country, genre, language, and stream quality can be combined.</span>
+                    <span class="browse-note">Results come from the local cache, so filtering is instant.</span>
+
+                    <button id="filter-0" class="filter-button filter-button-0"><span id="filter-label-0">Country<br />All</span></button>
+                    <button id="filter-1" class="filter-button filter-button-1"><span id="filter-label-1">Genre<br />All</span></button>
+                    <button id="filter-2" class="filter-button filter-button-2"><span id="filter-label-2">Language<br />All</span></button>
+                    <button id="filter-3" class="filter-button filter-button-3"><span id="filter-label-3">Minimum bitrate<br />Any</span></button>
+                    <button id="search-reset" class="search-action search-reset"><span>Reset</span></button>
+                    <button id="search-apply" class="search-action search-apply"><span>Show results</span></button>
+                </div>
+            </section>
+
+            <section id="credits-overlay" class="overlay hidden">
+                <div class="credits-panel">
+                    <span class="credits-kicker">POWERED BY</span>
+                    <span class="credits-title">Radio Browser</span>
+                    <span class="credits-copy credits-copy-0">PSRadio's station catalog, metadata, search, and discovery<br />are powered by the free and open Radio Browser community.</span>
+                    <span class="credits-copy credits-copy-1">Thank you to the maintainers and contributors. PSRadio would<br />not be possible without their work.</span>
+                    <span class="credits-url">www.radio-browser.info</span>
+                    <button id="credits-close"><span>Back to PSRadio</span></button>
+                </div>
+            </section>
+        </div>
+    </body>
+</rml>

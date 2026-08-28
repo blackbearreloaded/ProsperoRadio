@@ -3,11 +3,12 @@
  * Copyright (C) 2026 BlackBearReloaded
  * SPDX-License-Identifier: GPL-3.0-or-later
  *
- * Keeps replacement C++ allocation operators internal to the executable.
+ * Keeps all application and static-library definitions internal. The native
+ * converter publishes only imported PS5 symbols; this avoids exposing C++ RTTI
+ * and standard-library implementation details from the RmlUi build.
  */
 
 {
     local:
-        _Zn*;
-        _Zd*;
+        *;
 };

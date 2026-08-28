@@ -1,7 +1,7 @@
 # Contributing
 
-Keep the boilerplate small, reproducible, and useful to a first-time native-app
-developer.
+Keep PSRadio reproducible, responsive on the console, and compatible with the
+native-app-boilerplate build contract.
 
 Before opening a change:
 
@@ -21,6 +21,16 @@ manifest must retain the project copyright and
 `GPL-3.0-or-later` SPDX header. JSON and binary formats cannot carry comments;
 their licensing is covered by `LICENSE` and `NOTICE.md`.
 
+Use `.hpp` for every repository-owned interface and C++20 for every
+repository-owned translation unit. Keep vendored decoder sources in their
+upstream form and expose them through narrow, tested C++ adapters.
+
 Changes to `tooling/native/` must include a deterministic host check and a
 narrowly scoped static-format regression. Loader-visible changes also require
 hardware results before release.
+
+Changes to RML/RCSS, bitmap-font data, playback, codecs, catalogue queries, or
+controller navigation require the relevant focused host regression plus a
+recorded PS5 smoke result before a release claim. Preserve the existing bounded
+memory, cancellation, and malformed-stream behaviour while changing audio
+code.

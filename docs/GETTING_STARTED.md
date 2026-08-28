@@ -1,234 +1,96 @@
 # Getting started
 
-This guide supports native Linux, WSL, and Windows PowerShell hosts. It does
-not configure or modify the PS5.
+This repository is PSRadio on top of a clean clone of the native-app
+boilerplate. Build it from Linux, WSL, or Linux CI; do not use a proprietary
+SDK checkout or copy runtime libraries into the repository.
 
-## 1. Install the Linux toolchain
+## 1. Install host tools
 
-Use an Ubuntu or Debian host directly, or follow Microsoft's
-[WSL installation guide](https://learn.microsoft.com/windows/wsl/install).
-Install the compiler, linker, Make, Python, and download/archive tools:
+On Ubuntu, Debian, or WSL:
 
-```bash
-sudo apt update
-sudo apt install clang-18 clang-format-18 clang-tidy-18 curl git lld-18 make \
-  pkg-config python3 python3-pip python3-venv tar unzip wget
-```
+    sudo apt update
+    sudo apt install curl git make pkg-config python3 python3-venv tar unzip wget \
+      clang-18 clang-format-18 clang-tidy-18 lld-18 libsqlite3-dev
 
-Confirm the expected compiler exists:
+Install .NET SDK 8 or newer only when building an FFPKG package. The FFPFSC
+target uses the pinned MkPFS bootstrapper instead.
 
-```bash
-/usr/bin/clang-18 --version
-```
+## 2. Clone and inspect
 
-From the repository root, run the read-only host check:
+    git clone git@github.com:blackbearreloaded/psradio.git
+    cd psradio
+    make doctor
 
-```bash
-make doctor
-```
+The doctor command is read-only. It reports missing requirements without
+downloading or modifying a global SDK installation.
 
-## 2. Native dependencies
+## 3. Build
 
-The first build downloads the pinned public
-[PS5 payload SDK](https://github.com/ps5-payload-dev/sdk) and the upstream zlib
-1.3.2 source archive into `.deps/native/`. It verifies both archive digests and
-compiles a private static zlib without administrator privileges.
+    make
 
-`make test-unit` downloads and verifies GoogleTest 1.17.0 into `.deps/test/`.
-It is used only for Linux/WSL host tests and is never linked into PS5 output.
+The first build verifies and caches the public PS5 Payload SDK, zlib, the
+PacBrew SQLite port, and the clean-room runtime inputs below ignored .deps/.
+It then creates:
 
-Nothing is installed globally. Bare `make` invokes this bootstrapper
-automatically and later builds reuse the ignored cache. To prefetch without
-building:
+    dist/PPSA99001/
+      eboot.bin
+      sce_module/libc.prx
+      sce_sys/param.json
+      assets/ui/
 
-```bash
-make deps
-```
+The title is PSRadio, title ID PPSA99001, and a Game-category application. The
+category is intentional for Remote Play/Chiaki-ng audio behaviour.
 
-Windows PowerShell users can run `./tools/setup-native-dependencies.ps1`
-instead.
+## 4. Run host checks
 
-Optional third-party PS5 libraries come from PacBrew's pinned prebuilt ports
-image. Pass module names through `PACBREW_PACKAGES`; `make` then downloads and
-links them automatically. Use `make pacbrew-list` to inspect available modules.
-See [PacBrew dependencies](PACBREW.md).
+    make test
+    make lint
+    make check
 
-## 3. Install optional packaging prerequisites
+The host checks do not need a PS5 or public Radio Browser network access.
+They cover the application text/UI contracts, 16 codec/catalogue regressions,
+metadata, shell deployment dry runs, formatting, and static analysis.
 
-The normal folder build needs no managed runtime or external host project.
-Repository-owned tools are compiled from C/C++ source automatically.
+## 5. Build release forms
 
-The root application is C++20. It uses the libc++ headers already present in
-the fetched public SDK while keeping exceptions and RTTI disabled. The build
-links a small project-owned allocation bridge rather than the complete libc++
-runtime; see [Native build tooling](NATIVE_TOOLING.md).
+    make packages
 
-Compressed `.ffpfsc` output uses Python 3.9 or newer with `venv` support. The
-build fetches MkPFS and installs it into an ignored virtual environment under
-`.deps/MkPFS/` when selected.
+This produces:
 
-Uncompressed `.ffpkg` output requires the .NET SDK 8 or newer. The build
-fetches a pinned UFS2Tool checkout, builds its command-line application under
-`.deps/UFS2Tool/`, and reuses that ignored cache. It does not require
-administrator access or a global UFS2Tool installation.
+    dist/PPSA99001/           development title folder
+    dist/PPSA99001.ffpkg      UFS2 package
+    dist/PPSA99001.ffpfsc     compressed package
 
-```bash
-dotnet --version
-```
+The full title folder is the preferred development artifact. Never deploy only
+eboot.bin.
 
-## 4. Generate the clean-room loader shim
+## 6. Deploy a development folder
 
-No proprietary runtime module is required. The repository includes the
-complete clean-room emitter, input manifests, and expected digest. The first
-`make` generates the 1,284,674-byte `runtime/libc.prx` locally and verifies its
-SHA-256 before packaging. `make libc` forces an independent two-pass
-reproduction. See
-[Clean-room runtime shim](RUNTIME_SHIM.md) for its scope and reproduction
-procedure.
+With an already-running console FTP service:
 
-## 5. Choose a unique app identity
+    make deploy PS5_HOST=192.168.4.30 DEPLOY_FORMAT=folder
 
-Use the initializer to change the coordinated fields together:
+The deployment tool sends only this title's files below /data/homebrew and
+publishes critical files last. It does not launch the title or modify Shell
+registration. Use the current project console protocol for launch, logs,
+screenshots, Remote Play cleanup, and any shared-console coordination.
 
-```bash
-make init TITLE_ID=PPSA12345 APP_NAME="My Native App"
-```
+## Version and title identity
 
-For a Media-area app, add `APP_CATEGORY=media`. The command preserves the
-existing PS5-format versions and rewrites the identity fields shown below:
+sce_sys/param.json is the single version source. Its contentVersion appears in
+the packaged metadata, PSRadio top bar, Git tag, and GitHub Release. Use the
+exact PS5 format NN.NNN.NNN, with no v prefix.
 
-```json
-{
-  "applicationCategoryType": 0,
-  "conceptId": "99999",
-  "contentId": "UP9000-PPSA99999_00-MYNATIVEAPP00001",
-  "contentVersion": "01.000.000",
-  "contentBadgeType": 1,
-  "localizedParameters": {
-    "defaultLanguage": "en-US",
-    "en-US": {
-      "titleName": "My Native App"
-    }
-  },
-  "masterVersion": "01.00",
-  "titleId": "PPSA99999"
-}
-```
+Keep PPSA99001 stable for PSRadio updates. Increment contentVersion before
+creating a release tag:
 
-The title ID must be unique among applications already registered on your
-console. `contentId` must contain the same title ID and end with exactly 16
-uppercase letters or digits. Override the generated suffix with
-`CONTENT_SUFFIX=MYNATIVEAPP00001` when needed.
+    git tag 01.000.003
+    git push origin main 01.000.003
 
-The template includes an original BlackBear presentation set. The easiest way
-to give the app its own identity is:
+GitHub Actions rejects a tag that does not exactly match contentVersion and
+publishes the verified title folder archive, FFPKG, FFPFSC, runtime companion,
+and checksums.
 
-```powershell
-./tools/prepare-assets.ps1 `
-    -Icon C:\art\my-icon.png `
-    -Background C:\art\my-background.png
-```
-
-From WSL, the same operation uses POSIX paths:
-
-```bash
-./tools/prepare-assets.sh \
-    --icon /mnt/c/art/my-icon.png \
-    --background /mnt/c/art/my-background.png
-```
-
-The generated console files are:
-
-- `sce_sys/icon0.png`: 512x512 launcher icon.
-- `sce_sys/pic0.dds`: 3840x2160 BC7 selection background.
-- `sce_sys/pic1.dds`: 3840x2160 BC7 launch/loading background.
-
-`-Background` intentionally generates both images from one source. To provide
-different artwork, use `-SelectionBackground` and `-LaunchBackground` instead.
-Editable sources are retained as `sce_sys/background-source.png` and
-`launch-background-source.png`; derived 4K PNG previews are not tracked. The
-build deploys only the DDS files. A PNG renamed to `.dds` is not sufficient.
-
-The normal directory-promotion path displays `titleName` as Shell-rendered text
-over this artwork. Retail custom-font Game Hub logos and descriptions are
-downloaded asynchronously as Internet catalog metadata; the supported
-package-local fields cannot define them for a synthetic homebrew concept. See
-[Platform Notes](PLATFORM_NOTES.md).
-
-The default presentation set also includes original selection music. Preparing
-MP3/M4A/AAC/WAV input requires FFmpeg plus a legally obtained compatible
-ATRAC9 encoder; neither a Sony encoder nor any proprietary SDK tool is bundled
-or downloaded. The script also accepts an already encoded `.at9` file.
-
-See [Presentation assets](PRESENTATION_ASSETS.md) for source recommendations,
-conversion commands, the supported format profile, licensing guidance,
-and the catalog-owned logo/description limitation.
-
-For the Games area, retain `applicationCategoryType: 0`, `contentBadgeType: 1`,
-and the `launchActivity` game intent. Media applications use category `65536`,
-badge `2`, and no `gameIntent`. The build validates these fields but does not
-rewrite them. See [Application configuration](CONFIGURATION.md) before
-changing category or release versions.
-
-## 6. Check and build
-
-From Linux or WSL in the repository root:
-
-```bash
-make test
-make lint
-make
-```
-
-Only `make` is required for a normal folder build. `make test` runs the C++
-GoogleTest and host tooling integration suites; use `make test-unit` or
-`make test-integration` to run one layer. The normal build fetches missing native
-dependencies, generates and verifies `runtime/libc.prx`, and builds the root
-application. Linting remains an explicit development check. See
-[Testing](TESTING.md) for test boundaries and PS5 validation practices.
-
-Windows PowerShell remains supported:
-
-```powershell
-./tools/doctor.ps1
-./build.ps1
-```
-
-Successful output ends with an app directory such as:
-
-```text
-dist/PPSA99999/
-  eboot.bin
-  sce_module/libc.prx
-  sce_sys/icon0.png
-  sce_sys/pic0.dds
-  sce_sys/pic1.dds
-  sce_sys/param.json
-  sce_sys/snd0.at9
-```
-
-Choose the final output with Make:
-
-```bash
-make app
-make ffpkg
-make ffpfsc
-make packages
-```
-
-The equivalent PowerShell selections are:
-
-```powershell
-./build.ps1 -OutputFormat Folder
-./build.ps1 -OutputFormat Ffpkg
-./build.ps1 -OutputFormat Ffpfsc
-./build.ps1 -OutputFormat All
-```
-
-The optional packaging tools are fetched only on first use. See
-[Build output formats](FFPKG.md).
-
-`runtime/libc.prx` is a generated, ignored file. Tagged GitHub Releases also
-publish the verified runtime as a standalone convenience download.
-
-Continue with [Deployment](DEPLOYMENT.md).
+For source architecture, dependencies, and PS5-only validation, continue with
+[Architecture](ARCHITECTURE.md), [Template port notes](TEMPLATE_PORT.md),
+[Testing](TESTING.md), and [Deployment](DEPLOYMENT.md).

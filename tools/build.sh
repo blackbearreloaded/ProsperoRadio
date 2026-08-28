@@ -24,7 +24,7 @@ done
 bash "$root/tools/setup-native-dependencies.sh" >/dev/null
 
 param="$root/sce_sys/param.json"
-title_id=$(python3 - "$param" <<'PY'
+read -r title_id content_version < <(python3 - "$param" <<'PY'
 import json, re, sys
 
 with open(sys.argv[1], encoding="utf-8") as source:
@@ -64,7 +64,7 @@ language = localized.get("defaultLanguage", "")
 title = localized.get(language, {}).get("titleName", "")
 if not isinstance(title, str) or not title.strip():
     raise SystemExit("param.json default-language titleName cannot be empty")
-print(title_id)
+print(title_id, value["contentVersion"])
 PY
 )
 
@@ -107,14 +107,18 @@ done
 (( ${#sources[@]} > 0 )) || { echo "src/ has no C or C++ sources" >&2; exit 2; }
 
 definitions=()
+cxx_flags=()
 includes=()
 archives=()
+import_stubs=()
 pacbrew_packages=()
 pacbrew_includes=()
 pacbrew_archives=()
 [[ -z ${APP_DEFINITIONS:-} ]] || read -r -a definitions <<< "$APP_DEFINITIONS"
+[[ -z ${APP_CXXFLAGS:-} ]] || read -r -a cxx_flags <<< "$APP_CXXFLAGS"
 [[ -z ${APP_INCLUDE_PATHS:-} ]] || read -r -a includes <<< "$APP_INCLUDE_PATHS"
 [[ -z ${APP_STATIC_ARCHIVES:-} ]] || read -r -a archives <<< "$APP_STATIC_ARCHIVES"
+[[ -z ${APP_IMPORT_STUBS:-} ]] || read -r -a import_stubs <<< "$APP_IMPORT_STUBS"
 [[ -z ${PACBREW_PACKAGES:-} ]] || read -r -a pacbrew_packages <<< "$PACBREW_PACKAGES"
 [[ -z ${PACBREW_INCLUDE_PATHS:-} ]] || read -r -a pacbrew_includes <<< "$PACBREW_INCLUDE_PATHS"
 [[ -z ${PACBREW_STATIC_ARCHIVES:-} ]] || read -r -a pacbrew_archives <<< "$PACBREW_STATIC_ARCHIVES"
@@ -157,7 +161,7 @@ for source in "${sources[@]}"; do
     object="$build/obj/${source//\//_}.o"
     if [[ $source == *.c ]]; then standard=-std=c11; else standard=-std=c++20; fi
     args=("$standard" -O2 -Wall -Wextra -ffunction-sections -fdata-sections)
-    [[ $source == *.c ]] || args+=(-fno-exceptions -fno-rtti)
+    [[ $source == *.c ]] || args+=(-fno-exceptions -fno-rtti "${cxx_flags[@]}")
     for definition in "${definitions[@]}"; do
         [[ $definition =~ ^[A-Za-z_][A-Za-z0-9_]*(=[A-Za-z0-9_]+)?$ ]] || {
             echo "invalid compile definition: $definition" >&2; exit 2;
@@ -193,15 +197,76 @@ for archive in "${archives[@]}"; do
     }
     link_inputs+=("$root/$archive")
 done
+builder_stub_args=()
+link_imports=()
+for stub in "${import_stubs[@]}"; do
+    [[ $stub =~ ^[A-Za-z0-9_.-]+(/[A-Za-z0-9_.-]+)*\.(so|sprx|a)$ && -f $root/$stub ]] || {
+        echo "invalid import stub path: $stub" >&2; exit 2;
+    }
+    builder_stub_args+=(--stub "$root/$stub")
+    case "${stub##*/}" in
+        libSceOpusDec_stub.a)
+            link_source="$native/psradio_import_stub_opus.cpp"
+            soname=libSceOpusDec.sprx
+            link_name=libSceOpusDec.so
+            ;;
+        libSceOpusCeltDec_stub.a)
+            link_source="$native/psradio_import_stub_opus_celt.cpp"
+            soname=libSceOpusCeltDec.sprx
+            link_name=libSceOpusCeltDec.so
+            ;;
+        *)
+            echo "unsupported PSRadio import stub: $stub" >&2; exit 2;
+            ;;
+    esac
+    mkdir -p "$build/import-stubs"
+    link_object="$build/import-stubs/${link_name%.so}.o"
+    link_stub="$build/import-stubs/$link_name"
+    PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
+        -std=c++20 -O2 -Wall -Wextra -fno-exceptions -fno-rtti -fPIC \
+        -c "$link_source" -o "$link_object"
+    "$sdk_root/bin/prospero-lld" --shared -soname "$soname" -o "$link_stub" "$link_object"
+    link_imports+=("$link_stub")
+done
+# The public SDK lacks a CommonDialog import stub, but the IME entry point
+# needs its one initializer. Keep this link-only declaration local and feed
+# its ordinary ELF metadata to the same validated import writer.
+common_link_object="$build/import-stubs/libSceCommonDialog.o"
+common_link_stub="$build/import-stubs/libSceCommonDialog.so"
+PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
+    -std=c++20 -O2 -Wall -Wextra -fno-exceptions -fno-rtti -fPIC \
+    -c "$native/psradio_import_stub_common_dialog.cpp" -o "$common_link_object"
+"$sdk_root/bin/prospero-lld" --shared -soname libSceCommonDialog.sprx \
+    -o "$common_link_stub" "$common_link_object"
+builder_stub_args+=(--stub "$common_link_stub")
+link_imports+=("$common_link_stub")
+
+# AudioDec is likewise loaded dynamically by the app but absent from the
+# public SDK stub directory. The facade exists only during linking.
+audiodec_link_object="$build/import-stubs/libSceAudiodec.o"
+audiodec_link_stub="$build/import-stubs/libSceAudiodec.so"
+PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
+    -std=c++20 -O2 -Wall -Wextra -fno-exceptions -fno-rtti -fPIC \
+    -c "$native/psradio_import_stub_audiodec.cpp" -o "$audiodec_link_object"
+"$sdk_root/bin/prospero-lld" --shared -soname libSceAudiodec.sprx \
+    -o "$audiodec_link_stub" "$audiodec_link_object"
+builder_stub_args+=(--stub "$audiodec_link_stub")
+link_imports+=("$audiodec_link_stub")
+link_inputs+=("${link_imports[@]}")
 if (( ${#pacbrew_libs[@]} > 0 )); then
     link_inputs+=(--start-group "${pacbrew_libs[@]}" --end-group)
 fi
+linker_import_flags=()
+if (( ${#builder_stub_args[@]} > 0 )); then
+    linker_import_flags+=(--unresolved-symbols=ignore-all)
+fi
 "$sdk_root/bin/prospero-lld" -T "$native/ps5-pie.ld" --eh-frame-hdr \
     --version-script "$native/app-symbols.map" \
-    -e _start -o "$build/llvm-pie.elf" "${link_inputs[@]}" \
+    -L "$sdk_root/target/lib" -e _start -o "$build/llvm-pie.elf" "${link_inputs[@]}" \
+    "${linker_import_flags[@]}" \
     --as-needed "$sdk_root"/target/lib/*.so
 "$tool" link --in "$build/llvm-pie.elf" --out "$build/eboot.elf" \
-    --stub-dir "$sdk_root/target/lib" --module-sdk "$module_sdk" \
+    --stub-dir "$sdk_root/target/lib" "${builder_stub_args[@]}" --module-sdk "$module_sdk" \
     --companion-sdk "$companion_sdk" --file-name eboot.elf
 
 app="$dist/$title_id"
@@ -215,6 +280,16 @@ for asset in icon0.png pic0.dds pic1.dds snd0.at9; do
     [[ -f $root/sce_sys/$asset ]] && cp "$root/sce_sys/$asset" "$app/sce_sys/$asset"
 done
 [[ ! -d $root/assets ]] || cp -a "$root/assets" "$app/assets"
+if [[ -f $app/assets/ui/main.rml ]]; then
+    python3 - "$app/assets/ui/main.rml" "$content_version" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+value = path.read_text(encoding="utf-8").replace("{{PSRADIO_VERSION}}", sys.argv[2])
+path.write_text(value, encoding="utf-8", newline="\n")
+PY
+fi
 
 [[ -f $root/runtime/libc.prx ]] || bash "$root/tools/rebuild-libc.sh"
 (cd "$root/runtime" && sha256sum --check --strict libc.prx.sha256)

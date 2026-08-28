@@ -274,12 +274,15 @@ Stub read_stub(std::span<const std::uint8_t> data, std::string origin)
     const ParsedSections parsed = sections(data);
     std::size_t symbols_index = parsed.raw.size();
     std::size_t dynamic_index = parsed.raw.size();
+    bool ps5_import_stub = false;
     for (std::size_t i = 0; i < parsed.raw.size(); ++i)
     {
         if (parsed.raw[i].type == kSectionDynamicSymbols)
             symbols_index = i;
         if (parsed.raw[i].type == kSectionDynamic)
             dynamic_index = i;
+        if (parsed.names[i] == ".scenid")
+            ps5_import_stub = true;
     }
     require(symbols_index < parsed.raw.size() && dynamic_index < parsed.raw.size(),
             "SDK stub lacks dynamic metadata: " + origin);
@@ -304,8 +307,14 @@ Stub read_stub(std::span<const std::uint8_t> data, std::string origin)
     stub.soname = normalized_soname(std::move(soname));
     stub.module_name = module_from_soname(stub.soname);
     stub.library_name = stub.module_name;
+    const bool only_undefined_exports =
+        ps5_import_stub &&
+        std::none_of(
+            symbols.begin(), symbols.end(), [](const Symbol &symbol)
+            { return !symbol.undefined() && symbol.global_or_weak() && !symbol.name.empty(); });
     for (const Symbol &symbol : symbols)
-        if (!symbol.undefined() && symbol.global_or_weak() && !symbol.name.empty())
+        if ((!symbol.undefined() || only_undefined_exports) && symbol.global_or_weak() &&
+            !symbol.name.empty())
             stub.exports.push_back(symbol.name);
     return stub;
 }

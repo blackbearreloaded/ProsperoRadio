@@ -1,83 +1,92 @@
 # Testing
 
-The repository separates fast host checks from behavior that only real PS5
-hardware can prove.
+PSRadio separates deterministic host regressions from behaviour that only a
+real PS5 can prove. Host tests never contact a console or a public Radio
+Browser server.
 
 ## Commands
 
 | Command | Scope |
 | --- | --- |
-| `make test-deps` | Fetch and verify the pinned host-only GoogleTest source. |
-| `make test-unit` | Compile and run the host-native GoogleTest application tests. |
-| `make test-integration` | Exercise repository scripts through subprocesses and temporary files. |
-| `make test` | Run both host test suites. |
-| `make check` | Run linting, all host tests, and a complete folder build. |
+| make test-deps | Fetch and verify the pinned, host-only GoogleTest source. |
+| make test-unit | Compile and run the C++20 GoogleTest suite. |
+| make test-integration | Run tool/UI Python tests and every host codec/catalogue regression. |
+| make test | Run the complete host suite. |
+| make check | Run linting, all host tests, and a full title-folder build. |
+| make packages | Build the folder, FFPKG, and FFPFSC release forms. |
 
-GitHub Actions runs `make test-unit` and `make test-integration` as separate
-Ubuntu steps, so every pull request executes both layers with clear failure
-reporting. Host tests must remain deterministic, must never contact a console,
-and must be safe to run in parallel with unrelated console work. The first
-unit-test run downloads a pinned GoogleTest archive after verifying its
-SHA-256; later runs reuse `.deps/test/`.
+The host suite requires clang-18, clang++-18, and libsqlite3-dev.
+GoogleTest is fetched into ignored .deps/test/ and is never included in a PS5
+executable or package.
 
-Run one test or suite with normal GoogleTest arguments:
+## Unit tests
 
-```bash
-make test-unit GTEST_ARGS='--gtest_filter=AssetTextTest.MissingAssetUsesFallback'
-```
+The GoogleTest suite covers the C++ contracts that are portable and quick to
+exercise:
 
-## Unit-test policy
+- UTF-8 text stays unchanged for left-to-right scripts.
+- Arabic/Persian presentation selection and RTL visual ordering remain stable.
+- PS5 Opus import manifests expose their SONAME and required symbols to the
+  native template converter.
 
-Write unit tests for reusable logic with meaningful behavior: parsers, state
-transitions, bounds handling, input mapping, protocol messages, resource
-ownership, and error paths. Keep platform calls behind a small boundary so the
-logic can compile and run on Linux without a PS5 or proprietary SDK.
+Add a focused GoogleTest case for C++ state transformations, bounds handling,
+or parser behaviour that does not need a PS5. Repository-owned interfaces use
+the boilerplate's `.hpp` convention.
 
-The starter suite in `tests/test_demo_renderer.cpp` uses GoogleTest to validate
-fallback, line-ending, truncation, and null-termination behavior for packaged
-text assets. GoogleTest is a host-only development dependency: it is never
-compiled into `eboot.bin`, `libc.prx`, or a PS5 package.
+## Integration and codec regressions
 
-Do not add tests for trivial constants or one-line drawing calls merely to
-increase a coverage percentage. Test observable contracts and regressions.
+Python discovery runs tests/test_*.py. It checks deployment dry-runs, metadata
+initialization, and the RML/UI asset contract.
 
-## Host integration tests
+tools/run-radio-checks.sh compiles and runs 16 small host-native checks:
 
-`tests/test_tools.py` invokes complete repository scripts with temporary input
-and controlled environment variables. Use this level for metadata updates,
-build orchestration, package validation, and deployment resolution. Network
-operations must be mocked or use an explicit dry-run mode; host CI must never
-contact a console.
+- AAC timing and MP3 frame geometry.
+- ICY metadata, PCM queue, reconnect retry, and controller mapping.
+- M3U/PLS resolution, HLS parsing, and MPEG-TS AAC extraction.
+- Ogg page/stream validation, Opus packet semantics, and PCM handling.
+- Incremental Vorbis and FLAC/Ogg-FLAC decoding.
+- Radio Browser JSON/mirror/query parsing and SQLite catalogue persistence.
 
-Each test must clean up its files, avoid shared mutable state, and include the
-failure case that would have caught the associated bug.
+These checks use production C sources directly with strict warnings. They
+exercise failure and truncation paths as well as normal data.
 
-## PS5 integration validation
+## PS5 smoke test
 
-Rendering, controller input, AudioOut, mounted paths, launch/closure behavior,
-and firmware compatibility require hardware validation. A passing host suite
-does not prove those properties.
+The following cannot be established on a host:
 
-For a hardware milestone:
+- RmlUi/SDL presentation, bitmap atlas sampling, and TV safe-area layout.
+- Native AudioOut timing and the AAC/MP3/Opus decoder paths.
+- Network/SSL/HTTP implementation, IME, controller hardware, and HLS live
+  playback.
+- Loader/FSELF compatibility, title lifecycle, and /download0 persistence.
 
-1. Build an exact candidate from a clean commit and record its digest.
-2. Acquire the shared console lock only for the test window.
-3. Deploy the title through the documented LAN-only procedure.
-4. Capture the expected visual result and relevant logs.
-5. Close the title, release the lock, and record firmware, loader, result, and
-   artifact identity.
-6. Commit the validation record separately from the implementation when the
-   project workflow requires one.
+For a release candidate:
 
-Follow [Deployment](DEPLOYMENT.md) and the separate
-[PS5 Homebrew Development Protocol](https://github.com/blackbearreloaded/ps5-homebrew-dev-protocol)
-for console coordination, evidence collection, and milestone policy.
+1. Build from a clean commit and record the artifact SHA-256 and
+   contentVersion.
+2. Follow the repository's current console coordination protocol before
+   connecting to shared hardware.
+3. Deploy the whole dist/PPSA99001/ folder for a development test, or the
+   matching FFPFSC for package installation.
+4. Launch the Game-category title, verify browsing, search, favourites,
+   playback/stop/switch, one non-ASCII station name, and a cached restart.
+5. Capture the result and relevant logs; close the title and any Remote Play
+   client.
+6. Record console firmware, loader, exact artifact, and result in the relevant
+   validation document.
 
-## Adding tests
+Do not claim hardware support from passing host tests alone. See
+[Deployment](DEPLOYMENT.md), [Architecture](ARCHITECTURE.md), and the
+project's PS5 homebrew-development protocol for the console procedure.
 
-- Add GoogleTest cases to C++ files under `tests/`; the `test-unit` recipe owns
-  their host-only compilation.
-- Add Python subprocess tests as `tests/test_*.py`; discovery is automatic.
-- Preserve the GPL header on every test source.
-- Run `make test`, `make lint`, and `make` before submitting a change.
-- Reserve real-console claims for recorded hardware results.
+## Before review or release
+
+Run:
+
+    make lint
+    make test
+    make packages
+
+A release tag must exactly equal contentVersion in sce_sys/param.json, for
+example 01.000.003. GitHub Actions repeats the same host gates and publishes
+only artifacts produced by the verified tag build.

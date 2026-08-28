@@ -70,9 +70,11 @@ entitlements.
 
 ## Source and runtime conventions
 
-Every `.c`, `.cc`, and `.cpp` file below `src/` is compiled automatically.
-Move experiments outside `src/` when they should not enter the build. C++20 is
-the default; C files use C11. Exceptions and RTTI remain disabled.
+Every `.cpp` file below `src/` is compiled automatically. Move experiments
+outside `src/` when they should not enter the build. All repository-owned code
+uses C++20 and `.hpp` interfaces. Exceptions remain disabled. RmlUi requires
+type information in its static library, so the PSRadio Makefile deliberately
+adds `-frtti` after the template default.
 
 The generated `runtime/libc.prx` is always included and verified against
 `runtime/libc.prx.sha256`. Additional local PRXs may be placed under the ignored
@@ -89,8 +91,10 @@ Build-only choices use Make variables rather than application metadata:
 | Variable | Space-separated values |
 | --- | --- |
 | `APP_DEFINITIONS` | Preprocessor definitions such as `FEATURE_AUDIO=1`. |
+| `APP_CXXFLAGS` | Additional C++-only compiler flags. |
 | `APP_INCLUDE_PATHS` | Repository-relative include directories. |
 | `APP_STATIC_ARCHIVES` | Repository-relative `.a` files in linker order. |
+| `APP_IMPORT_STUBS` | Validated PS5 import-manifest archives; see `TEMPLATE_PORT.md`. |
 | `APP_RUNTIME_MODULES` | PRX paths below the ignored `.local/runtime/` directory. |
 | `PACBREW_PACKAGES` | PacBrew `pkg-config` module names. |
 | `PACBREW_INCLUDE_PATHS` | Paths below PacBrew's `/user/homebrew`. |
@@ -104,9 +108,9 @@ make PACBREW_PACKAGES="sdl2 openssl" \
   APP_INCLUDE_PATHS="include"
 ```
 
-Set the same environment variables before `./build.ps1` on Windows. Paths in
-these lists cannot contain spaces. See [PacBrew dependencies](PACBREW.md) for
-manual archive examples.
+Set the same environment variables before the corresponding `make` command.
+Paths in these lists cannot contain spaces. See
+[PacBrew dependencies](PACBREW.md) for manual archive examples.
 
 Deployment uses a separate set of Make variables:
 
