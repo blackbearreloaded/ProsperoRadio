@@ -181,17 +181,49 @@ The workflow rejects a mismatched tag. Full field meanings, Game/Media
 metadata, and the import-linking configuration are in
 [Configuration](docs/CONFIGURATION.md).
 
-## Credits and licences
+## Credits, third-party software, and licences
 
-PS5 Radio uses Radio Browser for station metadata and URLs; Radio Browser does
-not host the individual station streams. The project also uses or references
-the PS5 Payload SDK, PacBrew SQLite, LLVM/Clang/lld, RmlUi, SDL2, FreeType,
-GoogleTest, stb_vorbis, dr_flac, MkPFS, and UFS2Tool. Their provenance and
-licences—including the public PS5 import metadata and template tooling—are
-listed in [NOTICE.md](NOTICE.md).
+PS5 Radio acknowledges the open-source projects and public services that made
+the application possible:
 
-PS5 Radio is GPL-3.0-or-later. See [LICENSE](LICENSE), [NOTICE.md](NOTICE.md),
-and [Contributing](CONTRIBUTING.md).
+- **Platform and packaging:** [PS5 Native App Boilerplate](https://github.com/blackbearreloaded/ps5-native-app-boilerplate)
+  (GPL-3.0-or-later), [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk)
+  v0.42, [PacBrew](https://github.com/ps5-payload-dev/pacbrew-repo) v0.40.2,
+  [SharpProspero](https://github.com/SvenGDK/SharpProspero) as a public format
+  reference, [MkPFS](https://github.com/PSBrew/MkPFS), and
+  [UFS2Tool](https://github.com/SvenGDK/UFS2Tool).
+- **Application stack:** [Radio Browser](https://www.radio-browser.info/),
+  [RmlUi 6.2](https://github.com/mikke89/RmlUi/tree/6.2) (MIT),
+  [SDL2](https://github.com/libsdl-org/SDL/tree/SDL2),
+  [FreeType 2.13.2](https://freetype.org/),
+  [SQLite 3.46.1](https://sqlite.org/) (public domain),
+  [zlib 1.3.2](https://github.com/madler/zlib),
+  [stb_vorbis](https://github.com/nothings/stb) (MIT), and
+  [dr_flac](https://github.com/mackron/dr_libs) (MIT-0).
+- **Tooling and type assets:** [LLVM](https://github.com/llvm/llvm-project),
+  [GoogleTest 1.17.0](https://github.com/google/googletest),
+  [DirectXTex](https://github.com/microsoft/DirectXTex),
+  [LVGL](https://github.com/lvgl/lvgl),
+  [Montserrat](https://github.com/JulietaUla/Montserrat),
+  [Noto fonts](https://github.com/notofonts),
+  [DejaVu fonts](https://dejavu-fonts.github.io/), and
+  [Source Han Sans](https://github.com/adobe-fonts/source-han-sans).
+
+Radio Browser supplies station metadata and URLs but does not host individual
+station streams. The SDK, zlib, GoogleTest, MkPFS, and UFS2Tool are verified
+build inputs kept below ignored `.deps/`; they are not distributed in the
+release package. SharpProspero is neither fetched nor linked. Checked-in SDL2,
+RmlUi, FreeType, stb_vorbis, and dr_flac files retain their upstream licence
+texts below `vendor/`. Complete font licences accompany
+`assets/ui/fonts/lvgl-bitmap/`.
+
+The runtime shim, ELF converter, and FSELF writer are independently authored
+GPL-3.0-or-later code. No proprietary Sony SDK, firmware module, encryption
+key, or extracted game asset is included. The maintainer-supplied launcher
+artwork and selection audio are distributed under the project licence.
+
+PS5 Radio is GPL-3.0-or-later. See [LICENSE](LICENSE) and
+[Contributing](CONTRIBUTING.md).
 
 PlayStation and PS5 are trademarks of Sony Interactive Entertainment. This
 project is independent and is not affiliated with or endorsed by Sony.

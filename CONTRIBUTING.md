@@ -19,7 +19,8 @@ Before opening a change:
 Every comment-capable code, script, workflow, tooling configuration, and
 manifest must retain the project copyright and
 `GPL-3.0-or-later` SPDX header. JSON and binary formats cannot carry comments;
-their licensing is covered by `LICENSE` and `NOTICE.md`.
+their licensing is covered by `LICENSE`, the README acknowledgements, and the
+upstream licence files retained with vendored dependencies.
 
 Use `.hpp` for every repository-owned interface and C++20 for every
 repository-owned translation unit. Keep vendored decoder sources in their

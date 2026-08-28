@@ -88,7 +88,8 @@ small zero-run/literal encoding and is decoded by the SDL texture loader.
 [`src/radio_text.cpp`](../src/radio_text.cpp) provides the minimum layout support
 needed beyond RmlUi's left-to-right bitmap interface: Arabic and Persian
 presentation-form selection plus visual ordering for right-to-left metadata.
-Font sources and licenses are documented in [`NOTICE.md`](../NOTICE.md).
+Font sources and licences are documented in the README acknowledgements and in
+the licence files shipped beside the bitmap atlases.
 
 ## Radio Browser and persistence
 
@@ -269,7 +270,7 @@ runtime owns the global C++ allocation bridge; PS5 Radio gives SDL its own
 tracked allocator rather than defining a second global `new`/`delete` bridge.
 
 The dependency, import-facade, and licensing boundaries are described in
-[Template port notes](TEMPLATE_PORT.md), [`NOTICE.md`](../NOTICE.md), and
+[Template port notes](TEMPLATE_PORT.md), the README acknowledgements, and
 [Native tooling](NATIVE_TOOLING.md).
 
 ## Regression checks

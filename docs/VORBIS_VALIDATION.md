@@ -2,7 +2,7 @@
 
 PS5 Radio uses a bounded CPU fallback for Ogg Vorbis because the hardware-first
 firmware investigation found no callable native PCM decoder. The vendored
-`stb_vorbis` revision and license are recorded in [`NOTICE.md`](../NOTICE.md)
+`stb_vorbis` provenance and licence are recorded in the README acknowledgements
 and [`vendor/stb/README.md`](../vendor/stb/README.md).
 
 ## Runtime design
