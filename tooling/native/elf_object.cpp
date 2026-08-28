@@ -308,10 +308,11 @@ Stub read_stub(std::span<const std::uint8_t> data, std::string origin)
     stub.module_name = module_from_soname(stub.soname);
     stub.library_name = stub.module_name;
     const bool only_undefined_exports =
-        ps5_import_stub &&
-        std::none_of(
-            symbols.begin(), symbols.end(), [](const Symbol &symbol)
-            { return !symbol.undefined() && symbol.global_or_weak() && !symbol.name.empty(); });
+        ps5_import_stub && std::none_of(symbols.begin(), symbols.end(),
+                                        [](const Symbol &symbol) {
+                                            return !symbol.undefined() && symbol.global_or_weak() &&
+                                                   !symbol.name.empty();
+                                        });
     for (const Symbol &symbol : symbols)
         if ((!symbol.undefined() || only_undefined_exports) && symbol.global_or_weak() &&
             !symbol.name.empty())

@@ -425,7 +425,7 @@ static void migrate_legacy_favorites(void)
 
     favorites_file_t file;
     unsigned count = 0U;
-    const char (*uuids)[40] = nullptr;
+    const char(*uuids)[40] = nullptr;
     if (read_exact(FAVORITES_PATH, &file, sizeof(file)) && file.header.magic == FAVORITES_MAGIC &&
         file.header.version == FAVORITES_FIXED_VERSION &&
         file.header.count <= LEGACY_CATALOG_CAPACITY &&
