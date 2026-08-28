@@ -2,17 +2,19 @@
   <img src="sce_sys/icon0.png" width="128" alt="PS5 Radio icon">
 </p>
 
-# PS5 Radio
+<h1 align="center">PS5 Radio</h1>
 
-[![Build](https://github.com/blackbearreloaded/ps5-radio/actions/workflows/tooling.yml/badge.svg)](https://github.com/blackbearreloaded/ps5-radio/actions/workflows/tooling.yml)
-[![Latest release](https://img.shields.io/github/v/release/blackbearreloaded/ps5-radio?display_name=tag)](https://github.com/blackbearreloaded/ps5-radio/releases/latest)
-[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
+<p align="center">
+  <strong>A native Internet-radio application for PlayStation 5 homebrew</strong><br>
+  Browse and search the Radio Browser catalogue with resilient disk-backed
+  caching, native PS5 audio playback, and a controller-first RmlUi interface.
+</p>
 
-PS5 Radio is a native PlayStation 5 Internet-radio application. It browses and
-searches the public Radio Browser catalogue, keeps a resilient disk-backed
-catalogue on the console, and plays supported live streams through the PS5
-audio stack. The fixed, controller-first interface is built with RmlUi HTML and
-RCSS, SDL2, and deterministic bitmap fonts.
+<p align="center">
+  <a href="https://github.com/blackbearreloaded/ps5-radio/actions/workflows/tooling.yml"><img src="https://github.com/blackbearreloaded/ps5-radio/actions/workflows/tooling.yml/badge.svg" alt="Build"></a>
+  <a href="https://github.com/blackbearreloaded/ps5-radio/releases/latest"><img src="https://img.shields.io/github/v/release/blackbearreloaded/ps5-radio?display_name=tag" alt="Latest release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg" alt="GPL-3.0-or-later"></a>
+</p>
 
 Demo available by clicking on the image below.
 
