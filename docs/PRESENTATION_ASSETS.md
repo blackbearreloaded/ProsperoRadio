@@ -4,6 +4,13 @@ This repository can turn ordinary developer-owned artwork and audio into the
 launcher formats supported by this template. Conversion changes only the
 repository's `sce_sys` files; it does not connect to or configure a console.
 
+The checked-in PS5 Radio artwork was created with OpenAI ImageGen in a shared
+ink-and-watercolor style. `icon0.png` depicts birds flowing into an audio
+waveform, `background-source.png` is the light app-selection landscape, and
+`launch-background-source.png` is the dark launch-transition composition.
+The two background sources are retained at 3840x2160; `pic0.dds` and
+`pic1.dds` are their deployment-ready BC7 derivatives.
+
 ## What you can customize
 
 | Experience | Source to provide | Generated console file |

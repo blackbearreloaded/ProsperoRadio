@@ -1,5 +1,10 @@
 # Controller icon assets
 
+`psradio.tga` is the 64 x 64 uncompressed, footerless in-app derivative of the
+generated launcher icon in `sce_sys/icon0.png`. Keeping both views on the same
+source artwork gives the PS5 shell tile and the application header a
+consistent identity.
+
 The five controller symbols were generated with OpenAI ImageGen as a single
 high-contrast mask, then deterministically cropped, recolored, and exported as
 36 x 36 uncompressed, straight-alpha TGA files for exact 1:1 PS5 rendering.
