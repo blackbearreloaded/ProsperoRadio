@@ -1542,37 +1542,6 @@ static bool promote_staging_store(radio_catalog_store_t *staging)
     return replaced && valid && favorites_copied;
 }
 
-static bool recover_staging_store_if_available(void)
-{
-    SDL_LockMutex(g_store_mutex);
-    const size_t active_count = radio_catalog_store_station_count(&g_catalog_store);
-    SDL_UnlockMutex(g_store_mutex);
-    if (active_count != 0U)
-        return false;
-
-    radio_catalog_store_t staging;
-    memset(&staging, 0, sizeof(staging));
-    if (!radio_catalog_store_open(&staging, CATALOG_STAGING_PATH) ||
-        !radio_catalog_store_integrity_check(&staging))
-    {
-        radio_catalog_store_close(&staging);
-        return false;
-    }
-    const size_t staging_count = radio_catalog_store_station_count(&staging);
-    if (staging_count == 0U)
-    {
-        radio_catalog_store_close(&staging);
-        return false;
-    }
-    if (!promote_staging_store(&staging))
-    {
-        fprintf(stderr, "[PSRadio][catalog] staging recovery failed stations=%zu\n", staging_count);
-        return false;
-    }
-    fprintf(stderr, "[PSRadio][catalog] recovered staging cache stations=%zu\n", staging_count);
-    return true;
-}
-
 static void *refresh_thread(void *task_data)
 {
     catalog_task_t task = *(catalog_task_t *)task_data;
@@ -3086,7 +3055,6 @@ bool radio_service_init(void)
         g_status.playback_state = RADIO_PLAYBACK_STOPPED;
         return false;
     }
-    recover_staging_store_if_available();
     migrate_legacy_catalog();
     load_favorites();
     const bool cached = load_catalog_summary(RADIO_CATALOG_CACHED);
