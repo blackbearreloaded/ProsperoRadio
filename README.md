@@ -113,6 +113,11 @@ alone. For a local development loop against an already-running FTP service:
 make deploy PS5_HOST=192.168.4.30 DEPLOY_FORMAT=folder
 ```
 
+> [!NOTE]
+> The first launch can take a while while PS5 Radio downloads, validates, and
+> caches the Radio Browser catalogue. Keep the console online and leave the app
+> open until the database finishes loading; later launches use the local cache.
+
 The deployer writes only title-scoped paths below `/data/homebrew`. It uploads
 each file through a temporary name, then publishes `eboot.bin` and
 `sce_sys/param.json` last. For console protocol and evidence requirements, see
