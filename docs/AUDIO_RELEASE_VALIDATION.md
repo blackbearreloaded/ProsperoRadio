@@ -79,6 +79,24 @@ closed `PPSA99001`; ShadowMountPlus recorded the title stop, sandbox removal,
 runtime-layer release, and both image unmounts. All three declared console
 services remained reachable after cleanup, and the owned Chiaki process exited.
 
+## Internet-stream jitter reserve
+
+Commit `4c827f4` increased the shared decoded-PCM ring from two to eight
+seconds, with three seconds required before initial playback and two seconds
+after an underrun. This replaces the former half-second restart loop that made
+ordinary network stalls audible across every codec. The complete host check,
+including all codec regressions and a fresh PS5 folder build, passed.
+
+The exact development candidate (`eboot.bin` SHA-256
+`E78DBC3AC7993EB9A6D7025B9C06E4CDC838383815ABBB167C2F2956864893A0`)
+was deployed to `/data/homebrew/PPSA99001`. On firmware 6.02 it reached AAC
+playback at 24 kHz, remained visibly in the Playing state during the bounded
+observation, and switched to MP3 playback at 48 kHz without a crash. FTP,
+klog, and controller services remained healthy after the title and the owned
+Chiaki process were closed. The workstation had no configured audio-capture
+device, so this run is a partial pass pending an operator listening check for
+the original intermittent half-second gaps.
+
 ## Release conclusion
 
 All formats advertised by PSRadio have a working PS5 path and bounded failure
