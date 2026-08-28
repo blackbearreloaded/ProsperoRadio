@@ -70,7 +70,7 @@ single `{{PS5_RADIO_VERSION}}` placeholder in the copied RML document with
 `contentVersion` from `sce_sys/param.json`. The source document retains the
 placeholder; no second version file exists.
 
-The title is always `PPSA99001`, with a Game category. Keep the title ID
+The title is always `PPSA99001`, with a Media category. Keep the title ID
 stable for updates. See [Configuration](CONFIGURATION.md).
 
 ## Verification

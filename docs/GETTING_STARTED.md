@@ -38,8 +38,7 @@ It then creates:
       sce_sys/param.json
       assets/ui/
 
-The title is PS5 Radio, title ID PPSA99001, and a Game-category application. The
-category is intentional for Remote Play/Chiaki-ng audio behaviour.
+The title is PS5 Radio, title ID PPSA99001, and a Media-category application.
 
 ## 4. Run host checks
 

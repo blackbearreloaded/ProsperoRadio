@@ -57,6 +57,9 @@ def main() -> int:
     assert re.fullmatch(r"[0-9]{2}\.[0-9]{3}\.[0-9]{3}", project["contentVersion"])
     assert re.fullmatch(r"[0-9]{2}\.[0-9]{2}", project["masterVersion"])
     assert project["titleId"] == "PPSA99001"
+    assert project["applicationCategoryType"] == 65536
+    assert project["contentBadgeType"] == 2
+    assert "gameIntent" not in project
     brand_mark = root.find(".//*[@id='brand-mark']")
     assert (brand_mark.get("width"), brand_mark.get("height")) == ("56", "56")
     assert root.find(".//*[@id='brand-name']").text == "PS5 Radio"

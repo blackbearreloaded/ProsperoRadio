@@ -131,7 +131,7 @@ and avoids replacing a package while its previous title remains active.
 3. For directory deployment, stage the entire `dist/<TITLE_ID>/` tree. Do not
    upload only `eboot.bin`.
 4. Wait for the loader to report that the title is ready, then launch it from
-   the Games section of the home screen.
+   the Media section of the home screen.
 
 Use `make packages` only when both optional image formats are needed. Rebuild
 the selected format immediately before deployment so an older package is not

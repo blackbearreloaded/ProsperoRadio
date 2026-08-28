@@ -69,7 +69,7 @@ For a release candidate:
    connecting to shared hardware.
 3. Deploy the whole dist/PPSA99001/ folder for a development test, or the
    matching FFPFSC for package installation.
-4. Launch the Game-category title, verify browsing, search, favourites,
+4. Launch the Media-category title, verify browsing, search, favourites,
    playback/stop/switch, one non-ASCII station name, and a cached restart.
 5. Capture the result and relevant logs; close the title and any Remote Play
    client.

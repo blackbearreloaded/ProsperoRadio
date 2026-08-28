@@ -28,7 +28,7 @@ RCSS, SDL2, and deterministic bitmap fonts.
 | --- | --- |
 | Shell title | `PS5 Radio` |
 | Title ID | `PPSA99001` |
-| Category | Game |
+| Category | Media |
 | Current release version | `01.000.002` |
 | Release-version source | [`sce_sys/param.json`](sce_sys/param.json) |
 | Writable data | `/download0` only |
@@ -105,8 +105,7 @@ An optional local UFS2 `.ffpkg` target remains available for development; it
 is intentionally excluded from CI and GitHub Releases. See
 [Package formats](docs/FFPKG.md).
 
-The app is deliberately a **Game** category title so audio remains available
-while using Remote Play/Chiaki-ng. Stage the whole folder, not `eboot.bin`
+The app is a **Media** category title. Stage the whole folder, not `eboot.bin`
 alone. For a local development loop against an already-running FTP service:
 
 ```bash
