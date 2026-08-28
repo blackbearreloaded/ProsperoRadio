@@ -177,7 +177,7 @@ The workflow rejects a mismatched tag. Full field meanings, Game/Media
 metadata, and the import-linking configuration are in
 [Configuration](docs/CONFIGURATION.md).
 
-## Credits, licences, and AI disclosure
+## Credits and licences
 
 PS5 Radio uses Radio Browser for station metadata and URLs; Radio Browser does
 not host the individual station streams. The project also uses or references
@@ -186,10 +186,12 @@ GoogleTest, stb_vorbis, dr_flac, MkPFS, and UFS2Tool. Their provenance and
 licences—including the public PS5 import metadata and template tooling—are
 listed in [NOTICE.md](NOTICE.md).
 
-This project used AI assistance for implementation, tests, documentation, and
-some original interface artwork. All resulting changes, dependencies, and
-generated visual assets are reviewed and maintained by the project owner.
-Generated controller prompts are not official Sony artwork.
-
 PS5 Radio is GPL-3.0-or-later. See [LICENSE](LICENSE), [NOTICE.md](NOTICE.md),
 and [Contributing](CONTRIBUTING.md).
+
+PlayStation and PS5 are trademarks of Sony Interactive Entertainment. This
+project is independent and is not affiliated with or endorsed by Sony.
+
+This project was developed with assistance from OpenAI Codex, including some
+original interface artwork. Project maintainers reviewed and validated the
+resulting code, tests, documentation, dependencies, and generated assets.
