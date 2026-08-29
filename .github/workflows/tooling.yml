@@ -1,4 +1,4 @@
-# PS5 Radio - Lint, test, build, and release validation.
+# ProsperoRadio - Lint, test, build, and release validation.
 # Copyright (C) 2026 BlackBearReloaded
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -78,7 +78,7 @@ jobs:
       - name: Upload build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ps5-radio-${{ github.sha }}-ffpfsc
+          name: prospero-radio-${{ github.sha }}-ffpfsc
           path: |
             dist/${{ env.TITLE_ID }}.ffpfsc
             dist/SHA256SUMS
@@ -102,7 +102,7 @@ jobs:
         run: >-
           gh run download "$GITHUB_RUN_ID"
           --repo "$GITHUB_REPOSITORY"
-          --name "ps5-radio-$GITHUB_SHA-ffpfsc"
+          --name "prospero-radio-$GITHUB_SHA-ffpfsc"
           --dir release
 
       - name: Prepare release assets
@@ -150,5 +150,5 @@ jobs:
               --repo "$GITHUB_REPOSITORY" \
               --verify-tag \
               --generate-notes \
-              --title "PS5 Radio $GITHUB_REF_NAME"
+              --title "ProsperoRadio $GITHUB_REF_NAME"
           fi

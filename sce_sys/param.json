@@ -10,12 +10,12 @@
   "conceptId": "99001",
   "contentBadgeType": 2,
   "contentId": "UP9000-PPSA99001_00-PS5RADIOAPP00001",
-  "contentVersion": "01.000.003",
+  "contentVersion": "01.000.004",
   "downloadDataSize": 256,
   "localizedParameters": {
     "defaultLanguage": "en-US",
     "en-US": {
-      "titleName": "PS5 Radio"
+      "titleName": "ProsperoRadio"
     }
   },
   "masterVersion": "01.00",

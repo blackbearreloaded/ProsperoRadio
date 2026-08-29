@@ -1,6 +1,6 @@
 # Native MP3 validation
 
-PS5 Radio decodes MP3 with the console-provided `libSceAudiodec` codec type
+ProsperoRadio decodes MP3 with the console-provided `libSceAudiodec` codec type
 `0x0002`. The application loads the public AudioDec sysmodule (`0x0088`) and
 uses the same `sceAudiodecInitLibrary`, `CreateDecoder`, `Decode`,
 `DeleteDecoder`, and `TermLibrary` lifecycle already used for AAC. No software
@@ -22,7 +22,7 @@ queue.
 | Date | Firmware | Title | Result |
 | --- | --- | --- | --- |
 | 2026-08-26 | 6.02 | `PPSA99650` | The one-feed auto-play build entered eboot, remained alive for 60 seconds, closed normally, and released its runtime layers. Chiaki's GPU-surface capture was stale, so this run proves stability but not decoded PCM. |
-| 2026-08-26 | 6.02 | `PPSA99651` | The same probe wrote `PS5_RADIO_MP3 stage=playing result=0 rate=48000 channels=2 bytes=4608` into title-local storage. The runner observed the title for 60 seconds, closed it normally, and confirmed runtime release. |
+| 2026-08-26 | 6.02 | `PPSA99651` | The same probe wrote `PROSPERO_RADIO_MP3 stage=playing result=0 rate=48000 channels=2 bytes=4608` into title-local storage. The runner observed the title for 60 seconds, closed it normally, and confirmed runtime release. |
 | 2026-08-27 | 6.02 | `PPSA99695` | The production stream path played current Radio Browser station `d1a54d2e-623e-4970-ab11-35f7b56c5ec3` at 48 kHz stereo, returned to stopped state, and proceeded to native Opus without a crash. App-owned LAN telemetry labeled every state with its codec and UUID. |
 
 The shared `PPSA99695` matrix image used production audio source commit

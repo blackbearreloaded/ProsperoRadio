@@ -172,7 +172,7 @@ distclean: clean
 
 help:
 	@printf '%s\n' \
-	  'make                 Generate libc.prx and build the PS5 Radio folder' \
+	  'make                 Generate libc.prx and build the ProsperoRadio folder' \
 	  'make init TITLE_ID=PPSA12345 APP_NAME="My App"  Configure app identity' \
 	  'make doctor          Check required and optional Linux/WSL tools' \
 	  'make test            Run all host unit and integration tests' \

@@ -4,7 +4,7 @@ This repository can turn ordinary developer-owned artwork and audio into the
 launcher formats supported by this template. Conversion changes only the
 repository's `sce_sys` files; it does not connect to or configure a console.
 
-The checked-in PS5 Radio artwork was created with OpenAI ImageGen in a shared
+The checked-in ProsperoRadio artwork was created with OpenAI ImageGen in a shared
 ink-and-watercolor style. `icon0.png` depicts birds flowing into an audio
 waveform, `background-source.png` is the light app-selection landscape, and
 `launch-background-source.png` is the dark launch-transition composition.

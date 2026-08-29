@@ -1,5 +1,5 @@
 /*
- * PS5 Radio - Host tests for deterministic metadata text layout.
+ * ProsperoRadio - Host tests for deterministic metadata text layout.
  * Copyright (C) 2026 BlackBearReloaded
  * SPDX-License-Identifier: GPL-3.0-or-later
  */

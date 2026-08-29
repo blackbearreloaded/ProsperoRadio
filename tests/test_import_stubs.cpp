@@ -1,5 +1,5 @@
 /*
- * PS5 Radio - Host tests for native import-stub compatibility.
+ * ProsperoRadio - Host tests for native import-stub compatibility.
  * Copyright (C) 2026 BlackBearReloaded
  * SPDX-License-Identifier: GPL-3.0-or-later
  */

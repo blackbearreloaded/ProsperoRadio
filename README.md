@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="sce_sys/icon0.png" width="128" alt="PS5 Radio icon">
+  <img src="sce_sys/icon0.png" width="128" alt="ProsperoRadio icon">
 </p>
 
-<h1 align="center">PS5 Radio</h1>
+<h1 align="center">ProsperoRadio</h1>
 
 <p align="center">
   <strong>A native Internet-radio application for PlayStation 5 homebrew</strong><br>
@@ -11,20 +11,20 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/blackbearreloaded/ps5-radio/actions/workflows/tooling.yml"><img src="https://github.com/blackbearreloaded/ps5-radio/actions/workflows/tooling.yml/badge.svg" alt="Build"></a>
-  <a href="https://github.com/blackbearreloaded/ps5-radio/releases/latest"><img src="https://img.shields.io/github/v/release/blackbearreloaded/ps5-radio?display_name=tag" alt="Latest release"></a>
+  <a href="https://github.com/blackbearreloaded/prospero-radio/actions/workflows/tooling.yml"><img src="https://github.com/blackbearreloaded/prospero-radio/actions/workflows/tooling.yml/badge.svg" alt="Build"></a>
+  <a href="https://github.com/blackbearreloaded/prospero-radio/releases/latest"><img src="https://img.shields.io/github/v/release/blackbearreloaded/prospero-radio?display_name=tag" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg" alt="GPL-3.0-or-later"></a>
 </p>
 
 Demo available by clicking on the image below.
 
-[![PS5 Radio browsing and playing a live station](docs/images/ps5-radio.png)](https://i.imgur.com/JfsM4Ok.mp4)
+[![ProsperoRadio browsing and playing a live station](docs/images/prospero-radio.png)](https://i.imgur.com/JfsM4Ok.mp4)
 
 ## Project foundations
 
 > [!IMPORTANT]
 > **Built on the [PS5 Native App Boilerplate](https://github.com/blackbearreloaded/ps5-native-app-boilerplate).**
-> PS5 Radio preserves the template's modern C++20 structure, `.hpp` interfaces,
+> ProsperoRadio preserves the template's modern C++20 structure, `.hpp` interfaces,
 > reproducible runtime, FSELF tooling, tests, deployment flow, and release
 > automation.
 
@@ -32,14 +32,14 @@ Demo available by clicking on the image below.
 > **Audio work is documented in [PS5 Audio Decoding Research](https://github.com/blackbearreloaded/ps5-audio-decoding-research).**
 > The companion repository records the hardware-first decoder investigation,
 > reverse-engineering notes, native API probes, codec boundaries, and device
-> validation that informed PS5 Radio's audio implementation.
+> validation that informed ProsperoRadio's audio implementation.
 
 | Identity | Value |
 | --- | --- |
-| Shell title | `PS5 Radio` |
+| Shell title | `ProsperoRadio` |
 | Title ID | `PPSA99001` |
 | Category | Media |
-| Current release version | `01.000.003` |
+| Current release version | `01.000.004` |
 | Release-version source | [`sce_sys/param.json`](sce_sys/param.json) |
 | Writable data | `/download0` only |
 
@@ -93,7 +93,7 @@ See [Getting started](docs/GETTING_STARTED.md) and
 ## Build
 
 `sce_sys/param.json` is the only identity and release-version source. Do not
-change `PPSA99001` when updating PS5 Radio: changing it produces a separate PS5
+change `PPSA99001` when updating ProsperoRadio: changing it produces a separate PS5
 title rather than an update.
 
 ```bash
@@ -123,7 +123,7 @@ make deploy PS5_HOST=192.168.4.30 DEPLOY_FORMAT=folder
 ```
 
 > [!NOTE]
-> The first launch can take a while while PS5 Radio downloads, validates, and
+> The first launch can take a while while ProsperoRadio downloads, validates, and
 > caches the Radio Browser catalogue. Keep the console online and leave the app
 > open until the database finishes loading; later launches use the local cache.
 
@@ -169,7 +169,7 @@ sce_sys/param.json            Shell metadata, title identity, and release versio
 docs/                         Architecture, testing, codec, build, and deployment documentation
 ```
 
-PS5 Radio is a C++20 application throughout. Repository-owned interfaces use the
+ProsperoRadio is a C++20 application throughout. Repository-owned interfaces use the
 boilerplate's `.hpp` convention; portable codec, demux, persistence, input, and
 service modules are independently testable C++ translation units. Vendored
 single-file decoders retain their upstream filenames and are compiled through
@@ -193,7 +193,7 @@ metadata, and the import-linking configuration are in
 
 ## Credits, third-party software, and licences
 
-PS5 Radio acknowledges the open-source projects and public services that made
+ProsperoRadio acknowledges the open-source projects and public services that made
 the application possible:
 
 - **Platform and packaging:** [PS5 Native App Boilerplate](https://github.com/blackbearreloaded/ps5-native-app-boilerplate)
@@ -232,7 +232,7 @@ GPL-3.0-or-later code. No proprietary Sony SDK, firmware module, encryption
 key, or extracted game asset is included. The maintainer-supplied launcher
 artwork and selection audio are distributed under the project licence.
 
-PS5 Radio is GPL-3.0-or-later. See [LICENSE](LICENSE) and
+ProsperoRadio is GPL-3.0-or-later. See [LICENSE](LICENSE) and
 [Contributing](CONTRIBUTING.md).
 
 PlayStation and PS5 are trademarks of Sony Interactive Entertainment. This

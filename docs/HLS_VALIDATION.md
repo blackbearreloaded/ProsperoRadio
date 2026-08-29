@@ -1,6 +1,6 @@
 # HLS/AAC validation
 
-PS5 Radio supports a deliberately bounded HLS subset for AAC stations returned
+ProsperoRadio supports a deliberately bounded HLS subset for AAC stations returned
 by Radio Browser. HLS is handled as delivery: playlists and MPEG-TS are parsed
 locally, while complete ADTS frames continue through the existing native
 `libSceAudiodec` / AJM AAC path and PS5 AudioOut sink.
@@ -15,7 +15,7 @@ locally, while complete ADTS frames continue through the existing native
 - cancellation during requests and playlist waits;
 - unencrypted, whole-segment MPEG-TS only.
 
-PS5 Radio rejects encryption, byte ranges, fMP4/CMAF, low-latency partial
+ProsperoRadio rejects encryption, byte ranges, fMP4/CMAF, low-latency partial
 segments, alternate rendition groups, video variants, multi-program transport
 streams, and non-AAC HLS. The application accepts no custom station or playlist
 input; every HLS URL originates in the fetched or cached Radio Browser catalog.
@@ -28,7 +28,7 @@ AudioDec API failure used when the underlying AJM sideband reports a codec
 error; the lower-level result is stored in the AAC result structure.
 
 A captured RTL MPEG-TS segment exposed the transport defect. The stream repeats
-its PMT while an AAC PES is in progress. PS5 Radio reset PES assembly on every
+its PMT while an AAC PES is in progress. ProsperoRadio reset PES assembly on every
 valid PMT, even when the announced AAC PID was unchanged, and therefore dropped
 the tail of an AAC frame. The parser now resets PES state only when the AAC PID
 actually changes. A host regression inserts a repeated PMT inside a multi-packet

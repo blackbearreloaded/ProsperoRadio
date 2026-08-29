@@ -1,6 +1,6 @@
 # Architecture
 
-PS5 Radio is a C++20 application. RmlUi owns document layout, SDL2 owns
+ProsperoRadio is a C++20 application. RmlUi owns document layout, SDL2 owns
 presentation, and PS5 platform services provide networking, input, text entry,
 compressed-audio decoding, and PCM output. Narrow declarations isolate the
 platform ABI and vendored decoder boundaries.
@@ -76,7 +76,7 @@ and avoids rebuilding large DOM fragments during live playback.
 
 ## Text rendering
 
-PS5 Radio registers [`BitmapFontEngine`](../src/bitmap_font_engine.cpp) as RmlUi's
+ProsperoRadio registers [`BitmapFontEngine`](../src/bitmap_font_engine.cpp) as RmlUi's
 font backend. The checked-in BMFont metadata and exact alpha atlases under
 `assets/ui/fonts/lvgl-bitmap/` are build inputs and ship with the application.
 
@@ -264,9 +264,9 @@ toolchain then validates PS5 imports and writes the development FSELF. `make`,
 entry points. `.NET` is needed only for the optional local UFS2 `.ffpkg` tool;
 CI and GitHub Releases build only FFPFSC.
 
-RmlUi requires RTTI in its static library, so PS5 Radio adds `-frtti` after the
+RmlUi requires RTTI in its static library, so ProsperoRadio adds `-frtti` after the
 template's conservative C++ flags. Exceptions remain disabled. The template
-runtime owns the global C++ allocation bridge; PS5 Radio gives SDL its own
+runtime owns the global C++ allocation bridge; ProsperoRadio gives SDL its own
 tracked allocator rather than defining a second global `new`/`delete` bridge.
 
 The dependency, import-facade, and licensing boundaries are described in

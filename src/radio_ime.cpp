@@ -1,4 +1,4 @@
-// PS5 Radio - Native PlayStation 5 radio application.
+// ProsperoRadio - Native PlayStation 5 radio application.
 // Copyright (C) 2026 BlackBearReloaded
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -196,7 +196,7 @@ static void start_requested(void)
     utf8_to_utf16(initial_text, text_buffer, sizeof(text_buffer) / sizeof(text_buffer[0]));
     utf8_to_utf16("Station, genre, country, or language", placeholder,
                   sizeof(placeholder) / sizeof(placeholder[0]));
-    utf8_to_utf16("Search PS5 Radio", title, sizeof(title) / sizeof(title[0]));
+    utf8_to_utf16("Search ProsperoRadio", title, sizeof(title) / sizeof(title[0]));
     sce_ime_dialog_param_t param{};
     param.user_id = user_id;
     param.type = 0;

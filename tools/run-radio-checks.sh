@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# PS5 Radio - Host-native codec and catalogue regression checks.
+# ProsperoRadio - Host-native codec and catalogue regression checks.
 # Copyright (C) 2026 BlackBearReloaded
 # SPDX-License-Identifier: GPL-3.0-or-later
 

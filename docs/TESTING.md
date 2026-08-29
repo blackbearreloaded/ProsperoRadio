@@ -1,6 +1,6 @@
 # Testing
 
-PS5 Radio separates deterministic host regressions from behaviour that only a
+ProsperoRadio separates deterministic host regressions from behaviour that only a
 real PS5 can prove. Host tests never contact a console or a public Radio
 Browser server.
 
@@ -96,5 +96,5 @@ Run:
     make ffpfsc
 
 A release tag must exactly equal contentVersion in sce_sys/param.json, for
-example 01.000.003. GitHub Actions repeats the same host gates and publishes
+example 01.000.004. GitHub Actions repeats the same host gates and publishes
 only the verified FFPFSC image and its SHA-256 checksum.

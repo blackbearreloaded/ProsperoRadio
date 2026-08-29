@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# PS5 Radio - RmlUi asset validation.
+# ProsperoRadio - RmlUi asset validation.
 # Copyright (C) 2026 BlackBearReloaded
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Validate the shipped RmlUi document, bitmap fonts, and icon assets."""
@@ -53,7 +53,7 @@ def main() -> int:
 
     project = json.loads((repo / "sce_sys" / "param.json").read_text(encoding="utf-8"))
     title = project["localizedParameters"][project["localizedParameters"]["defaultLanguage"]]["titleName"]
-    assert title == "PS5 Radio"
+    assert title == "ProsperoRadio"
     assert re.fullmatch(r"[0-9]{2}\.[0-9]{3}\.[0-9]{3}", project["contentVersion"])
     assert re.fullmatch(r"[0-9]{2}\.[0-9]{2}", project["masterVersion"])
     assert project["titleId"] == "PPSA99001"
@@ -62,8 +62,8 @@ def main() -> int:
     assert "gameIntent" not in project
     brand_mark = root.find(".//*[@id='brand-mark']")
     assert (brand_mark.get("width"), brand_mark.get("height")) == ("56", "56")
-    assert root.find(".//*[@id='brand-name']").text == "PS5 Radio"
-    assert root.find(".//*[@id='brand-version']").text == "v{{PS5_RADIO_VERSION}}"
+    assert root.find(".//*[@id='brand-name']").text == "ProsperoRadio"
+    assert root.find(".//*[@id='brand-version']").text == "v{{PROSPERO_RADIO_VERSION}}"
     for source in ("src/radio_app.cpp", "src/radio_input.cpp", "src/radio_ime.cpp",
                    "src/radio_service.cpp", "src/radio_text.cpp"):
         assert (repo / source).is_file()
@@ -87,7 +87,7 @@ def main() -> int:
     for name, dimensions in {
         "cross": (40, 40), "circle": (40, 40), "square": (40, 40),
         "triangle": (40, 40), "options": (40, 40), "search": (40, 40),
-        "ps5-radio": (64, 64), "play": (24, 24), "stop": (24, 24),
+        "prospero-radio": (64, 64), "play": (24, 24), "stop": (24, 24),
         "page-up": (18, 18), "page-down": (18, 18),
     }.items():
         data = (ui / "icons" / f"{name}.tga").read_bytes()

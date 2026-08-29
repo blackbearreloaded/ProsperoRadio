@@ -206,17 +206,17 @@ for stub in "${import_stubs[@]}"; do
     builder_stub_args+=(--stub "$root/$stub")
     case "${stub##*/}" in
         libSceOpusDec_stub.a)
-            link_source="$native/ps5_radio_import_stub_opus.cpp"
+            link_source="$native/prospero_radio_import_stub_opus.cpp"
             soname=libSceOpusDec.sprx
             link_name=libSceOpusDec.so
             ;;
         libSceOpusCeltDec_stub.a)
-            link_source="$native/ps5_radio_import_stub_opus_celt.cpp"
+            link_source="$native/prospero_radio_import_stub_opus_celt.cpp"
             soname=libSceOpusCeltDec.sprx
             link_name=libSceOpusCeltDec.so
             ;;
         *)
-            echo "unsupported PS5 Radio import stub: $stub" >&2; exit 2;
+            echo "unsupported ProsperoRadio import stub: $stub" >&2; exit 2;
             ;;
     esac
     mkdir -p "$build/import-stubs"
@@ -235,7 +235,7 @@ common_link_object="$build/import-stubs/libSceCommonDialog.o"
 common_link_stub="$build/import-stubs/libSceCommonDialog.so"
 PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
     -std=c++20 -O2 -Wall -Wextra -fno-exceptions -fno-rtti -fPIC \
-    -c "$native/ps5_radio_import_stub_common_dialog.cpp" -o "$common_link_object"
+    -c "$native/prospero_radio_import_stub_common_dialog.cpp" -o "$common_link_object"
 "$sdk_root/bin/prospero-lld" --shared -soname libSceCommonDialog.sprx \
     -o "$common_link_stub" "$common_link_object"
 builder_stub_args+=(--stub "$common_link_stub")
@@ -247,7 +247,7 @@ audiodec_link_object="$build/import-stubs/libSceAudiodec.o"
 audiodec_link_stub="$build/import-stubs/libSceAudiodec.so"
 PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
     -std=c++20 -O2 -Wall -Wextra -fno-exceptions -fno-rtti -fPIC \
-    -c "$native/ps5_radio_import_stub_audiodec.cpp" -o "$audiodec_link_object"
+    -c "$native/prospero_radio_import_stub_audiodec.cpp" -o "$audiodec_link_object"
 "$sdk_root/bin/prospero-lld" --shared -soname libSceAudiodec.sprx \
     -o "$audiodec_link_stub" "$audiodec_link_object"
 builder_stub_args+=(--stub "$audiodec_link_stub")
@@ -294,7 +294,7 @@ from pathlib import Path
 import sys
 
 path = Path(sys.argv[1])
-value = path.read_text(encoding="utf-8").replace("{{PS5_RADIO_VERSION}}", sys.argv[2])
+value = path.read_text(encoding="utf-8").replace("{{PROSPERO_RADIO_VERSION}}", sys.argv[2])
 path.write_text(value, encoding="utf-8", newline="\n")
 PY
 fi
