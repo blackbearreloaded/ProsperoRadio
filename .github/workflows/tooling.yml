@@ -115,7 +115,7 @@ jobs:
           shopt -s nullglob
           images=(PPSA*.ffpfsc)
           if (( ${#files[@]} != 2 || ${#images[@]} != 1 )) || [[ ! -f SHA256SUMS ]]; then
-            echo "Expected exactly one FFPFSC image and SHA256SUMS at the artifact root." >&2
+            echo "Expected exactly one FFPFSC image and SHA256SUMS. Files must be at the artifact root." >&2
             exit 1
           fi
           sha256sum -c SHA256SUMS
