@@ -83,8 +83,8 @@ exact PS5 format NN.NNN.NNN, with no v prefix.
 Keep PPSA99001 stable for ProsperoRadio updates. Increment contentVersion before
 creating a release tag:
 
-    git tag 01.000.004
-    git push origin main 01.000.004
+    git tag 01.000.005
+    git push origin main 01.000.005
 
 GitHub Actions rejects a tag that does not exactly match contentVersion and
 publishes the verified FFPFSC image with its SHA-256 checksum.
