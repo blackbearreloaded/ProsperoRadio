@@ -17,7 +17,7 @@ newer is needed only for the optional local FFPKG target.
 
 ## 2. Clone and inspect
 
-    git clone git@github.com:blackbearreloaded/prospero-radio.git
+    git clone git@github.com:blackbearreloaded/ProsperoRadio.git
     cd prospero-radio
     make doctor
 

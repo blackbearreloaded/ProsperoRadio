@@ -11,8 +11,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/blackbearreloaded/prospero-radio/actions/workflows/tooling.yml"><img src="https://github.com/blackbearreloaded/prospero-radio/actions/workflows/tooling.yml/badge.svg" alt="Build"></a>
-  <a href="https://github.com/blackbearreloaded/prospero-radio/releases/latest"><img src="https://img.shields.io/github/v/release/blackbearreloaded/prospero-radio?display_name=tag" alt="Latest release"></a>
+  <a href="https://github.com/blackbearreloaded/ProsperoRadio/actions/workflows/tooling.yml"><img src="https://github.com/blackbearreloaded/ProsperoRadio/actions/workflows/tooling.yml/badge.svg" alt="Build"></a>
+  <a href="https://github.com/blackbearreloaded/ProsperoRadio/releases/latest"><img src="https://img.shields.io/github/v/release/blackbearreloaded/ProsperoRadio?display_name=tag" alt="Latest release"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg" alt="GPL-3.0-or-later"></a>
 </p>
 
