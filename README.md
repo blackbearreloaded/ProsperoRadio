@@ -16,9 +16,9 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg" alt="GPL-3.0-or-later"></a>
 </p>
 
-Demo available by clicking on the image below.
-
-[![ProsperoRadio browsing and playing a live station](docs/images/prospero-radio.png)](https://i.imgur.com/JfsM4Ok.mp4)
+<p align="center">
+  <img src="sce_sys/pic1.png" alt="ProsperoRadio artwork">
+</p>
 
 ## Project foundations
 
