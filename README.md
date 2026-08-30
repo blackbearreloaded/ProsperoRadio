@@ -16,6 +16,21 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg" alt="GPL-3.0-or-later"></a>
 </p>
 
+## Highlights
+
+- Browse more than 56,000 supported stations in a validated Radio Browser
+  sync; the live total changes as the public catalogue evolves.
+- Explore 240 countries and hundreds of genres and languages with server-side
+  paging, search, and on-demand filters.
+- Play AAC/AAC+, MP3, and Opus through native PS5 decoder paths, with validated
+  Vorbis, FLAC, and Ogg-FLAC fallbacks.
+- Resolve audio-only AAC HLS, M3U/PLS playlists, and ICY metadata while
+  recovering cleanly from malformed or interrupted streams.
+- Keep the catalogue and favourites fast and persistent in SQLite under
+  `/download0`, with atomic refreshes and Radio Browser mirror failover.
+- Use a controller-first RmlUi interface with DualSense and left-stick
+  navigation, PS5 text input, and multilingual station names.
+
 <p align="center">
   <img src="sce_sys/pic1.png" alt="ProsperoRadio artwork">
 </p>
