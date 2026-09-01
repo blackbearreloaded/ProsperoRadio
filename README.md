@@ -142,6 +142,23 @@ make deploy PS5_HOST=192.168.4.30 DEPLOY_FORMAT=folder
 > caches the Radio Browser catalogue. Keep the console online and leave the app
 > open until the database finishes loading; later launches use the local cache.
 
+## Updating
+
+1. Fully close ProsperoRadio.
+2. Download `PPSA99001.ffpfsc` from the
+   [latest release](https://github.com/blackbearreloaded/ProsperoRadio/releases/latest).
+3. Using FTP, replace `/data/homebrew/PPSA99001.ffpfsc` with the completed
+   download. Keep the filename unchanged and wait for the transfer to finish.
+4. Restart ShadowMountPlus cleanly or restart the PS5.
+5. Start the approved services normally, wait for ShadowMountPlus to
+   rediscover `PPSA99001`, then launch ProsperoRadio and confirm the version
+   shown below the app name.
+
+Do not relaunch immediately after replacing the image: ShadowMountPlus may
+still have the previous `.ffpfsc` mounted. Keeping title ID `PPSA99001`
+preserves the catalogue and favourites under `/download0`; `/app0` comes from
+the replacement image, and Shell presentation metadata may remain cached.
+
 The deployer writes only title-scoped paths below `/data/homebrew`. It uploads
 each file through a temporary name, then publishes `eboot.bin` and
 `sce_sys/param.json` last. For console protocol and evidence requirements, see
