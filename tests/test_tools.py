@@ -159,16 +159,28 @@ class ToolTests(unittest.TestCase):
             self.assertIn("/data/homebrew/PPSA12345.ffpkg", result.stdout)
             self.assertIn("no network request was sent", result.stdout)
 
-    def test_release_workflow_builds_only_ffpfsc(self):
+    def test_release_workflow_builds_ffpfsc_and_folder_zip(self):
         workflow = (ROOT / ".github/workflows/tooling.yml").read_text(encoding="utf-8")
         self.assertIn("run: make ffpfsc", workflow)
         self.assertNotIn("make packages", workflow)
         self.assertNotIn(".ffpkg", workflow)
-        self.assertIn('sha256sum "$TITLE_ID.ffpfsc" > SHA256SUMS', workflow)
+        self.assertIn('zip -qr "$TITLE_ID.zip" "$TITLE_ID"', workflow)
+        self.assertIn(
+            'sha256sum "$TITLE_ID.ffpfsc" "$TITLE_ID.zip" > SHA256SUMS',
+            workflow,
+        )
+        self.assertIn("dist/${{ env.TITLE_ID }}.ffpfsc", workflow)
+        self.assertIn("dist/${{ env.TITLE_ID }}.zip", workflow)
         self.assertIn("dist/SHA256SUMS", workflow)
-        self.assertIn("Expected exactly one FFPFSC image and SHA256SUMS.", workflow)
+        self.assertIn(
+            "Expected one FFPFSC image, one app-folder ZIP, and SHA256SUMS",
+            workflow,
+        )
         self.assertIn("sha256sum -c SHA256SUMS", workflow)
-        self.assertIn('assets=("release/$IMAGE" "release/$CHECKSUM")', workflow)
+        self.assertIn(
+            'assets=("release/$IMAGE" "release/$ARCHIVE" "release/$CHECKSUM")',
+            workflow,
+        )
         self.assertIn("gh release delete-asset", workflow)
 
 

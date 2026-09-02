@@ -85,8 +85,9 @@ make ffpfsc
 `make test` includes GoogleTest checks for C++ text/import parsing, Python
 checks for tools and UI metadata, and the 16 retained C codec/catalogue
 regressions. `make app` compiles and validates the native FSELF before
-assembling `dist/PPSA99001/`. `make ffpfsc` additionally creates the sole CI
-and GitHub Release image, `dist/PPSA99001.ffpfsc`.
+assembling `dist/PPSA99001/`. `make ffpfsc` additionally creates CI's
+filesystem image, `dist/PPSA99001.ffpfsc`; CI also publishes the complete app
+folder as `PPSA99001.zip`.
 
 The port's final hardware evidence is intentionally separate from these
 repeatable host gates. Follow [Testing](TESTING.md) for the exact console

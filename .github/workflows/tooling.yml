@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   build:
-    name: Lint, test, and build FFPFSC
+    name: Lint, test, and build release artifacts
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
@@ -38,7 +38,7 @@ jobs:
       - name: Install native toolchain
         run: |
           sudo apt-get update
-          sudo apt-get install --yes clang-18 clang-format-18 clang-tidy-18 lld-18 libsqlite3-dev make pkg-config tar unzip wget
+          sudo apt-get install --yes clang-18 clang-format-18 clang-tidy-18 lld-18 libsqlite3-dev make pkg-config tar unzip wget zip
 
       - name: Read app identity and version
         shell: bash
@@ -72,15 +72,28 @@ jobs:
       - name: Build compressed release image
         run: make ffpfsc
 
-      - name: Write release checksum
-        run: cd dist && sha256sum "$TITLE_ID.ffpfsc" > SHA256SUMS
+      - name: Archive app folder
+        run: cd dist && zip -qr "$TITLE_ID.zip" "$TITLE_ID"
+
+      - name: Verify app-folder archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          unzip -t "$TITLE_ID.zip"
+          unzip -Z1 "$TITLE_ID.zip" | grep -Fx "$TITLE_ID/eboot.bin"
+          unzip -Z1 "$TITLE_ID.zip" | grep -Fx "$TITLE_ID/sce_sys/param.json"
+
+      - name: Write release checksums
+        run: cd dist && sha256sum "$TITLE_ID.ffpfsc" "$TITLE_ID.zip" > SHA256SUMS
 
       - name: Upload build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: prospero-radio-${{ github.sha }}-ffpfsc
+          name: prospero-radio-${{ github.sha }}-release
           path: |
             dist/${{ env.TITLE_ID }}.ffpfsc
+            dist/${{ env.TITLE_ID }}.zip
             dist/SHA256SUMS
           if-no-files-found: error
           compression-level: 0
@@ -102,7 +115,7 @@ jobs:
         run: >-
           gh run download "$GITHUB_RUN_ID"
           --repo "$GITHUB_REPOSITORY"
-          --name "prospero-radio-$GITHUB_SHA-ffpfsc"
+          --name "prospero-radio-$GITHUB_SHA-release"
           --dir release
 
       - name: Prepare release assets
@@ -114,28 +127,35 @@ jobs:
           mapfile -d '' files < <(find . -type f -print0)
           shopt -s nullglob
           images=(PPSA*.ffpfsc)
-          if (( ${#files[@]} != 2 || ${#images[@]} != 1 )) || [[ ! -f SHA256SUMS ]]; then
-            echo "Expected exactly one FFPFSC image and SHA256SUMS. Files must be at the artifact root." >&2
+          archives=(PPSA*.zip)
+          if (( ${#files[@]} != 3 || ${#images[@]} != 1 || ${#archives[@]} != 1 )) || [[ ! -f SHA256SUMS ]]; then
+            echo "Expected one FFPFSC image, one app-folder ZIP, and SHA256SUMS at the artifact root." >&2
             exit 1
           fi
+          title_id=${images[0]%.ffpfsc}
+          [[ ${archives[0]} == "$title_id.zip" ]]
           sha256sum -c SHA256SUMS
+          unzip -t "${archives[0]}"
           echo "image=${images[0]}" >> "$GITHUB_OUTPUT"
+          echo "archive=${archives[0]}" >> "$GITHUB_OUTPUT"
           echo "checksum=SHA256SUMS" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
           IMAGE: ${{ steps.package.outputs.image }}
+          ARCHIVE: ${{ steps.package.outputs.archive }}
           CHECKSUM: ${{ steps.package.outputs.checksum }}
         shell: bash
         run: |
           set -euo pipefail
-          assets=("release/$IMAGE" "release/$CHECKSUM")
+          assets=("release/$IMAGE" "release/$ARCHIVE" "release/$CHECKSUM")
           image_name="${IMAGE##*/}"
+          archive_name="${ARCHIVE##*/}"
           checksum_name="${CHECKSUM##*/}"
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             while IFS= read -r old_asset; do
-              if [[ $old_asset != "$image_name" && $old_asset != "$checksum_name" ]]; then
+              if [[ $old_asset != "$image_name" && $old_asset != "$archive_name" && $old_asset != "$checksum_name" ]]; then
                 gh release delete-asset "$GITHUB_REF_NAME" "$old_asset" --yes --repo "$GITHUB_REPOSITORY"
               fi
             done < <(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')

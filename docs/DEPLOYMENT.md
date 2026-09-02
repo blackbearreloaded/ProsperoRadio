@@ -1,10 +1,11 @@
 # Deployment
 
 This project creates a directory-style homebrew application and optional
-filesystem images. Its Makefile can update the directory or upload an image
-below `/data/homebrew` over FTP. It does not configure the console, start
-payloads, register titles, launch applications, or create a signed retail
-package.
+filesystem images. GitHub Releases include both an FFPFSC image and a ZIP of
+the complete application directory. The Makefile can update the directory or
+upload an image below `/data/homebrew` over FTP. It does not configure the
+console, start payloads, register titles, launch applications, or create a
+signed retail package.
 
 ## Requirements
 
@@ -54,6 +55,21 @@ Image deployment remains useful for distribution testing. An already-mounted
 image with the same pathname may remain cached by ShadowMountPlus, so folder
 deployment is the recommended repeated development workflow. Do not keep a
 folder and an image with the same title ID in scan paths at the same time.
+
+## Deploy a release ZIP
+
+`PPSA99001.zip` is a transport archive of the same complete folder produced by
+`make app`; it is not itself a loader image. Extract it on the computer, then
+upload the resulting `PPSA99001/` directory recursively so the final path is:
+
+```text
+/data/homebrew/PPSA99001/
+```
+
+This is equivalent to the default folder deployment. Upload the complete tree,
+not only `eboot.bin`, and do not upload `PPSA99001.zip` unchanged. Remove any
+same-title `.ffpfsc` or `.ffpkg` from `/data/homebrew` before restarting
+ShadowMountPlus or the PS5.
 
 Supported variables are:
 
@@ -127,6 +143,9 @@ and avoids replacing a package while its previous title remains active.
    - `dist/<TITLE_ID>/`: directory form;
    - `dist/<TITLE_ID>.ffpkg`: UFS2 image;
    - `dist/<TITLE_ID>.ffpfsc`: compressed image.
+
+   GitHub Releases additionally wrap the first output as `<TITLE_ID>.zip` for
+   convenient transfer. Extract that archive before deployment.
 
 3. For directory deployment, stage the entire `dist/<TITLE_ID>/` tree. Do not
    upload only `eboot.bin`.

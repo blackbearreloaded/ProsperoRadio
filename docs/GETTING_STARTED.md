@@ -60,8 +60,9 @@ This produces:
     dist/PPSA99001.ffpfsc     compressed package
 
 The full title folder is the preferred development artifact. Never deploy only
-eboot.bin. `make ffpkg` remains available for optional local UFS2 packaging,
-but CI and GitHub Releases intentionally contain only FFPFSC.
+eboot.bin. `make ffpkg` remains available for optional local UFS2 packaging.
+GitHub Releases contain the FFPFSC plus `PPSA99001.zip`, which wraps the same
+complete folder for direct directory deployment.
 
 ## 6. Deploy a development folder
 
@@ -73,6 +74,10 @@ The deployment tool sends only this title's files below /data/homebrew and
 publishes critical files last. It does not launch the title or modify Shell
 registration. Use the current project console protocol for launch, logs,
 screenshots, Remote Play cleanup, and any shared-console coordination.
+
+For the release ZIP, extract it locally and send the entire `PPSA99001/`
+folder to `/data/homebrew/PPSA99001/`. Do not send the ZIP file itself, and do
+not leave a same-title FFPFSC image beside the folder.
 
 ## Version and title identity
 
@@ -87,7 +92,7 @@ creating a release tag:
     git push origin main 01.000.005
 
 GitHub Actions rejects a tag that does not exactly match contentVersion and
-publishes the verified FFPFSC image with its SHA-256 checksum.
+publishes the verified FFPFSC image, app-folder ZIP, and their SHA-256 checksums.
 
 For source architecture, dependencies, and PS5-only validation, continue with
 [Architecture](ARCHITECTURE.md), [Template port notes](TEMPLATE_PORT.md),

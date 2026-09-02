@@ -18,6 +18,10 @@ make ffpfsc
 make packages
 ```
 
+GitHub Actions also publishes `<TITLE_ID>.zip`. This is not another package
+format: it is a standard ZIP containing the complete `dist/<TITLE_ID>/` folder
+for users who prefer directory deployment.
+
 `-Ffpkg` remains accepted as a compatibility alias for
 `-OutputFormat Ffpkg` in the Windows PowerShell frontend.
 

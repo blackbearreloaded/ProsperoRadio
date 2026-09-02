@@ -87,7 +87,7 @@ Build from Linux, WSL, or a Linux CI runner. On Ubuntu, Debian, or WSL:
 
 ```bash
 sudo apt update
-sudo apt install curl git make pkg-config python3 python3-venv tar unzip wget \
+sudo apt install curl git make pkg-config python3 python3-venv tar unzip wget zip \
   clang-18 clang-format-18 clang-tidy-18 lld-18 libsqlite3-dev
 ```
 
@@ -126,6 +126,9 @@ dist/PPSA99001/           complete title folder
 dist/PPSA99001.ffpfsc     compressed package
 ```
 
+GitHub Releases also provide `PPSA99001.zip`, a ZIP of the complete
+`PPSA99001/` folder for direct directory deployment.
+
 An optional local UFS2 `.ffpkg` target remains available for development; it
 is intentionally excluded from CI and GitHub Releases. See
 [Package formats](docs/FFPKG.md).
@@ -145,19 +148,27 @@ make deploy PS5_HOST=192.168.4.30 DEPLOY_FORMAT=folder
 ## Updating
 
 1. Fully close ProsperoRadio.
-2. Download `PPSA99001.ffpfsc` from the
-   [latest release](https://github.com/blackbearreloaded/ProsperoRadio/releases/latest).
-3. Using FTP, replace `/data/homebrew/PPSA99001.ffpfsc` with the completed
-   download. Keep the filename unchanged and wait for the transfer to finish.
-4. Restart ShadowMountPlus cleanly or restart the PS5.
+2. From the
+   [latest release](https://github.com/blackbearreloaded/ProsperoRadio/releases/latest),
+   download either `PPSA99001.ffpfsc` or `PPSA99001.zip`.
+3. Deploy one format over FTP and wait for the transfer to finish:
+
+   - **FFPFSC:** replace `/data/homebrew/PPSA99001.ffpfsc` with the downloaded
+     image.
+   - **ZIP:** extract it locally, then upload the entire `PPSA99001/` folder
+     so its destination is `/data/homebrew/PPSA99001/`. Do not upload the ZIP
+     file itself.
+
+4. Do not keep the folder and FFPFSC image under `/data/homebrew` at the same
+   time. Restart ShadowMountPlus cleanly or restart the PS5.
 5. Start the approved services normally, wait for ShadowMountPlus to
    rediscover `PPSA99001`, then launch ProsperoRadio and confirm the version
    shown below the app name.
 
-Do not relaunch immediately after replacing the image: ShadowMountPlus may
-still have the previous `.ffpfsc` mounted. Keeping title ID `PPSA99001`
+Do not relaunch immediately after replacing the app: ShadowMountPlus may
+still have the previous folder or `.ffpfsc` mounted. Keeping title ID `PPSA99001`
 preserves the catalogue and favourites under `/download0`; `/app0` comes from
-the replacement image, and Shell presentation metadata may remain cached.
+the replacement app, and Shell presentation metadata may remain cached.
 
 The deployer writes only title-scoped paths below `/data/homebrew`. It uploads
 each file through a temporary name, then publishes `eboot.bin` and
@@ -181,8 +192,9 @@ The PS5-only boundary is documented in [Testing](docs/TESTING.md).
 
 GitHub Actions runs linting, every host test, deterministic runtime
 reproduction, and an FFPFSC build. When an exact `contentVersion` tag is
-pushed, the workflow carries the build-time `SHA256SUMS` forward, verifies it
-again, and publishes exactly the `.ffpfsc` image and checksum file.
+pushed, the workflow archives the same complete app folder, verifies both
+release files, and publishes the `.ffpfsc`, folder `.zip`, and their shared
+`SHA256SUMS` file.
 
 ## Source layout
 
