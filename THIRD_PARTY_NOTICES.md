@@ -8,8 +8,9 @@ the application possible:
 - **Platform and packaging:** [PS5 Native App Boilerplate](https://github.com/blackbearreloaded/ps5-native-app-boilerplate)
   (GPL-3.0-or-later), [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk)
   v0.42, [PacBrew](https://github.com/ps5-payload-dev/pacbrew-repo) v0.40.2,
-  [SharpProspero](https://github.com/SvenGDK/SharpProspero) as a public format
-  reference, [MkPFS](https://github.com/PSBrew/MkPFS), and
+  [SharpProspero](https://github.com/SvenGDK/SharpProspero) by SvenGDK
+  (GPL-3.0), from which the ELF converter and FSELF writer in `tooling/native/`
+  are derived, [MkPFS](https://github.com/PSBrew/MkPFS), and
   [UFS2Tool](https://github.com/SvenGDK/UFS2Tool).
 - **Application stack:** [Radio Browser](https://www.radio-browser.info/),
   [RmlUi 6.2](https://github.com/mikke89/RmlUi/tree/6.2) (MIT),
@@ -31,7 +32,7 @@ the application possible:
 Radio Browser supplies station metadata and URLs but does not host individual
 station streams. The SDK, zlib, GoogleTest, MkPFS, and UFS2Tool are verified
 build inputs kept below ignored `.deps/`; they are not distributed in the
-release package. SharpProspero is neither fetched nor linked. Checked-in SDL2,
+release package. Checked-in SDL2,
 RmlUi, FreeType, stb_vorbis, and dr_flac files retain their upstream licence
 texts below `vendor/`. Complete font licences accompany
 `assets/ui/fonts/lvgl-bitmap/`.
