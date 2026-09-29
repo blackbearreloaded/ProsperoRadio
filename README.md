@@ -237,6 +237,8 @@ metadata, and the import-linking configuration are in
 
 ## Credits, third-party software, and licences
 
+Built with the [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk) by John Törnblom (ps5-payload-dev).
+
 ProsperoRadio acknowledges the open-source projects and public services that made
 the application possible:
 
@@ -248,7 +250,7 @@ the application possible:
   [UFS2Tool](https://github.com/SvenGDK/UFS2Tool).
 - **Application stack:** [Radio Browser](https://www.radio-browser.info/),
   [RmlUi 6.2](https://github.com/mikke89/RmlUi/tree/6.2) (MIT),
-  [SDL2](https://github.com/libsdl-org/SDL/tree/SDL2),
+  [SDL2](https://github.com/libsdl-org/SDL/tree/SDL2) (John Törnblom's [PS5 port](https://github.com/ps5-payload-dev/SDL)),
   [FreeType 2.13.2](https://freetype.org/),
   [SQLite 3.46.1](https://sqlite.org/) (public domain),
   [zlib 1.3.2](https://github.com/madler/zlib),
