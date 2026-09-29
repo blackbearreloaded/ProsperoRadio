@@ -284,6 +284,4 @@ ProsperoRadio is GPL-3.0-or-later. See [LICENSE](LICENSE) and
 PlayStation and PS5 are trademarks of Sony Interactive Entertainment. This
 project is independent and is not affiliated with or endorsed by Sony.
 
-This project was developed with assistance from OpenAI Codex, including some
-original interface artwork. Project maintainers reviewed and validated the
-resulting code, tests, documentation, dependencies, and generated assets.
+This project was developed with AI assistance from OpenAI and/or Anthropic tools.
