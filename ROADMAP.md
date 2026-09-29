@@ -189,7 +189,7 @@ HLS is a delivery protocol rather than a codec and is tracked separately.
 ## Definition of done for a new format
 
 - All bundled decoder dependencies permit redistribution and are recorded in
-  `NOTICE.md`.
+  `THIRD_PARTY_NOTICES.md`.
 - The hardware-first investigation result and selected decoder path are
   documented, including whether decoding is offloaded or CPU-based.
 - The packaged build advertises only the codecs it enables.
