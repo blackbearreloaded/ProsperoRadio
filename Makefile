@@ -40,13 +40,20 @@ RUNTIME := runtime/libc.prx
 RUNTIME_INPUTS := tools/rebuild-libc.sh \
 	$(wildcard tooling/native/*.cpp tooling/native/*.hpp) \
 	$(wildcard tooling/native/runtime/*.txt)
-APP_DEFINITIONS += SDL_MAIN_HANDLED SDL_STATIC_LIB USING_GENERATED_CONFIG_H RMLUI_STATIC_LIB ITLIB_FLAT_MAP_NO_THROW
-APP_CXXFLAGS += -frtti
-APP_INCLUDE_PATHS += include vendor/ps5/sdl/include vendor/ps5/sdl/include/SDL2 vendor/ps5/rmlui/include
-APP_STATIC_ARCHIVES += vendor/ps5/sdl/lib/libSDL2.a vendor/ps5/rmlui/lib/librmlui.a vendor/ps5/freetype/lib/libfreetype.a vendor/ps5/sdk/lib/libunwind.a vendor/ps5/sdk/lib/libcxx.a vendor/ps5/sdk/lib/libcxxabi.a
-APP_IMPORT_STUBS += vendor/ps5/sdk/stubs/libSceOpusDec_stub.a vendor/ps5/sdk/stubs/libSceOpusCeltDec_stub.a
+OPENGL_SDK := .deps/ps5-opengl/current
+APP_DEFINITIONS += SDL_MAIN_HANDLED SDL_STATIC_LIB USING_GENERATED_CONFIG_H GL_GLEXT_PROTOTYPES=1
+UI_KIT := .deps/ui-kit/stage
+APP_INCLUDE_PATHS += include src $(UI_KIT)/src vendor/ps5/sdl/include vendor/ps5/sdl/include/SDL2 $(OPENGL_SDK)/include
+APP_INCLUDE_PATHS += .deps/harfbuzz-12.3.2/src vendor/stb
+# The OpenGL link group brings the C++ runtime (libc++, libc++abi, libunwind).
+APP_STATIC_ARCHIVES += vendor/ps5/sdl/lib/libSDL2.a .deps/ps5-opengl/libps5opengl-group.a
+APP_IMPORT_STUBS += vendor/ps5/sdk/stubs/libSceOpusDec_stub.a vendor/ps5/sdk/stubs/libSceOpusCeltDec_stub.a \
+	$(OPENGL_SDK)/lib/libSceAgc.so $(OPENGL_SDK)/lib/libSceAgcDriver.so
+PS5_OPENGL_PREFIX ?=
+export PS5_OPENGL_PREFIX
 PACBREW_INCLUDE_PATHS += include
 PACBREW_STATIC_ARCHIVES += lib/libsqlite3.a
+PACBREW_PACKAGES += libcurl
 
 HOST_UNIT_TEST := build/tests/radio_text_tests
 
@@ -119,7 +126,11 @@ $(RUNTIME): $(RUNTIME_INPUTS)
 	@printf '%s\n' '==> [libc] Generating the missing or outdated runtime'
 	@bash tools/rebuild-libc.sh
 
-app: $(RUNTIME)
+opengl:
+	@printf '%s\n' '==> [opengl] Preparing the ps5-opengl SDK link group'
+	@bash tools/prepare-opengl.sh
+
+app: $(RUNTIME) opengl
 	@printf '%s\n' '==> [app] Compiling, linking, signing, and assembling the app folder'
 	@bash tools/build.sh Folder
 

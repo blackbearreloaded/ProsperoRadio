@@ -1,0 +1,9 @@
+# Can the catalogue be downloaded? Ends as soon as the service says, or after
+# three minutes.
+wait 2
+status
+until catalog 240
+status
+wait 2
+shot 01-after-sync
+quit

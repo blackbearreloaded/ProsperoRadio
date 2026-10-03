@@ -7,7 +7,7 @@
 <p align="center">
   <strong>A native Internet-radio application for PlayStation 5 homebrew</strong><br>
   Browse and search the Radio Browser catalogue with resilient disk-backed
-  caching, native PS5 audio playback, and a controller-first RmlUi interface.
+  caching, native PS5 audio playback, and a controller-first OpenGL interface.
 </p>
 
 <p align="center">
@@ -27,12 +27,15 @@
 - Resolve audio-only AAC HLS, M3U/PLS playlists, and ICY metadata while
   recovering cleanly from malformed or interrupted streams.
 - Keep the catalogue and favourites fast and persistent in SQLite under
-  `/download0`, with atomic refreshes and Radio Browser mirror failover.
-- Use a controller-first RmlUi interface with DualSense and left-stick
-  navigation, PS5 text input, and multilingual station names.
+  `/data/prosperoradio`, with atomic refreshes and Radio Browser mirror failover.
+- Use a controller-first OpenGL interface built on
+  [ps5-homebrew-ui](https://github.com/blackbearreloaded/ps5-homebrew-ui):
+  a Now Playing view with a visualizer, a letter rail on every station list,
+  sound controls (volume, bass, treble, balance), PS5 text input, and station
+  names in every script.
 
 <p align="center">
-  <img src="sce_sys/pic1.png" alt="ProsperoRadio artwork">
+  <img src="sce_sys/background-source.png" alt="ProsperoRadio artwork">
 </p>
 
 ## Project foundations
@@ -42,6 +45,13 @@
 > ProsperoRadio preserves the template's modern C++20 structure, `.hpp` interfaces,
 > reproducible runtime, FSELF tooling, tests, deployment flow, and release
 > automation.
+
+> [!IMPORTANT]
+> **The interface is built on [ps5-homebrew-ui](https://github.com/blackbearreloaded/ps5-homebrew-ui).**
+> The kit is a build dependency, not part of this repository: the build
+> fetches a pinned commit of it, the pinned
+> [ps5-opengl](https://github.com/blackbearreloaded/ps5-opengl) SDK and the
+> pinned HarfBuzz source into `.deps/`. See [`ui-kit/README.md`](ui-kit/README.md).
 
 > [!IMPORTANT]
 > **Audio work is documented in [PS5 Audio Decoding Research](https://github.com/blackbearreloaded/ps5-audio-decoding-research).**
@@ -56,19 +66,23 @@
 | Category | Media |
 | Current release version | `01.000.005` |
 | Release-version source | [`sce_sys/param.json`](sce_sys/param.json) |
-| Writable data | `/download0` only |
+| Development version on `main` | `01.000.010` (not released) |
+| Writable data | `/data/prosperoradio` |
 
 ## Features
 
 - Browse Popular, Trending, Top rated, Favorites, and Discover views.
 - Search live Radio Browser data by text, country, genre, language, and
   bitrate, with mirror failover and server-side paging.
-- Keep a large SQLite catalogue and favourites on `/download0`; a failed sync
+- Keep a large SQLite catalogue and favourites on `/data/prosperoradio`; a failed sync
   leaves the last verified catalogue untouched.
 - Navigate entirely with the DualSense D-pad or left analogue stick; the PS5
   IME handles text entry.
-- Render packaged, multilingual bitmap fonts deterministically rather than
-  depending on platform font rasterisation.
+- Draw station names in every script (Arabic, Cyrillic, Chinese, Persian and
+  more) with the console's own fonts, HarfBuzz shaping and right-to-left
+  ordering.
+- Say once per launch when [homebrew.page](https://homebrew.page) lists a
+  newer release.
 - Play AAC/AAC+ and MP3 through native PS5 decoding; play Opus through the
   native Opus/CELT decoder route; play Vorbis and FLAC/Ogg-FLAC with bounded
   CPU decoders.
@@ -199,13 +213,17 @@ release files, and publishes the `.ffpfsc`, folder `.zip`, and their shared
 ## Source layout
 
 ```text
-src/main.cpp                  SDL2/RmlUi application lifetime and renderer bridge
-src/radio_app.cpp             C++20 controller and focus/state transitions
+src/main.cpp                  Application lifetime, renderer, fonts, and the frame loop
+src/app/                      The interface: screens, session state, platform seam
+src/radio_http_curl.cpp       The service's HTTP calls on libcurl
+src/elevation/                Filesystem access outside the sandbox
+ui-kit/                       What the app takes from ps5-homebrew-ui and lays over it
 src/radio_text.cpp            C++20 UTF-8 visual-order helper
 src/*.hpp                     Private C++ application interfaces
 include/*.hpp                 Public codec, catalogue, input, and service interfaces
-assets/ui/                    RML, RCSS, font atlases, and icons mounted at /app0/assets/ui
-vendor/                       Checked-in RmlUi, SDL2, FreeType, decoder, and PS5 SDK inputs
+vendor/                       Checked-in SDL2, decoder, stb, and PS5 SDK inputs
+third_party/update_check/     The update check of the PS5 Native App Boilerplate
+tests/console/                Scripted console runs for tools/console-run.py
 tools/build.sh                Template-native compile/link/FSELF/folder assembler
 tooling/native/               Template-owned native ELF and FSELF tooling
 tests/                        GoogleTest and Python integration regressions

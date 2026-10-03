@@ -18,13 +18,13 @@ checked=0
 for file in "${repository_files[@]}"; do
     [[ -f $file ]] || continue
     case "$file" in
-        vendor/*)
+        vendor/*|third_party/*)
             # Third-party code retains its upstream licence headers.
             continue
             ;;
         *.c|*.cc|*.cpp|*.h|*.hpp|*.ld|*.py|*.ps1|*.sh|*.yml|*.yaml|Makefile|.clang-format|.clang-tidy|.env.example)
             header=$(head -n 20 "$file")
-            grep -Eq 'ps5-native-app-boilerplate|ProsperoRadio' <<<"$header"
+            grep -Eq 'ps5-native-app-boilerplate|ps5-homebrew-ui|ProsperoRadio' <<<"$header"
             grep -Fq 'Copyright (C) 2026 BlackBearReloaded' <<<"$header"
             grep -Fq 'SPDX-License-Identifier: GPL-3.0-or-later' <<<"$header"
             ((checked += 1))

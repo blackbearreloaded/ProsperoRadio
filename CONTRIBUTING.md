@@ -30,7 +30,7 @@ Changes to `tooling/native/` must include a deterministic host check and a
 narrowly scoped static-format regression. Loader-visible changes also require
 hardware results before release.
 
-Changes to RML/RCSS, bitmap-font data, playback, codecs, catalogue queries, or
+Changes to the interface, playback, codecs, catalogue queries, or
 controller navigation require the relevant focused host regression plus a
 recorded PS5 smoke result before a release claim. Preserve the existing bounded
 memory, cancellation, and malformed-stream behaviour while changing audio

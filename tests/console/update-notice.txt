@@ -1,0 +1,11 @@
+# The notice of a newer release (run with DEV_SWITCHES=update-installed.txt):
+# it appears once the catalogue is there and stays for ten seconds.
+until catalog 420
+wait 3
+shot 01-notice
+wait 5
+shot 02-still-there
+wait 7
+shot 03-gone
+status
+quit

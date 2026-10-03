@@ -1,813 +1,367 @@
-// ProsperoRadio - Native PlayStation 5 radio application.
+// ProsperoRadio - Application entry point.
 // Copyright (C) 2026 BlackBearReloaded
 // SPDX-License-Identifier: GPL-3.0-or-later
+//
+// Opens the display and the controller, starts the radio service, then runs
+// the interface every frame: read input, update, draw, present. Lifecycle
+// markers and frame pacing are logged for hardware runs.
 
-#include <SDL2/SDL.h>
-
-#include <RmlUi/Core/Context.h>
-#include <RmlUi/Core/Core.h>
-#include <RmlUi/Core/ElementDocument.h>
-#include <RmlUi/Core/FileInterface.h>
-#include <RmlUi/Core/RenderInterface.h>
-#include <RmlUi/Core/RenderInterfaceCompatibility.h>
-#include <RmlUi/Core/SystemInterface.h>
-
-#include "bitmap_font_engine.hpp"
-#include "radio_app.hpp"
+#include "app/app.hpp"
+#include "core/frame_stats.hpp"
+#include "core/input.hpp"
+#include "core/save_file.hpp"
+#include "core/version.hpp"
+#include "gfx/renderer.hpp"
+#include "platform/ps5/display_egl.hpp"
+#include "platform/ps5/pad.hpp"
+#include "platform/ps5/system.hpp"
+#include "gfx/canvas.hpp"
+#include "gfx/system_fonts.hpp"
+#include "radio_dev.hpp"
 #include "radio_ime.hpp"
 #include "radio_input.hpp"
+#include "radio_runtime.hpp"
+#include "radio_service.hpp"
+#include "radio_storage.hpp"
 
-#include <cstdio>
+#include <GL/glcorearb.h>
+
 #include <cstddef>
-#include <cstring>
 #include <cstdint>
-#include <cstdlib>
-#include <limits>
-#include <memory>
-#include <new>
-#include <pthread.h>
+#include <cstdio>
+#include <span>
+#include <string>
 #include <vector>
 
-extern "C" int sceKernelUsleep(std::uint32_t microseconds);
-extern "C" int sceSystemServiceHideSplashScreen(void);
-extern "C" void *mmap(void *address, std::size_t length, int protection, int flags, int descriptor,
-                      long offset);
-extern "C" int munmap(void *address, std::size_t length);
-extern "C" void *__dso_handle = nullptr;
-extern "C" char __eh_frame_hdr_start[1] = {};
-extern "C" char __eh_frame_hdr_end[1] = {};
-extern "C" char __eh_frame_start[1] = {};
-extern "C" char __eh_frame_end[1] = {};
+extern "C" void hui_heap_stats(std::size_t *live_bytes, std::size_t *peak_bytes,
+                               std::size_t *blocks, std::size_t *failures);
+extern "C" int sceSystemServiceParamGetInt(int parameter, int *value);
+// The system's launch picture stays up until this is called (runtime_shims.c).
+extern "C" void radio_release_splash(void);
 
 namespace
 {
 
-constexpr std::size_t kMappedAllocationThreshold = 64 * 1024;
-constexpr std::uint64_t kAllocationMagic = UINT64_C(0x524144494F4D454D);
-constexpr int kProtectionReadWrite = 3;
-constexpr int kMapPrivateAnonymous = 0x1002;
+// Whether Cross is down right now, whatever it is mapped to.
+bool g_cross_held = false;
 
-struct alignas(std::max_align_t) AllocationHeader
+// Pictures of a scripted run: half size is enough to read every label.
+constexpr int kCaptureWidth = 960;
+constexpr int kCaptureHeight = 540;
+
+std::int64_t g_started = 0;
+
+// How long the start-up has taken so far, for the log.
+void mark(const char *what)
 {
-    std::uint64_t magic;
-    std::size_t requested_size;
-    std::size_t mapped_size;
-};
-
-void *AllocateTracked(std::size_t size)
-{
-    if (size == 0)
-        size = 1;
-    if (size > std::numeric_limits<std::size_t>::max() - sizeof(AllocationHeader))
-        return nullptr;
-
-    const std::size_t total = sizeof(AllocationHeader) + size;
-    AllocationHeader *header = nullptr;
-    std::size_t mapped_size = 0;
-    if (size >= kMappedAllocationThreshold)
-    {
-        mapped_size = (total + 0x3fff) & ~std::size_t(0x3fff);
-        void *mapping =
-            mmap(nullptr, mapped_size, kProtectionReadWrite, kMapPrivateAnonymous, -1, 0);
-        if (mapping != reinterpret_cast<void *>(-1))
-        {
-            header = static_cast<AllocationHeader *>(mapping);
-        }
-    }
-    else
-    {
-        header = static_cast<AllocationHeader *>(std::malloc(total));
-    }
-    if (!header)
-        return nullptr;
-
-    header->magic = kAllocationMagic;
-    header->requested_size = size;
-    header->mapped_size = mapped_size;
-    return header + 1;
+    hui::sys::log("[RADIO] start %s at %lld ms", what,
+                  static_cast<long long>((hui::sys::monotonic_us() - g_started) / 1000));
 }
 
-void FreeTracked(void *allocation) noexcept
+// The bound framebuffer, bottom row first, as a 24-bit BMP.
+bool save_picture(const std::string &path, int width, int height)
 {
-    if (!allocation)
-        return;
-    auto *header = static_cast<AllocationHeader *>(allocation) - 1;
-    // SDL can retain small allocations made by its original allocator before
-    // custom memory functions are installed. Those remain libc-owned.
-    if (header->magic != kAllocationMagic)
+    std::vector<unsigned char> pixels(static_cast<std::size_t>(width) * height * 4);
+    glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+    const std::uint32_t row = (static_cast<std::uint32_t>(width) * 3 + 3) & ~3u;
+    const std::uint32_t size = 54 + row * static_cast<std::uint32_t>(height);
+    unsigned char header[54] = {'B', 'M'};
+    const auto put = [&](int at, std::uint32_t value)
     {
-        std::free(allocation);
-        return;
-    }
-    if (header->mapped_size != 0)
-    {
-        munmap(header, header->mapped_size);
-    }
-    else
-    {
-        std::free(header);
-    }
-}
-
-void *CallocTracked(std::size_t count, std::size_t size)
-{
-    if (size != 0 && count > std::numeric_limits<std::size_t>::max() / size)
-        return nullptr;
-    const std::size_t total = count * size;
-    void *allocation = AllocateTracked(total);
-    if (allocation)
-        std::memset(allocation, 0, total);
-    return allocation;
-}
-
-void *ReallocTracked(void *allocation, std::size_t size)
-{
-    if (!allocation)
-        return AllocateTracked(size);
-    if (size == 0)
-    {
-        FreeTracked(allocation);
-        return nullptr;
-    }
-
-    auto *old_header = static_cast<AllocationHeader *>(allocation) - 1;
-    if (old_header->magic != kAllocationMagic)
-        std::abort();
-    void *replacement = AllocateTracked(size);
-    if (!replacement)
-        return nullptr;
-    std::memcpy(replacement, allocation,
-                old_header->requested_size < size ? old_header->requested_size : size);
-    FreeTracked(allocation);
-    return replacement;
-}
-
-} // namespace
-
-extern "C" int pthread_once(pthread_once_t *once_control, void (*init_routine)(void))
-{
-    constexpr int running = 2;
-    int state = __atomic_load_n(&once_control->state, __ATOMIC_ACQUIRE);
-    if (state == PTHREAD_DONE_INIT)
-        return 0;
-
-    int expected = PTHREAD_NEEDS_INIT;
-    if (__atomic_compare_exchange_n(&once_control->state, &expected, running, false,
-                                    __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE))
-    {
-        init_routine();
-        __atomic_store_n(&once_control->state, PTHREAD_DONE_INIT, __ATOMIC_RELEASE);
-        return 0;
-    }
-
-    while (__atomic_load_n(&once_control->state, __ATOMIC_ACQUIRE) != PTHREAD_DONE_INIT)
-    {
-        sceKernelUsleep(100);
-    }
-    return 0;
-}
-
-extern "C" void __assert(const char *, const char *, int, const char *)
-{
-    std::abort();
-}
-
-extern "C" float strtof(const char *value, char **end)
-{
-    return static_cast<float>(strtod(value, end));
-}
-
-extern "C" int fseek(std::FILE *file, long offset, int origin)
-{
-    return fseeko(file, offset, origin);
-}
-
-extern "C" long ftell(std::FILE *file)
-{
-    return static_cast<long>(ftello(file));
-}
-
-extern "C" char *strcasestr(const char *haystack, const char *needle)
-{
-    if (!*needle)
-        return const_cast<char *>(haystack);
-    for (; *haystack; ++haystack)
-    {
-        const char *h = haystack;
-        const char *n = needle;
-        while (*h && *n)
-        {
-            const char hc = *h >= 'A' && *h <= 'Z' ? static_cast<char>(*h + ('a' - 'A')) : *h;
-            const char nc = *n >= 'A' && *n <= 'Z' ? static_cast<char>(*n + ('a' - 'A')) : *n;
-            if (hc != nc)
-                break;
-            ++h;
-            ++n;
-        }
-        if (!*n)
-            return const_cast<char *>(haystack);
-    }
-    return nullptr;
-}
-
-namespace
-{
-
-class AppSystemInterface final : public Rml::SystemInterface
-{
-  public:
-    double GetElapsedTime() override
-    {
-        return static_cast<double>(SDL_GetTicks64() - start_ticks_) / 1000.0;
-    }
-
-  private:
-    Uint64 start_ticks_ = SDL_GetTicks64();
-};
-
-class AppFileInterface final : public Rml::FileInterface
-{
-  public:
-    Rml::FileHandle Open(const Rml::String &path) override
-    {
-        std::FILE *file = std::fopen(path.c_str(), "rb");
-        if (!file)
-        {
-            const Rml::String app_path = "/app0/" + path;
-            file = std::fopen(app_path.c_str(), "rb");
-        }
-        return reinterpret_cast<Rml::FileHandle>(file);
-    }
-
-    void Close(Rml::FileHandle file) override
-    {
-        if (file)
-            std::fclose(reinterpret_cast<std::FILE *>(file));
-    }
-
-    size_t Read(void *buffer, size_t size, Rml::FileHandle file) override
-    {
-        return std::fread(buffer, 1, size, reinterpret_cast<std::FILE *>(file));
-    }
-
-    bool Seek(Rml::FileHandle file, long offset, int origin) override
-    {
-        return fseeko(reinterpret_cast<std::FILE *>(file), offset, origin) == 0;
-    }
-
-    size_t Tell(Rml::FileHandle file) override
-    {
-        return static_cast<size_t>(ftello(reinterpret_cast<std::FILE *>(file)));
-    }
-};
-
-class SdlRenderInterface final : public Rml::RenderInterfaceCompatibility
-{
-  public:
-    SdlRenderInterface(SDL_Renderer *renderer, SDL_Surface *surface)
-        : renderer_(renderer), surface_(surface)
-    {
-        SDL_SetRenderDrawBlendMode(renderer_, SDL_BLENDMODE_BLEND);
-    }
-
-    void RenderGeometry(Rml::Vertex *rml_vertices, int num_vertices, int *indices, int num_indices,
-                        Rml::TextureHandle texture, const Rml::Vector2f &translation) override
-    {
-        AppTexture *app_texture = reinterpret_cast<AppTexture *>(texture);
-        if (app_texture && RenderPixelAlignedQuads(rml_vertices, num_vertices, indices, num_indices,
-                                                   app_texture, translation))
-        {
-            return;
-        }
-
-        std::vector<SDL_Vertex> vertices;
-        vertices.reserve(static_cast<size_t>(num_vertices));
-        for (int i = 0; i < num_vertices; ++i)
-        {
-            const Rml::Vertex &vertex = rml_vertices[i];
-            SDL_Vertex sdl_vertex{};
-            sdl_vertex.position = {vertex.position.x + translation.x,
-                                   vertex.position.y + translation.y};
-            sdl_vertex.color = {vertex.colour.red, vertex.colour.green, vertex.colour.blue,
-                                vertex.colour.alpha};
-            sdl_vertex.tex_coord = {vertex.tex_coord.x, vertex.tex_coord.y};
-            vertices.push_back(sdl_vertex);
-        }
-        SDL_RenderGeometry(renderer_, app_texture ? app_texture->texture : nullptr, vertices.data(),
-                           num_vertices, indices, num_indices);
-    }
-
-    bool LoadTexture(Rml::TextureHandle &texture_handle, Rml::Vector2i &texture_dimensions,
-                     const Rml::String &source) override
-    {
-        texture_handle = {};
-        texture_dimensions = {};
-
-        std::FILE *file = std::fopen(source.c_str(), "rb");
-        if (!file && !source.empty() && source[0] != '/')
-        {
-            const Rml::String app_path = "/app0/" + source;
-            file = std::fopen(app_path.c_str(), "rb");
-        }
-        if (!file)
-            return false;
-
-        unsigned char header[18]{};
-        const bool header_read = std::fread(header, 1, sizeof(header), file) == sizeof(header);
-        int width = 0;
-        int height = 0;
-        SdlBuffer pixels;
-        std::size_t pixel_bytes = 0;
-        bool decoded = false;
-
-        if (header_read && std::memcmp(header, "RTA1", 4) == 0)
-        {
-            width = ReadLe16(header + 4);
-            height = ReadLe16(header + 6);
-            const std::uint32_t pixel_count = ReadLe32(header + 8);
-            const std::uint32_t payload_length = ReadLe32(header + 12);
-            const std::size_t expected_pixels =
-                static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
-            if (width > 0 && height > 0 && pixel_count == expected_pixels &&
-                expected_pixels <= std::numeric_limits<std::size_t>::max() / 4 &&
-                payload_length <= expected_pixels * 2 && fseeko(file, 16, SEEK_SET) == 0)
-            {
-                SdlBuffer payload(static_cast<unsigned char *>(SDL_malloc(payload_length)));
-                pixels.reset(static_cast<unsigned char *>(SDL_malloc(expected_pixels * 4)));
-                pixel_bytes = expected_pixels * 4;
-                if (payload && pixels &&
-                    std::fread(payload.get(), 1, payload_length, file) == payload_length)
-                {
-                    decoded = DecodeRadioAtlas(payload.get(), payload_length, expected_pixels,
-                                               pixels.get());
-                }
-            }
-        }
-        else
-        {
-            width = header[12] | (header[13] << 8);
-            height = header[14] | (header[15] << 8);
-            const bool supported = header_read && header[0] == 0 && header[1] == 0 &&
-                                   header[2] == 2 && width > 0 && height > 0 && header[16] == 32 &&
-                                   (header[17] & 0x0f) == 8 && (header[17] & 0x30) == 0x20;
-            if (supported &&
-                static_cast<std::size_t>(width) <= std::numeric_limits<std::size_t>::max() /
-                                                       (static_cast<std::size_t>(height) * 4))
-            {
-                pixel_bytes =
-                    static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4;
-                pixels.reset(static_cast<unsigned char *>(SDL_malloc(pixel_bytes)));
-                decoded = pixels && std::fread(pixels.get(), 1, pixel_bytes, file) == pixel_bytes;
-            }
-        }
-        std::fclose(file);
-        if (!decoded)
-            return false;
-
-        SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormatFrom(
-            pixels.get(), width, height, 32, width * 4, SDL_PIXELFORMAT_BGRA32);
-        if (!surface)
-            return false;
-
-        SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer_, surface);
-        SDL_FreeSurface(surface);
-        if (!texture)
-            return false;
-
-        if (SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND) != 0 ||
-            SDL_SetTextureScaleMode(texture, SDL_ScaleModeNearest) != 0)
-        {
-            SDL_DestroyTexture(texture);
-            return false;
-        }
-
-        auto *app_texture = new (std::nothrow) AppTexture;
-        if (!app_texture)
-        {
-            SDL_DestroyTexture(texture);
-            return false;
-        }
-        app_texture->texture = texture;
-        app_texture->width = width;
-        app_texture->height = height;
-        app_texture->exact_pixels = source.find("lvgl-bitmap") != Rml::String::npos;
-        if (app_texture->exact_pixels)
-        {
-            for (std::size_t i = 0; i < pixel_bytes; i += 4)
-                std::swap(pixels.get()[i], pixels.get()[i + 2]);
-            app_texture->rgba = std::move(pixels);
-            app_texture->surface = SDL_CreateRGBSurfaceWithFormatFrom(
-                app_texture->rgba.get(), width, height, 32, width * 4, SDL_PIXELFORMAT_RGBA32);
-            if (!app_texture->surface ||
-                SDL_SetSurfaceBlendMode(app_texture->surface, SDL_BLENDMODE_BLEND) != 0)
-            {
-                SDL_FreeSurface(app_texture->surface);
-                SDL_DestroyTexture(texture);
-                delete app_texture;
-                return false;
-            }
-        }
-
-        texture_dimensions = {width, height};
-        texture_handle = reinterpret_cast<Rml::TextureHandle>(app_texture);
-        return true;
-    }
-
-    bool GenerateTexture(Rml::TextureHandle &texture_handle, const Rml::byte *source,
-                         const Rml::Vector2i &dimensions) override
-    {
-        SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormatFrom(
-            const_cast<Rml::byte *>(source), dimensions.x, dimensions.y, 32, dimensions.x * 4,
-            SDL_PIXELFORMAT_RGBA32);
-        if (!surface)
-            return false;
-
-        SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer_, surface);
-        SDL_FreeSurface(surface);
-        if (texture)
-        {
-            SDL_SetTextureBlendMode(texture, SDL_BLENDMODE_BLEND);
-            SDL_SetTextureScaleMode(texture, SDL_ScaleModeNearest);
-        }
-        if (!texture)
-            return false;
-
-        auto *app_texture = new (std::nothrow) AppTexture;
-        if (!app_texture)
-        {
-            SDL_DestroyTexture(texture);
-            return false;
-        }
-        app_texture->texture = texture;
-        app_texture->width = dimensions.x;
-        app_texture->height = dimensions.y;
-        texture_handle = reinterpret_cast<Rml::TextureHandle>(app_texture);
-        return true;
-    }
-
-    void ReleaseTexture(Rml::TextureHandle texture) override
-    {
-        auto *app_texture = reinterpret_cast<AppTexture *>(texture);
-        if (!app_texture)
-            return;
-        SDL_FreeSurface(app_texture->surface);
-        SDL_DestroyTexture(app_texture->texture);
-        delete app_texture;
-    }
-
-    void EnableScissorRegion(bool enable) override
-    {
-        scissor_enabled_ = enable;
-        SDL_RenderSetClipRect(renderer_, enable ? &scissor_ : nullptr);
-    }
-
-    void SetScissorRegion(int x, int y, int width, int height) override
-    {
-        scissor_ = {x, y, width, height};
-        if (scissor_enabled_)
-            SDL_RenderSetClipRect(renderer_, &scissor_);
-    }
-
-  private:
-    struct SdlFree
-    {
-        void operator()(void *allocation) const noexcept
-        {
-            SDL_free(allocation);
-        }
+        for (int i = 0; i < 4; ++i)
+            header[at + i] = static_cast<unsigned char>(value >> (8 * i));
     };
-
-    using SdlBuffer = std::unique_ptr<unsigned char, SdlFree>;
-
-    struct AppTexture
+    put(2, size);
+    put(10, 54);
+    put(14, 40);
+    put(18, static_cast<std::uint32_t>(width));
+    put(22, static_cast<std::uint32_t>(height));
+    header[26] = 1;
+    header[28] = 24;
+    put(34, size - 54);
+    std::FILE *file = std::fopen(path.c_str(), "wb");
+    if (file == nullptr)
+        return false;
+    bool ok = std::fwrite(header, 1, sizeof(header), file) == sizeof(header);
+    std::vector<unsigned char> line(row);
+    for (int y = 0; ok && y < height; ++y)
     {
-        SDL_Texture *texture = nullptr;
-        SDL_Surface *surface = nullptr;
-        int width = 0;
-        int height = 0;
-        bool exact_pixels = false;
-        SdlBuffer rgba;
-    };
-
-    static std::uint16_t ReadLe16(const unsigned char *value)
-    {
-        return static_cast<std::uint16_t>(value[0]) | (static_cast<std::uint16_t>(value[1]) << 8);
-    }
-
-    static std::uint32_t ReadLe32(const unsigned char *value)
-    {
-        return static_cast<std::uint32_t>(value[0]) | (static_cast<std::uint32_t>(value[1]) << 8) |
-               (static_cast<std::uint32_t>(value[2]) << 16) |
-               (static_cast<std::uint32_t>(value[3]) << 24);
-    }
-
-    static bool DecodeRadioAtlas(const unsigned char *payload, std::size_t payload_size,
-                                 std::size_t pixel_count, unsigned char *pixels)
-    {
-        std::memset(pixels, 255, pixel_count * 4);
-        std::size_t input = 0;
-        std::size_t output = 0;
-        while (input < payload_size && output < pixel_count)
+        const unsigned char *in = pixels.data() + static_cast<std::size_t>(y) * width * 4;
+        for (int x = 0; x < width; ++x)
         {
-            const unsigned char token = payload[input++];
-            const std::size_t length = static_cast<std::size_t>(token & 0x7f) + 1;
-            if (length > pixel_count - output)
-                return false;
-            if ((token & 0x80) == 0)
-            {
-                for (std::size_t index = 0; index < length; ++index)
-                    pixels[(output + index) * 4 + 3] = 0;
-            }
-            else
-            {
-                const std::size_t bytes = (length + 1) / 2;
-                if (bytes > payload_size - input)
-                    return false;
-                for (std::size_t index = 0; index < length; ++index)
-                {
-                    const unsigned char packed = payload[input + index / 2];
-                    const unsigned char alpha =
-                        (index & 1) != 0 ? static_cast<unsigned char>((packed & 0x0f) * 17)
-                                         : static_cast<unsigned char>((packed >> 4) * 17);
-                    pixels[(output + index) * 4 + 3] = alpha;
-                }
-                input += bytes;
-            }
-            output += length;
+            line[static_cast<std::size_t>(x) * 3 + 0] = in[x * 4 + 2];
+            line[static_cast<std::size_t>(x) * 3 + 1] = in[x * 4 + 1];
+            line[static_cast<std::size_t>(x) * 3 + 2] = in[x * 4 + 0];
         }
-        return input == payload_size && output == pixel_count;
+        ok = std::fwrite(line.data(), 1, line.size(), file) == line.size();
     }
+    return std::fclose(file) == 0 && ok;
+}
 
-    struct PixelCopy
-    {
-        SDL_Rect source;
-        SDL_Rect destination;
-        Rml::ColourbPremultiplied colour;
-    };
-
-    static int RoundPixel(float value)
-    {
-        return static_cast<int>(value + (value >= 0.0f ? 0.5f : -0.5f));
-    }
-
-    static bool SameColor(const Rml::Vertex &lhs, const Rml::Vertex &rhs)
-    {
-        return lhs.colour.red == rhs.colour.red && lhs.colour.green == rhs.colour.green &&
-               lhs.colour.blue == rhs.colour.blue && lhs.colour.alpha == rhs.colour.alpha;
-    }
-
-    bool RenderPixelAlignedQuads(Rml::Vertex *vertices, int num_vertices, int *indices,
-                                 int num_indices, AppTexture *texture,
-                                 const Rml::Vector2f &translation)
-    {
-        if (num_vertices <= 0 || num_indices <= 0 || num_indices % 6 != 0)
-            return false;
-
-        const int texture_width = texture->width;
-        const int texture_height = texture->height;
-        if (texture_width <= 0 || texture_height <= 0)
-            return false;
-
-        const int num_quads = num_indices / 6;
-        std::vector<PixelCopy> copies;
-        copies.reserve(static_cast<size_t>(num_quads));
-        for (int quad = 0; quad < num_quads; ++quad)
-        {
-            const int index = quad * 6;
-            const int i0 = indices[index + 0];
-            const int i3 = indices[index + 1];
-            const int i1 = indices[index + 2];
-            const int i2 = indices[index + 5];
-            if (i0 < 0 || i0 >= num_vertices || i1 < 0 || i1 >= num_vertices || i2 < 0 ||
-                i2 >= num_vertices || i3 < 0 || i3 >= num_vertices || indices[index + 3] != i1 ||
-                indices[index + 4] != i3 || i0 == i1 || i0 == i2 || i0 == i3 || i1 == i2 ||
-                i1 == i3 || i2 == i3)
-                return false;
-
-            const Rml::Vertex &v0 = vertices[i0];
-            const Rml::Vertex &v1 = vertices[i1];
-            const Rml::Vertex &v2 = vertices[i2];
-            const Rml::Vertex &v3 = vertices[i3];
-            if (v0.position.y != v1.position.y || v1.position.x != v2.position.x ||
-                v2.position.y != v3.position.y || v3.position.x != v0.position.x ||
-                v0.tex_coord.y != v1.tex_coord.y || v1.tex_coord.x != v2.tex_coord.x ||
-                v2.tex_coord.y != v3.tex_coord.y || v3.tex_coord.x != v0.tex_coord.x ||
-                !SameColor(v0, v1) || !SameColor(v0, v2) || !SameColor(v0, v3))
-                return false;
-
-            const int source_width = RoundPixel((v1.tex_coord.x - v0.tex_coord.x) * texture_width);
-            const int source_height =
-                RoundPixel((v3.tex_coord.y - v0.tex_coord.y) * texture_height);
-            const int destination_width = RoundPixel(v1.position.x - v0.position.x);
-            const int destination_height = RoundPixel(v3.position.y - v0.position.y);
-            if (source_width <= 0 || source_height <= 0 || source_width != destination_width ||
-                source_height != destination_height)
-                return false;
-
-            SDL_Rect source{RoundPixel(v0.tex_coord.x * texture_width),
-                            RoundPixel(v0.tex_coord.y * texture_height), source_width,
-                            source_height};
-            if (source.x < 0 || source.y < 0 || source.x + source.w > texture_width ||
-                source.y + source.h > texture_height)
-                return false;
-            copies.push_back(
-                {source,
-                 {RoundPixel(v0.position.x + translation.x),
-                  RoundPixel(v0.position.y + translation.y), destination_width, destination_height},
-                 v0.colour});
-        }
-
-        if (texture->exact_pixels)
-            return CompositeExactPixels(*texture, copies);
-
-        for (const PixelCopy &copy : copies)
-        {
-            SDL_SetTextureColorMod(texture->texture, copy.colour.red, copy.colour.green,
-                                   copy.colour.blue);
-            SDL_SetTextureAlphaMod(texture->texture, copy.colour.alpha);
-            SDL_RenderCopy(renderer_, texture->texture, &copy.source, &copy.destination);
-        }
-
-        SDL_SetTextureColorMod(texture->texture, 255, 255, 255);
-        SDL_SetTextureAlphaMod(texture->texture, 255);
-        return true;
-    }
-
-    bool CompositeExactPixels(const AppTexture &texture, const std::vector<PixelCopy> &copies)
-    {
-        if (!surface_ || !texture.surface)
-            return false;
-        SDL_RenderFlush(renderer_);
-
-        SDL_Rect old_clip{};
-        SDL_GetClipRect(surface_, &old_clip);
-        SDL_SetClipRect(surface_, scissor_enabled_ ? &scissor_ : nullptr);
-        for (const PixelCopy &copy : copies)
-        {
-            SDL_SetSurfaceColorMod(texture.surface, copy.colour.red, copy.colour.green,
-                                   copy.colour.blue);
-            SDL_SetSurfaceAlphaMod(texture.surface, copy.colour.alpha);
-            SDL_Rect destination = copy.destination;
-            SDL_BlitSurface(texture.surface, &copy.source, surface_, &destination);
-        }
-        SDL_SetSurfaceColorMod(texture.surface, 255, 255, 255);
-        SDL_SetSurfaceAlphaMod(texture.surface, 255);
-        SDL_SetClipRect(surface_, &old_clip);
-        return true;
-    }
-
-    SDL_Renderer *renderer_;
-    SDL_Surface *surface_;
-    SDL_Rect scissor_{};
-    bool scissor_enabled_ = false;
-};
-
-bool LoadFonts()
+void log_heap(std::uint64_t frames)
 {
-    static constexpr const char *kBitmapFonts[] = {
-        "assets/ui/fonts/lvgl-bitmap/Montserrat-20.fnt",
-        "assets/ui/fonts/lvgl-bitmap/Montserrat-24.fnt",
-        "assets/ui/fonts/lvgl-bitmap/Montserrat-28.fnt",
-        "assets/ui/fonts/lvgl-bitmap/Montserrat-32.fnt",
-        "assets/ui/fonts/lvgl-bitmap/Montserrat-36.fnt",
-        "assets/ui/fonts/lvgl-bitmap/Montserrat-40.fnt",
-        "assets/ui/fonts/lvgl-bitmap/Montserrat-48.fnt",
-    };
-    for (const char *font : kBitmapFonts)
+    std::size_t live = 0;
+    std::size_t peak = 0;
+    std::size_t blocks = 0;
+    std::size_t failures = 0;
+    hui_heap_stats(&live, &peak, &blocks, &failures);
+    hui::sys::log("[RADIO] heap frames=%llu live=%zu peak=%zu blocks=%zu failures=%zu",
+                  static_cast<unsigned long long>(frames), live, peak, blocks, failures);
+}
+
+bool load_font(hui::gfx::Renderer &renderer, const char *name, hui::gfx::Font *font,
+               hui::ui::FontRef *ref)
+{
+    std::string data;
+    const std::string path = std::string(radio_storage_app_dir()) + "/assets/fonts/" + name;
+    if (!hui::save::read_file(path, &data) || !font->load(data))
     {
-        if (!Rml::LoadFontFace(font))
-            return false;
+        hui::sys::log("[RADIO] font %s failed: %s", name, font->error().c_str());
+        return false;
     }
-    static constexpr const char *kMultilingualFonts[] = {
-        "assets/ui/fonts/lvgl-bitmap/multilingual/Radio-20.fnt",
-        "assets/ui/fonts/lvgl-bitmap/multilingual/Radio-24.fnt",
-        "assets/ui/fonts/lvgl-bitmap/multilingual/Radio-28.fnt",
-        "assets/ui/fonts/lvgl-bitmap/multilingual/Radio-32.fnt",
-    };
-    for (const char *font : kMultilingualFonts)
-    {
-        if (!Rml::LoadFontFace(font))
-            return false;
-    }
+    ref->font = font;
+    ref->texture = renderer.batch().create_font_texture(*font);
     return true;
 }
 
-[[noreturn]] void KeepProcessAlive()
+// The console's language as a tag ("ja-JP", "zh-Hans", ...): the fonts for
+// Japanese, Chinese and Korean share characters, and the console's language
+// decides whose forms they take.
+std::string system_language_tag()
 {
-    for (;;)
-        sceKernelUsleep(1000000);
-}
-
-void PresentColor(SDL_Renderer *renderer, SDL_Window *window, Uint8 red, Uint8 green, Uint8 blue)
-{
-    SDL_SetRenderDrawColor(renderer, red, green, blue, 255);
-    SDL_RenderClear(renderer);
-    SDL_RenderFlush(renderer);
-    SDL_UpdateWindowSurface(window);
-}
-
-bool RunApp()
-{
-    if (SDL_SetMemoryFunctions(AllocateTracked, CallocTracked, ReallocTracked, FreeTracked) != 0)
+    int language = -1;
+    if (sceSystemServiceParamGetInt(1, &language) != 0)
+        return "en-US";
+    switch (language)
     {
-        return false;
+    case 0:
+        return "ja-JP";
+    case 9:
+        return "ko-KR";
+    case 10:
+        return "zh-Hant";
+    case 11:
+        return "zh-Hans";
+    case 21:
+        return "ar";
+    case 27:
+        return "th-TH";
+    default:
+        return "en-US";
     }
-
-    SDL_SetMainReady();
-    if (SDL_Init(SDL_INIT_VIDEO) != 0)
-    {
-        return false;
-    }
-    SDL_SetHint(SDL_HINT_FRAMEBUFFER_ACCELERATION, "software");
-    SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-    SDL_Window *window = SDL_CreateWindow("ProsperoRadio", SDL_WINDOWPOS_UNDEFINED,
-                                          SDL_WINDOWPOS_UNDEFINED, 1920, 1080, SDL_WINDOW_SHOWN);
-    SDL_Surface *surface = SDL_GetWindowSurface(window);
-    SDL_Renderer *renderer = surface ? SDL_CreateSoftwareRenderer(surface) : nullptr;
-    if (!window || !renderer)
-        return false;
-
-    PresentColor(renderer, window, 20, 80, 180);
-
-    AppSystemInterface system_interface;
-    AppFileInterface file_interface;
-    SdlRenderInterface render_interface(renderer, surface);
-    BitmapFontEngine font_engine;
-    Rml::RenderInterface *adapted_render_interface = render_interface.GetAdaptedInterface();
-    Rml::SetSystemInterface(&system_interface);
-    Rml::SetFileInterface(&file_interface);
-    Rml::SetRenderInterface(adapted_render_interface);
-    Rml::SetFontEngineInterface(&font_engine);
-
-    bool running = Rml::Initialise();
-    if (running)
-        running = LoadFonts();
-    Rml::Context *context =
-        running ? Rml::CreateContext("radio-browser", {1920, 1080}, adapted_render_interface)
-                : nullptr;
-    Rml::ElementDocument *document =
-        context ? context->LoadDocument("assets/ui/main.rml") : nullptr;
-    RadioApp app;
-    bool input_ready = false;
-    bool ime_ready = false;
-    if (document)
-    {
-        document->Show();
-        input_ready = radio_input_init();
-        ime_ready = input_ready && radio_ime_init();
-        running = input_ready && ime_ready && app.Initialize(document);
-        if (running)
-            sceSystemServiceHideSplashScreen();
-    }
-    else
-    {
-        PresentColor(renderer, window, 180, 20, 40);
-        running = false;
-    }
-
-    while (running)
-    {
-        SDL_Event event{};
-        while (SDL_PollEvent(&event))
-        {
-            if (event.type == SDL_QUIT)
-                running = false;
-        }
-        radio_input_poll();
-        radio_input_event_t input{};
-        while (radio_input_next(&input))
-            app.HandleInput(input);
-        radio_ime_poll();
-        app.Poll();
-        context->Update();
-        SDL_SetRenderDrawColor(renderer, 7, 16, 22, 255);
-        SDL_RenderClear(renderer);
-        context->Render();
-        SDL_RenderFlush(renderer);
-        SDL_UpdateWindowSurface(window);
-        sceKernelUsleep(16667);
-    }
-
-    app.Shutdown();
-    if (ime_ready)
-        radio_ime_shutdown();
-    if (input_ready)
-        radio_input_shutdown();
-    if (document)
-        document->Close();
-    if (context)
-        Rml::RemoveContext("radio-browser");
-    Rml::Shutdown();
-    SDL_DestroyRenderer(renderer);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
-    return false;
 }
 
 } // namespace
 
+// The keyboard waits for Cross to be let go before it opens, so the press
+// that asked for it is not typed into it. This is all it asks of the pad.
+bool radio_input_pressed(radio_input_key_t key)
+{
+    return key == RADIO_INPUT_CROSS && g_cross_held;
+}
+
 int main()
 {
-    RunApp();
-    KeepProcessAlive();
+    using namespace hui;
+    g_started = sys::monotonic_us();
+    // Filesystem access first, while the process has one thread: every path
+    // below, the log's included, depends on the answer.
+    radio_storage_init();
+    mark("storage");
+    if (!radio_runtime_init())
+    {
+        sys::log("[RADIO] fatal: runtime init failed");
+        sys::park();
+    }
+
+    // 1080p for now: it is what the app has always presented at. The kit can
+    // open 1440p and 4K; that becomes a setting once this build has run.
+    ps5::Display display;
+    if (!display.open(1920, 1080))
+    {
+        sys::log("[RADIO] fatal: display open failed");
+        sys::park();
+    }
+    mark("display");
+
+    gfx::Renderer renderer;
+    gfx::Font regular;
+    gfx::Font semibold;
+    gfx::Font display_font;
+    gfx::Font mono;
+    ui::Fonts fonts;
+    if (!renderer.init() ||
+        !load_font(renderer, "inter-regular.huifont", &regular, &fonts.regular) ||
+        !load_font(renderer, "inter-semibold.huifont", &semibold, &fonts.semibold) ||
+        !load_font(renderer, "montserrat-medium.huifont", &display_font, &fonts.display) ||
+        !load_font(renderer, "dejavu-sans-mono.huifont", &mono, &fonts.mono))
+    {
+        sys::log("[RADIO] fatal: renderer init failed");
+        sys::park();
+    }
+    // Station names come in every script; the baked faces hold ASCII. What
+    // they lack comes from the console's own fonts (ProsperoEden's engine:
+    // read when first needed, shaped with HarfBuzz, right-to-left ordered).
+    const std::string language = system_language_tag();
+    for (const std::string &folder : gfx::system_font_folders())
+    {
+        std::vector<std::string> files = gfx::system_font_files(folder, language);
+        if (files.empty())
+            continue;
+        for (gfx::Font *face : {&regular, &semibold, &display_font})
+            face->use_system_fonts(files, language);
+        sys::log("[RADIO] system fonts: %zu files in %s for %s", files.size(), folder.c_str(),
+                 language.c_str());
+        break;
+    }
+    // Night Signal uses four faces; the other two slots are for the scripts
+    // the station names need.
+    fonts.pixel = fonts.mono;
+    fonts.hand = fonts.regular;
+    mark("renderer");
+
+    // The controller opens the user service, which the keyboard needs too.
+    ps5::Pad pad;
+    const bool pad_ready = pad.open();
+    const bool ime_ready = pad_ready && radio_ime_init();
+    mark("controller");
+    const bool service_ready = radio_service_init();
+    mark("service");
+    sys::log("[RADIO] pad=%d keyboard=%d service=%d", pad_ready ? 1 : 0, ime_ready ? 1 : 0,
+             service_ready ? 1 : 0);
+
+    const std::string version =
+        read_content_version(std::string(radio_storage_app_dir()) + "/sce_sys/param.json");
+    radio::App app(fonts, renderer.glass_texture(), version.empty() ? "unknown" : version);
+    sys::log("[RADIO] version %s", version.empty() ? "unknown" : version.c_str());
+
+    // A request left by a PC turns this launch into a scripted test run.
+    radio_dev::Script script;
+    if (script.load(std::string(radio_storage_app_dir()) + "/dev/request.txt",
+                    std::string(radio_storage_data_dir()) + "/dev"))
+        sys::log("[RADIO] scripted run: the controller is not read");
+    gfx::Canvas capture;
+    const std::string quit_path = std::string(radio_storage_app_dir()) + "/dev/quit.txt";
+    std::string quit_note;
+
+    InputTracker tracker;
+    ui::Feedback feedback;
+    radio::Frame frame;
+    FrameStats stats;
+    PadSample samples[64];
+    std::uint64_t frames = 0;
+    std::int64_t previous = sys::monotonic_us();
+    std::int64_t last_frame_start = previous;
+    for (;;)
+    {
+        const std::int64_t now = sys::monotonic_us();
+        // Animation time is start-to-start (one full frame), and a hitch must
+        // not teleport the animations.
+        float dt = frames == 0 ? 1.0f / 60.0f : static_cast<float>(now - last_frame_start) / 1e6f;
+        last_frame_start = now;
+        if (dt > 0.05f)
+            dt = 0.05f;
+        std::size_t count = pad.read(samples);
+        if (script.active())
+        {
+            // The script is the controller: one sample a frame, nothing else.
+            samples[0] = PadSample{};
+            samples[0].buttons = script.step(dt);
+            samples[0].connected = true;
+            samples[0].timestamp_us = static_cast<std::uint64_t>(now);
+            count = 1;
+        }
+        const InputFrame input = tracker.update(std::span<const PadSample>(samples, count),
+                                                static_cast<std::uint64_t>(now));
+        g_cross_held = count > 0 && (samples[count - 1].buttons & pad_bits::kCross) != 0;
+
+        if (ime_ready)
+            radio_ime_poll();
+        feedback.clear();
+        app.update(input, dt, feedback);
+        // Interface sounds are not wired in this build: the cues are dropped.
+        if (feedback.rumble_strength > 0.0f)
+            pad.rumble(feedback.rumble_strength, feedback.rumble_seconds);
+        pad.tick(dt);
+
+        app.draw(frame);
+        // Glyphs the frame's text needed from the console's fonts.
+        renderer.batch().sync_font_texture(fonts.regular.texture, regular);
+        renderer.batch().sync_font_texture(fonts.semibold.texture, semibold);
+        renderer.batch().sync_font_texture(fonts.display.texture, display_font);
+        renderer.begin();
+        renderer.backdrop(frame.backdrop);
+        renderer.draw(frame.scene);
+        renderer.glass();
+        renderer.draw(frame.overlay);
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        renderer.present(0, display.width(), display.height());
+        if (!script.capture().empty())
+        {
+            // The same frame once more, into a small off-screen target:
+            // reading the display surface back is slow.
+            if (capture.texture() == 0)
+                capture.create(kCaptureWidth, kCaptureHeight, 1);
+            capture.bind();
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            renderer.present(capture.framebuffer(), kCaptureWidth, kCaptureHeight);
+            glBindFramebuffer(GL_FRAMEBUFFER, capture.framebuffer());
+            const bool saved = save_picture(script.capture(), kCaptureWidth, kCaptureHeight);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            script.capture_done(saved);
+            last_frame_start = sys::monotonic_us(); // saving is slow; the frame was not
+        }
+        if (!display.swap())
+        {
+            sys::log("[RADIO] fatal: swap failed frame=%llu error=%s",
+                     static_cast<unsigned long long>(frames),
+                     ps5::egl_error_name(display.last_error()));
+            sys::park();
+        }
+        ++frames;
+        const std::int64_t presented = sys::monotonic_us();
+        if (frames == 1)
+        {
+            sys::log("[RADIO] first-swap ok shapes=%zu draws=%zu", renderer.last_instances(),
+                     renderer.last_draw_calls());
+            mark("first frame");
+            // The launch picture gives way to a frame, never to a black screen.
+            radio_release_splash();
+            const bool hidden = sys::hide_splash_screen();
+            sys::log("[RADIO] ready splash_hidden=%d", hidden ? 1 : 0);
+            log_heap(frames);
+        }
+        else
+        {
+            stats.add(static_cast<double>(presented - previous) / 1000.0);
+        }
+        previous = presented;
+
+        // A test can end a run from the PC: dev/quit.txt beside the app.
+        const bool asked_from_pc = frames % 60 == 0 && save::read_file(quit_path, &quit_note, 64);
+        if (app.wants_quit() || script.wants_quit() || asked_from_pc)
+        {
+            sys::log("[RADIO] closing: %s", asked_from_pc         ? "asked for by a test"
+                                            : script.wants_quit() ? "the test script ended"
+                                                                  : "asked from the menu");
+            if (ime_ready)
+                radio_ime_shutdown();
+            radio_service_shutdown();
+            pad.close();
+            sys::quit();
+        }
+        if (stats.count() == 600)
+        {
+            char summary[160];
+            stats.format(summary, sizeof(summary));
+            sys::log("[RADIO] %s draws=%zu shapes=%zu", summary, renderer.last_draw_calls(),
+                     renderer.last_instances());
+            stats.reset();
+            if (frames % 3600 < 600)
+                log_heap(frames);
+        }
+    }
 }

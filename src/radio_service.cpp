@@ -15,8 +15,13 @@
 #include "pcm_queue.hpp"
 #include "playback_retry.hpp"
 #include "radio_hls.hpp"
+#include "radio_http.hpp"
+#include <sqlite3.h>
+#include "radio_audio_tap.hpp"
+#include "radio_levels_tap.hpp"
 #include "radio_catalog_store.hpp"
 #include "radio_playlist.hpp"
+#include "radio_storage.hpp"
 #include "radio_ts_aac.hpp"
 #include "vorbis_decoder.hpp"
 
@@ -39,11 +44,11 @@
 #define FAVORITES_LEGACY_VERSION 1U
 #define LEGACY_CATALOG_CAPACITY 480U
 #define FAVORITES_LEGACY_CAPACITY 100U
-#define LEGACY_CACHE_PATH "/download0/radio-browser-cache.bin"
-#define FAVORITES_PATH "/download0/radio-browser-favorites.bin"
-#define FAVORITES_TEMP_PATH "/download0/radio-browser-favorites.tmp"
-#define CATALOG_DATABASE_PATH "/download0/radio-browser.sqlite3"
-#define CATALOG_STAGING_PATH "/download0/radio-browser-next.sqlite3"
+#define LEGACY_CACHE_PATH radio_storage_file(RADIO_FILE_LEGACY_CACHE)
+#define FAVORITES_PATH radio_storage_file(RADIO_FILE_FAVORITES)
+#define FAVORITES_TEMP_PATH radio_storage_file(RADIO_FILE_FAVORITES_TEMP)
+#define CATALOG_DATABASE_PATH radio_storage_file(RADIO_FILE_CATALOG)
+#define CATALOG_STAGING_PATH radio_storage_file(RADIO_FILE_CATALOG_STAGING)
 #define CATALOG_PAGE_LIMIT 10000U
 #define CATALOG_WRITE_BATCH 256U
 #define CATALOG_VIEW_CAPACITY 16U
@@ -238,33 +243,6 @@ extern "C"
     extern int scePthreadCreate(void **thread, const void *attributes, void *(*entry)(void *),
                                 void *argument, const char *name);
     extern int scePthreadDetach(void *thread);
-
-    extern int sceNetPoolCreate(const char *name, int size, int flags);
-    extern int sceNetPoolDestroy(int mem_id);
-    extern int sceSslInit(size_t pool_size);
-    extern int sceSslTerm(int ssl_context_id);
-    extern int sceHttpInit(int net_mem_id, int ssl_context_id, size_t pool_size);
-    extern int sceHttpTerm(int http_context_id);
-    extern int sceHttpCreateTemplate(int http_context_id, const char *user_agent, int version,
-                                     int auto_proxy);
-    extern int sceHttpDeleteTemplate(int template_id);
-    extern int sceHttpCreateConnectionWithURL(int template_id, const char *url, int keep_alive);
-    extern int sceHttpDeleteConnection(int connection_id);
-    extern int sceHttpCreateRequestWithURL(int connection_id, int method, const char *url,
-                                           uint64_t content_length);
-    extern int sceHttpDeleteRequest(int request_id);
-    extern int sceHttpAddRequestHeader(int request_id, const char *name, const char *value,
-                                       uint32_t mode);
-    extern int sceHttpSetAutoRedirect(int id, int enabled);
-    extern int sceHttpSetConnectTimeOut(int id, uint32_t usec);
-    extern int sceHttpSetRecvTimeOut(int id, uint32_t usec);
-    extern int sceHttpSetSendTimeOut(int id, uint32_t usec);
-    extern int sceHttpSetResolveTimeOut(int id, uint32_t usec);
-    extern int sceHttpSendRequest(int request_id, const void *data, size_t size);
-    extern int sceHttpGetStatusCode(int request_id, int *status_code);
-    extern int sceHttpGetAllResponseHeaders(int request_id, char **headers, size_t *size);
-    extern int sceHttpReadData(int request_id, void *data, size_t size);
-    extern int sceHttpAbortRequest(int request_id);
 
     extern int sceSysmoduleLoadModule(uint16_t id);
     extern int sceSysmoduleUnloadModule(uint16_t id);
@@ -476,36 +454,22 @@ static bool load_favorites(void)
 
 static int network_init(void)
 {
-    g_net_pool = sceNetPoolCreate("prospero_radio_http", 0x4000, 0);
-    if (g_net_pool < 0)
-        return g_net_pool;
-    g_ssl_context = sceSslInit(304U * 1024U);
-    if (g_ssl_context < 0)
-        return g_ssl_context;
-    g_http_context = sceHttpInit(g_net_pool, g_ssl_context, 0x10000);
-    if (g_http_context < 0)
-        return g_http_context;
-    g_http_template = sceHttpCreateTemplate(g_http_context, USER_AGENT, HTTP_VERSION_11, 1);
+    const int started = radio_http_init();
+    if (started < 0)
+        return started;
+    g_http_template = radio_http_create_template(USER_AGENT);
     if (g_http_template < 0)
         return g_http_template;
-    sceHttpSetAutoRedirect(g_http_template, 1);
-    sceHttpSetResolveTimeOut(g_http_template, 5000000U);
-    sceHttpSetConnectTimeOut(g_http_template, 5000000U);
-    sceHttpSetSendTimeOut(g_http_template, 5000000U);
-    sceHttpSetRecvTimeOut(g_http_template, 5000000U);
+    radio_http_set_redirect(g_http_template, 1);
+    radio_http_set_connect_timeout(g_http_template, 5000000U);
+    radio_http_set_receive_timeout(g_http_template, 5000000U);
     return 0;
 }
 
 static void network_shutdown(void)
 {
     if (g_http_template >= 0)
-        sceHttpDeleteTemplate(g_http_template);
-    if (g_http_context >= 0)
-        sceHttpTerm(g_http_context);
-    if (g_ssl_context >= 0)
-        sceSslTerm(g_ssl_context);
-    if (g_net_pool >= 0)
-        sceNetPoolDestroy(g_net_pool);
+        radio_http_delete_template(g_http_template);
     g_http_template = -1;
     g_http_context = -1;
     g_ssl_context = -1;
@@ -517,16 +481,14 @@ static int http_send_on_connection(int connection, const char *url, bool streami
 {
     if (failure_stage != nullptr)
         *failure_stage = 2U;
-    *request = sceHttpCreateRequestWithURL(connection, HTTP_METHOD_GET, url, 0);
+    *request = radio_http_create_request(connection, url);
     if (*request < 0)
     {
         return *request;
     }
-    sceHttpSetAutoRedirect(*request, 1);
-    sceHttpSetResolveTimeOut(*request, 5000000U);
-    sceHttpSetConnectTimeOut(*request, 5000000U);
-    sceHttpSetSendTimeOut(*request, 5000000U);
-    sceHttpSetRecvTimeOut(*request, streaming ? 2000000U : 5000000U);
+    radio_http_set_redirect(*request, 1);
+    radio_http_set_connect_timeout(*request, 5000000U);
+    radio_http_set_receive_timeout(*request, streaming ? 2000000U : 5000000U);
     const char *accept = "application/json";
     if (streaming)
     {
@@ -540,21 +502,21 @@ static int http_send_on_connection(int connection, const char *url, bool streami
             accept = "application/vnd.apple.mpegurl, application/x-mpegURL, "
                      "video/mp2t, audio/aac, audio/aacp, */*";
     }
-    sceHttpAddRequestHeader(*request, "Accept", accept, HTTP_HEADER_OVERWRITE);
+    radio_http_add_header(*request, "Accept", accept);
     if (streaming)
     {
-        sceHttpAddRequestHeader(*request, "Icy-MetaData", "0", HTTP_HEADER_OVERWRITE);
+        radio_http_add_header(*request, "Icy-MetaData", "0");
         playback_request_set(*request);
     }
     if (failure_stage != nullptr)
         *failure_stage = 3U;
-    int result = sceHttpSendRequest(*request, nullptr, 0);
+    int result = radio_http_send(*request);
     if (result >= 0)
     {
         int status = 0;
         if (failure_stage != nullptr)
             *failure_stage = 4U;
-        result = sceHttpGetStatusCode(*request, &status);
+        result = radio_http_status(*request, &status);
         if (result >= 0 && (status < 200 || status >= 300))
             result = -status;
     }
@@ -562,7 +524,7 @@ static int http_send_on_connection(int connection, const char *url, bool streami
     {
         if (streaming)
             playback_request_clear(*request);
-        sceHttpDeleteRequest(*request);
+        radio_http_delete_request(*request);
         *request = -1;
     }
     else if (failure_stage != nullptr)
@@ -575,14 +537,14 @@ static int http_open(const char *url, bool streaming, const char *codec, int *co
 {
     if (failure_stage != nullptr)
         *failure_stage = 1U;
-    *connection = sceHttpCreateConnectionWithURL(g_http_template, url, 0);
+    *connection = radio_http_create_connection(g_http_template);
     if (*connection < 0)
         return *connection;
     const int result =
         http_send_on_connection(*connection, url, streaming, codec, request, failure_stage);
     if (result < 0)
     {
-        sceHttpDeleteConnection(*connection);
+        radio_http_delete_connection(*connection);
         *connection = -1;
     }
     return result;
@@ -591,16 +553,16 @@ static int http_open(const char *url, bool streaming, const char *codec, int *co
 static void http_close(int connection, int request)
 {
     if (request >= 0)
-        sceHttpDeleteRequest(request);
+        radio_http_delete_request(request);
     if (connection >= 0)
-        sceHttpDeleteConnection(connection);
+        radio_http_delete_connection(connection);
 }
 
 static unsigned http_audio_channels(int request)
 {
     char *headers = nullptr;
     size_t size = 0;
-    if (sceHttpGetAllResponseHeaders(request, &headers, &size) < 0 || headers == nullptr)
+    if (radio_http_headers(request, &headers, &size) < 0 || headers == nullptr)
         return 0;
     static const char key[] = "channels=";
     for (size_t i = 0; i + sizeof(key) < size; ++i)
@@ -628,7 +590,7 @@ static size_t http_icy_metadata_interval(int request)
 {
     char *headers = nullptr;
     size_t size = 0U;
-    if (sceHttpGetAllResponseHeaders(request, &headers, &size) < 0 || headers == nullptr)
+    if (radio_http_headers(request, &headers, &size) < 0 || headers == nullptr)
         return 0U;
     return icy_metadata_interval_from_headers(headers, size);
 }
@@ -640,7 +602,7 @@ static radio_playlist_kind_t http_playlist_kind(int request, const char *url)
         return url_kind;
     char *headers = nullptr;
     size_t size = 0;
-    if (sceHttpGetAllResponseHeaders(request, &headers, &size) < 0 || headers == nullptr)
+    if (radio_http_headers(request, &headers, &size) < 0 || headers == nullptr)
         return RADIO_PLAYLIST_NONE;
     return radio_playlist_kind_from_headers(headers, size);
 }
@@ -650,7 +612,7 @@ static int read_playlist_document(int request, char *data, size_t capacity, size
     *size = 0;
     while (*size < capacity && !SDL_AtomicGet(&g_stop_playback))
     {
-        const int received = sceHttpReadData(request, data + *size, capacity - *size);
+        const int received = radio_http_read(request, data + *size, capacity - *size);
         if (received < 0)
             return received;
         if (received == 0)
@@ -1054,7 +1016,7 @@ static void add_mirror(const char *name)
 static void catalog_http_close(catalog_http_client_t *client)
 {
     if (client->connection >= 0)
-        sceHttpDeleteConnection(client->connection);
+        radio_http_delete_connection(client->connection);
     client->connection = -1;
     client->mirror = UINT_MAX;
 }
@@ -1083,7 +1045,7 @@ static int api_read(catalog_http_client_t *client, const char *path, char *outpu
             if (client->connection < 0 || client->mirror != mirror)
             {
                 catalog_http_close(client);
-                client->connection = sceHttpCreateConnectionWithURL(g_http_template, url, 1);
+                client->connection = radio_http_create_connection(g_http_template);
                 if (client->connection < 0)
                     error = client->connection;
                 else
@@ -1095,7 +1057,7 @@ static int api_read(catalog_http_client_t *client, const char *path, char *outpu
             size_t used = 0U;
             while (error == 0 && used < capacity && !SDL_AtomicGet(&g_shutting_down))
             {
-                const int received = sceHttpReadData(request, output + used, capacity - used);
+                const int received = radio_http_read(request, output + used, capacity - used);
                 if (received < 0)
                 {
                     error = received == -1 ? -1250 : received;
@@ -1107,7 +1069,7 @@ static int api_read(catalog_http_client_t *client, const char *path, char *outpu
                     used += (size_t)received;
             }
             if (request >= 0)
-                sceHttpDeleteRequest(request);
+                radio_http_delete_request(request);
             if (error == 0 && used != 0U && used < capacity)
             {
                 g_mirror_index = mirror;
@@ -1503,7 +1465,33 @@ static bool open_catalog_store_with_recovery(void)
 static bool open_staging_store(radio_catalog_store_t *staging)
 {
     unlink(CATALOG_STAGING_PATH);
-    return radio_catalog_store_open(staging, CATALOG_STAGING_PATH);
+    return radio_catalog_store_open(staging, ":memory:");
+}
+
+// The catalogue built in memory, saved as the staging file in large writes.
+static bool save_staging_store(radio_catalog_store_t *staging)
+{
+    sqlite3_int64 size = 0;
+    unsigned char *image = sqlite3_serialize((sqlite3 *)staging->database, "main", &size, 0);
+    if (image == nullptr || size <= 0)
+    {
+        sqlite3_free(image);
+        return false;
+    }
+    FILE *file = fopen(CATALOG_STAGING_PATH, "wb");
+    bool ok = file != nullptr;
+    for (sqlite3_int64 at = 0; ok && at < size;)
+    {
+        const size_t chunk = (size_t)(size - at < 1048576 ? size - at : 1048576);
+        ok = fwrite(image + at, 1U, chunk, file) == chunk;
+        at += (sqlite3_int64)chunk;
+    }
+    if (file != nullptr)
+        ok = fclose(file) == 0 && ok;
+    sqlite3_free(image);
+    if (!ok)
+        unlink(CATALOG_STAGING_PATH);
+    return ok;
 }
 
 static bool copy_favorites_to_store(radio_catalog_store_t *store)
@@ -1533,7 +1521,10 @@ static bool promote_staging_store(radio_catalog_store_t *staging)
         radio_catalog_store_close(staging);
         return false;
     }
+    const bool saved = save_staging_store(staging);
     radio_catalog_store_close(staging);
+    if (!saved)
+        return false;
     SDL_LockMutex(g_store_mutex);
     radio_catalog_store_close(&g_catalog_store);
     const bool replaced = rename(CATALOG_STAGING_PATH, CATALOG_DATABASE_PATH) == 0;
@@ -1657,7 +1648,7 @@ static void playback_request_set(int request)
     g_playback_request = request;
     if (request >= 0 && SDL_AtomicGet(&g_stop_playback))
     {
-        sceHttpAbortRequest(request);
+        radio_http_abort(request);
     }
     SDL_UnlockMutex(g_request_mutex);
 }
@@ -1718,6 +1709,8 @@ static int sink_audio_thread(void *argument)
         SDL_CondSignal(sink->can_write);
         SDL_UnlockMutex(sink->mutex);
 
+        radio_audio_process(block, AUDIO_OUT_GRAIN);
+        radio_levels_feed(block, AUDIO_OUT_GRAIN);
         const int result = sceAudioOutOutput(sink->handle, block);
         if (result < 0)
         {
@@ -1942,7 +1935,7 @@ using stream_read_fn = int (*)(void *context, void *data, size_t size);
 
 static int http_stream_read(void *context, void *data, size_t size)
 {
-    return sceHttpReadData(*(const int *)context, data, size);
+    return radio_http_read(*(const int *)context, data, size);
 }
 
 struct prefixed_http_reader_t
@@ -2645,7 +2638,7 @@ static int hls_stream_read(void *context, void *data, size_t capacity)
         }
 
         const int received =
-            sceHttpReadData(reader->request, reader->network, HLS_NETWORK_BUFFER_SIZE);
+            radio_http_read(reader->request, reader->network, HLS_NETWORK_BUFFER_SIZE);
         if (received < 0)
         {
             hls_request_close(reader);
@@ -3415,7 +3408,69 @@ void radio_service_stop(void)
         SDL_UnlockMutex(g_state_mutex);
         SDL_LockMutex(g_request_mutex);
         if (g_playback_request >= 0)
-            sceHttpAbortRequest(g_playback_request);
+            radio_http_abort(g_playback_request);
         SDL_UnlockMutex(g_request_mutex);
     }
+}
+
+// How many stations start under each mark of the A-Z rail, in the order the
+// store lists names: [0] before A, [1..26] A to Z, [27] after Z.
+bool radio_service_initials(bool favorites_only, unsigned *counts, unsigned buckets)
+{
+    for (unsigned i = 0; i < buckets; ++i)
+        counts[i] = 0U;
+    if (buckets < 28U || g_store_mutex == nullptr)
+        return false;
+    SDL_LockMutex(g_store_mutex);
+    sqlite3 *db = (sqlite3 *)g_catalog_store.database;
+    sqlite3_stmt *statement = nullptr;
+    bool ok = db != nullptr &&
+              sqlite3_prepare_v2(db,
+                                 "SELECT substr(ltrim(s.name),1,1),count(*) FROM stations s WHERE "
+                                 "(?1=0 OR EXISTS(SELECT 1 FROM favorites f WHERE f.uuid=s.uuid)) "
+                                 "GROUP BY 1",
+                                 -1, &statement, nullptr) == SQLITE_OK;
+    if (ok)
+    {
+        sqlite3_bind_int(statement, 1, favorites_only ? 1 : 0);
+        int step = SQLITE_ROW;
+        while ((step = sqlite3_step(statement)) == SQLITE_ROW)
+        {
+            const unsigned char *text = sqlite3_column_text(statement, 0);
+            const unsigned count = (unsigned)sqlite3_column_int(statement, 1);
+            const unsigned char first = text != nullptr ? text[0] : 0;
+            // NOCASE compares letters as lower case: signs such as '[' and '_'
+            // come before A, braces and other scripts after Z.
+            const int folded = first >= 'A' && first <= 'Z' ? first + 32 : first;
+            const int bucket = folded < 'a' ? 0 : (folded <= 'z' ? 1 + folded - 'a' : 27);
+            counts[bucket] += count;
+        }
+        ok = step == SQLITE_DONE;
+    }
+    if (!ok)
+        fprintf(stderr, "[ProsperoRadio][catalog] letter counts failed: %s\n",
+                db != nullptr ? sqlite3_errmsg(db) : "no catalogue");
+    sqlite3_finalize(statement);
+    SDL_UnlockMutex(g_store_mutex);
+    return ok;
+}
+
+bool radio_catalog_store_letter_starts(radio_catalog_store_t *store,
+                                       const radio_catalog_query_t *query,
+                                       radio_catalog_order_t order, bool favorites_only,
+                                       unsigned *starts, unsigned buckets);
+
+bool radio_service_letter_starts(const radio_catalog_query_t *query, radio_catalog_order_t order,
+                                 bool favorites_only, unsigned *starts, unsigned buckets)
+{
+    if (g_store_mutex == nullptr)
+        return false;
+    SDL_LockMutex(g_store_mutex);
+    const bool ok = radio_catalog_store_letter_starts(&g_catalog_store, query, order,
+                                                      favorites_only, starts, buckets);
+    if (!ok)
+        fprintf(stderr, "[ProsperoRadio][catalog] letter starts failed: %d\n",
+                radio_catalog_store_error(&g_catalog_store));
+    SDL_UnlockMutex(g_store_mutex);
+    return ok;
 }

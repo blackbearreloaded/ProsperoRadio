@@ -1,0 +1,13 @@
+# With a catalogue on the console: download it again from the menu, timed.
+wait 3
+status
+press options
+wait 1
+press cross
+wait 5
+status
+until catalog 420
+status
+wait 2
+shot 01-after-refresh
+quit

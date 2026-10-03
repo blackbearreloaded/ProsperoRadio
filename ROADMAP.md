@@ -1,6 +1,6 @@
 # Roadmap
 
-ProsperoRadio's implemented playback baseline includes the complete RmlUi interface,
+ProsperoRadio's implemented playback baseline includes the complete interface,
 Radio Browser catalog and search, persistent cache and favorites, native input
 and IME, AAC, MP3, Ogg Opus, Ogg Vorbis, native-container FLAC, and Ogg-FLAC
 playback through PS5 AudioOut. Hardware probing confirms native HE-AAC SBR

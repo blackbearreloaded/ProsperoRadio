@@ -1,5 +1,12 @@
 # Testing
 
+> [!NOTE]
+> The interface sections of this document describe release 01.000.005 (RmlUi
+> on SDL2's software renderer). On `main` the interface is OpenGL on
+> [ps5-homebrew-ui](https://github.com/blackbearreloaded/ps5-homebrew-ui)
+> (see [`ui-kit/README.md`](../ui-kit/README.md)), networking is libcurl, and
+> data lives in `/data/prosperoradio`; these sections are being rewritten.
+
 ProsperoRadio separates deterministic host regressions from behaviour that only a
 real PS5 can prove. Host tests never contact a console or a public Radio
 Browser server.

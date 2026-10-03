@@ -19,9 +19,14 @@ bash "$root/tools/setup-pacbrew-dependencies.sh" --environment >/dev/null
 sdk="$root/.deps/native/ps5-payload-sdk"
 zlib="$root/.deps/native/zlib/root/usr/include"
 pacbrew="$root/.deps/pacbrew/v0.40.2/sysroot/user/homebrew/include"
-app_includes=(-I"$root/include" -I"$root/vendor/ps5/sdl/include" \
-    -I"$root/vendor/ps5/sdl/include/SDL2" -I"$root/vendor/ps5/rmlui/include" \
-    -isystem "$pacbrew")
+bash "$root/tools/prepare-opengl.sh" >/dev/null
+ui_kit=$(bash "$root/tools/prepare-ui-kit.sh")
+harfbuzz=$(bash "$root/tools/fetch-harfbuzz.sh")
+app_includes=(-DSDL_MAIN_HANDLED -DSDL_STATIC_LIB -DGL_GLEXT_PROTOTYPES=1 \
+    -I"$root/include" -I"$root/src" -I"$ui_kit/src" \
+    -I"$root/vendor/ps5/sdl/include" -I"$root/vendor/ps5/sdl/include/SDL2" \
+    -isystem "$root/vendor/stb" -isystem "$harfbuzz/src" \
+    -isystem "$root/.deps/ps5-opengl/current/include" -isystem "$pacbrew")
 
 mapfile -d '' host_sources < <(find "$root/tooling/native" -maxdepth 1 \
     -type f -name '*.cpp' ! -name 'app_crt.cpp' ! -name 'app_cpp_runtime.cpp' -print0)
@@ -36,7 +41,9 @@ if (( ${#test_sources[@]} )); then
         -isystem "$gtest/googletest/include"
 fi
 
-mapfile -d '' app_c_sources < <(find "$root/src" -type f -name '*.c' -print0)
+# The update-check kit is analysed with its own profile in its repository.
+mapfile -d '' app_c_sources < <(find "$root/src" -type f -name '*.c' \
+    ! -name radio_update_kit.c -print0)
 if (( ${#app_c_sources[@]} )); then
     "$tidy" "${app_c_sources[@]}" --quiet --warnings-as-errors='*' -- \
         -std=c11 --target=x86_64-sie-ps5 "${app_includes[@]}" \

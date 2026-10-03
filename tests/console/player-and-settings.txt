@@ -1,0 +1,55 @@
+# The Now Playing hero and the Control Room, on a console with a catalogue.
+wait 3
+press cross
+until playing 40
+wait 4
+shot 01-hero-playing
+press touchpad
+wait 2
+press circle
+wait 2
+shot 02-back-from-player
+press up
+wait 1
+shot 03-hero-transport
+press right 1
+wait 1
+press cross
+wait 6
+shot 04-hero-next-station
+press down
+press right
+wait 2
+shot 05-grid-again
+press options
+wait 1
+press down 2
+press cross
+wait 2
+shot 06-settings-sound
+status
+press left 6
+wait 1
+press down
+press right 6
+wait 2
+press down
+press left 4
+wait 3
+shot 07-settings-changed
+status
+press r2
+wait 1
+shot 08-settings-interface
+press r2
+wait 1
+shot 09-settings-catalogue
+press r2
+wait 1
+shot 10-settings-about
+press circle
+wait 1
+press circle
+wait 2
+shot 11-closed
+quit

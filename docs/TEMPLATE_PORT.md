@@ -1,5 +1,12 @@
 # Template port notes
 
+> [!NOTE]
+> The interface sections of this document describe release 01.000.005 (RmlUi
+> on SDL2's software renderer). On `main` the interface is OpenGL on
+> [ps5-homebrew-ui](https://github.com/blackbearreloaded/ps5-homebrew-ui)
+> (see [`ui-kit/README.md`](../ui-kit/README.md)), networking is libcurl, and
+> data lives in `/data/prosperoradio`; these sections are being rewritten.
+
 ProsperoRadio is layered on a clean clone of
 [`ps5-native-app-boilerplate`](https://github.com/blackbearreloaded/ps5-native-app-boilerplate)
 at upstream revision `a15ab71d1a5ba6d37c6af28f65bb51520a588005`. The

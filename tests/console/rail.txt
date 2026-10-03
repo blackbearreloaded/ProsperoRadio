@@ -1,0 +1,31 @@
+# The letter rail beside Popular and Discover, and Favorites A to Z.
+wait 3
+press right 4
+wait 1
+press down 5
+wait 1
+shot 01-popular-rail
+press cross
+wait 1
+shot 02-popular-letter
+hold r2 1.0
+wait 1
+shot 03-popular-held-r2
+press r1 3
+wait 2
+press r2
+wait 1
+shot 04-favorites
+press r1
+wait 2
+press right 2
+wait 1
+press right 2
+wait 1
+press down 12
+wait 1
+shot 05-discover-rail
+press cross
+wait 1
+shot 06-discover-letter
+quit

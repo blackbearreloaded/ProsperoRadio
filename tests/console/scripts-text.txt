@@ -1,0 +1,35 @@
+# Station names in other scripts: Spanish and Turkish accents, Arabic,
+# Chinese (Popular), Russian and Persian (Top rated). Positions as in the
+# catalogue of 2026-10-02.
+wait 3
+status
+press down 9
+press right 2
+wait 2
+shot 01-espana
+press down 1
+wait 2
+shot 02-arabic
+press down 6
+press right 1
+wait 2
+shot 03-turkiye
+press down 4
+press left 1
+wait 2
+shot 04-chinese
+press r1 2
+wait 2
+press down 8
+wait 2
+shot 05-russian
+press down 3
+wait 2
+shot 06-russian-more
+press up 6
+wait 2
+shot 07-persian
+press touchpad
+wait 1
+status
+quit

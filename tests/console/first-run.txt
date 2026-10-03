@@ -1,0 +1,46 @@
+# First start on a console with no catalogue: download it, play two stations,
+# look at every tab, quit.
+wait 2
+shot 01-start
+status
+until catalog 420
+status
+wait 3
+shot 02-popular
+press cross
+until playing 40
+wait 6
+status
+shot 03-playing
+press right 3
+wait 1
+press cross
+wait 3
+until playing 40
+wait 6
+status
+shot 04-second-station
+press touchpad
+wait 2
+shot 05-now-playing
+press circle
+wait 1
+press r1
+wait 2
+shot 06-trending
+press r1
+wait 2
+shot 07-top-rated
+press r1
+wait 2
+shot 08-favorites
+press r1
+wait 2
+shot 09-discover
+press options
+wait 1
+shot 10-menu
+press circle
+wait 1
+status
+quit

@@ -1,0 +1,11 @@
+# Chinese station names in Popular (#87 and #109 on 2026-10-02).
+wait 3
+press down 21
+press right 2
+wait 2
+shot 01-chinese
+press down 5
+press left 2
+wait 2
+shot 02-chinese-more
+quit

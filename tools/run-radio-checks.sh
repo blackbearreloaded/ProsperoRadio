@@ -26,7 +26,6 @@ run_check mp3-header tools/mp3_header_check.cpp
 run_check icy-metadata tools/icy_metadata_check.cpp src/icy_metadata.cpp
 run_check pcm-queue tools/pcm_queue_check.cpp
 run_check playback-retry tools/playback_retry_check.cpp
-run_check radio-input tools/radio_input_check.cpp
 run_check radio-playlist tools/radio_playlist_check.cpp src/radio_playlist.cpp
 run_check radio-hls tools/radio_hls_check.cpp src/radio_hls.cpp src/radio_playlist.cpp
 run_check radio-ts-aac tools/radio_ts_aac_check.cpp src/radio_ts_aac.cpp

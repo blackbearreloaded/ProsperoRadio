@@ -75,6 +75,9 @@ companion_sdk=0x08050001
 fself_magic=0x1D3D154F
 
 bash "$root/tools/validate-assets.sh" "$root/sce_sys"
+# The interface kit and HarfBuzz are fetched, not kept in the repository.
+ui_kit=$(bash "$root/tools/prepare-ui-kit.sh")
+bash "$root/tools/fetch-harfbuzz.sh" >/dev/null
 
 sdk_root="$root/.deps/native/ps5-payload-sdk"
 zlib_root="$root/.deps/native/zlib/root"
@@ -97,7 +100,7 @@ mkdir -p "$build/host" "$build/obj" "$dist"
     "$zlib_archive" -o "$tool"
 
 mapfile -d '' -t source_paths < <(
-    find "$root/src" -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' \) \
+    find "$root/src" "$ui_kit/src" -type f \( -name '*.c' -o -name '*.cc' -o -name '*.cpp' \) \
         -print0 | sort -z
 )
 sources=()
@@ -153,9 +156,18 @@ if (( ${#pacbrew_packages[@]} > 0 || ${#pacbrew_includes[@]} > 0 || ${#pacbrew_a
     printf 'PacBrew dependencies: %s\n' "${pacbrew_packages[*]:-(manual archives)}"
 fi
 
+if command -v ccache >/dev/null && [[ -z ${PS5_CLANG:-} ]]; then
+    printf '#!/bin/sh\nexec ccache clang-18 "$@"\n' > "$build/ccache-clang18"
+    chmod +x "$build/ccache-clang18"
+    export PS5_CLANG="$build/ccache-clang18"
+fi
+compile_jobs=$(nproc)
+compile_pids=()
+compile_failed=
 objects=()
 for source in "${sources[@]}"; do
-    [[ $source =~ ^src/[A-Za-z0-9_./-]+\.(c|cc|cpp)$ && -f $root/$source ]] || {
+    [[ $source =~ ^(src|\.deps/ui-kit/stage/src)/[A-Za-z0-9_./-]+\.(c|cc|cpp)$ &&
+        -f $root/$source ]] || {
         echo "invalid source: $source" >&2; exit 2;
     }
     object="$build/obj/${source//\//_}.o"
@@ -176,9 +188,18 @@ for source in "${sources[@]}"; do
     done
     args+=("${pacbrew_cflags[@]}")
     PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
-        "${args[@]}" -c "$root/$source" -o "$object"
+        "${args[@]}" -c "$root/$source" -o "$object" &
+    compile_pids+=($!)
     objects+=("$object")
+    if (( ${#compile_pids[@]} >= compile_jobs )); then
+        wait "${compile_pids[0]}" || compile_failed=1
+        compile_pids=("${compile_pids[@]:1}")
+    fi
 done
+for pid in "${compile_pids[@]}"; do
+    wait "$pid" || compile_failed=1
+done
+[[ -z $compile_failed ]] || { echo "compilation failed" >&2; exit 1; }
 
 PS5_PAYLOAD_SDK="$sdk_root" sh "$root/tooling/prospero-clang18" \
     -std=c++20 -O2 -Wall -Wextra -fno-exceptions -fno-rtti \
@@ -204,6 +225,11 @@ for stub in "${import_stubs[@]}"; do
         echo "invalid import stub path: $stub" >&2; exit 2;
     }
     builder_stub_args+=(--stub "$root/$stub")
+    # The OpenGL SDK ships real import libraries: link them as they are.
+    if [[ $stub == *.so ]]; then
+        link_imports+=("$root/$stub")
+        continue
+    fi
     case "${stub##*/}" in
         libSceOpusDec_stub.a)
             link_source="$native/prospero_radio_import_stub_opus.cpp"
@@ -260,7 +286,21 @@ linker_import_flags=()
 if (( ${#builder_stub_args[@]} > 0 )); then
     linker_import_flags+=(--unresolved-symbols=ignore-all)
 fi
-"$sdk_root/bin/prospero-lld" -T "$native/ps5-pie.ld" --eh-frame-hdr \
+# The launch picture stays until the first frame, and the system modules
+# loaded before the app leaves its sandbox stay loaded
+# (src/runtime/runtime_shims.c).
+wrap_options=(--wrap=sceSystemServiceHideSplashScreen)
+for symbol in sceSysmoduleLoadModule sceSysmoduleUnloadModule \
+    sceSysmoduleLoadModuleInternal sceSysmoduleUnloadModuleInternal; do
+    wrap_options+=("--wrap=$symbol")
+done
+# The OpenGL runtime needs the process-lifetime heap in the kit's runtime/app_heap.c.
+if [[ -f $ui_kit/src/runtime/app_heap.c ]]; then
+    for symbol in malloc calloc realloc free posix_memalign malloc_usable_size; do
+        wrap_options+=("--wrap=$symbol")
+    done
+fi
+"$sdk_root/bin/prospero-lld" -T "$native/ps5-pie.ld" --eh-frame-hdr "${wrap_options[@]}" \
     --version-script "$native/app-symbols.map" \
     -L "$sdk_root/target/lib" -e _start -o "$build/llvm-pie.elf" "${link_inputs[@]}" \
     "${linker_import_flags[@]}" \
@@ -284,10 +324,18 @@ mkdir -p "$app/sce_sys" "$app/sce_module"
     --magic "$fself_magic"
 
 cp "$param" "$app/sce_sys/param.json"
+# Filesystem access (tooling/elevation): elfldr runs this helper at startup.
+make -s -C "$root/tooling/elevation/helper" PS5_PAYLOAD_SDK="$sdk_root" \
+    OUTPUT="$build/elevation/sandbox-elevator.elf"
+python3 "$root/tooling/elevation/validate-helper.py" "$build/elevation/sandbox-elevator.elf"
+cp "$build/elevation/sandbox-elevator.elf" "$app/sandbox-elevator.elf"
 for asset in icon0.png pic0.dds pic1.dds snd0.at9; do
     [[ -f $root/sce_sys/$asset ]] && cp "$root/sce_sys/$asset" "$app/sce_sys/$asset"
 done
 [[ ! -d $root/assets ]] || cp -a "$root/assets" "$app/assets"
+# The interface's baked fonts come with the kit.
+mkdir -p "$app/assets/fonts"
+cp -a "$ui_kit/assets/fonts/." "$app/assets/fonts/"
 if [[ -f $app/assets/ui/main.rml ]]; then
     python3 - "$app/assets/ui/main.rml" "$content_version" <<'PY'
 from pathlib import Path

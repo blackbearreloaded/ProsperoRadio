@@ -243,6 +243,7 @@ bool radio_catalog_store_open(radio_catalog_store_t *store, const char *path)
                  "CREATE INDEX IF NOT EXISTS stations_trend ON stations(click_trend DESC);"
                  "CREATE INDEX IF NOT EXISTS stations_votes ON stations(votes DESC);"
                  "CREATE INDEX IF NOT EXISTS stations_country ON stations(country_code);"
+                 "CREATE INDEX IF NOT EXISTS stations_name ON stations(ltrim(name) COLLATE NOCASE);"
                  "CREATE TABLE IF NOT EXISTS favorites("
                  "uuid TEXT PRIMARY KEY NOT NULL) WITHOUT ROWID;"
                  "CREATE TABLE IF NOT EXISTS facets("
@@ -475,7 +476,7 @@ size_t radio_catalog_store_query_stations(radio_catalog_store_t *store,
     else if (order == RADIO_CATALOG_ORDER_VOTED)
         ordering = "s.votes DESC,s.click_count DESC,s.uuid";
     else if (order == RADIO_CATALOG_ORDER_NAME)
-        ordering = "s.name COLLATE NOCASE,s.uuid";
+        ordering = "ltrim(s.name) COLLATE NOCASE,s.uuid";
     static const char prefix[] = "SELECT " STATION_COLUMNS STATION_FILTER " ORDER BY ";
     static const char suffix[] = " LIMIT ?7 OFFSET ?8";
     char sql[1400];
@@ -649,4 +650,50 @@ bool radio_catalog_store_get_meta(radio_catalog_store_t *store, const char *key,
     store->error = found ? SQLITE_OK : result;
     sqlite3_finalize(statement);
     return found;
+}
+
+bool radio_catalog_store_letter_starts(radio_catalog_store_t *store,
+                                       const radio_catalog_query_t *query,
+                                       radio_catalog_order_t order, bool favorites_only,
+                                       unsigned *starts, unsigned buckets)
+{
+    for (unsigned i = 0; i < buckets; ++i)
+        starts[i] = UINT_MAX;
+    if (store == nullptr || store->database == nullptr || buckets < 28U)
+        return false;
+    const char *ordering = "s.click_count DESC,s.uuid";
+    if (order == RADIO_CATALOG_ORDER_TRENDING)
+        ordering = "s.click_trend DESC,s.click_count DESC,s.uuid";
+    else if (order == RADIO_CATALOG_ORDER_VOTED)
+        ordering = "s.votes DESC,s.click_count DESC,s.uuid";
+    else if (order == RADIO_CATALOG_ORDER_NAME)
+        ordering = "ltrim(s.name) COLLATE NOCASE,s.uuid";
+    char sql[1600];
+    const int length =
+        snprintf(sql, sizeof(sql),
+                 "SELECT c,MIN(p) FROM (SELECT substr(ltrim(s.name),1,1) AS c,"
+                 "ROW_NUMBER() OVER (ORDER BY %s)-1 AS p" STATION_FILTER ") GROUP BY c",
+                 ordering);
+    if (length < 0 || (size_t)length >= sizeof(sql))
+        return false;
+    sqlite3_stmt *statement = nullptr;
+    if (!prepare(store, sql, &statement) || !bind_query(store, statement, query, favorites_only))
+    {
+        sqlite3_finalize(statement);
+        return false;
+    }
+    int result = SQLITE_ROW;
+    while ((result = sqlite3_step(statement)) == SQLITE_ROW)
+    {
+        const unsigned char *text = sqlite3_column_text(statement, 0);
+        const unsigned position = (unsigned)sqlite3_column_int64(statement, 1);
+        const unsigned char first = text != nullptr ? text[0] : 0;
+        const int folded = first >= 'A' && first <= 'Z' ? first + 32 : first;
+        const int bucket = folded < 'a' ? 0 : (folded <= 'z' ? 1 + folded - 'a' : 27);
+        if (position < starts[bucket])
+            starts[bucket] = position;
+    }
+    store->error = result == SQLITE_DONE ? SQLITE_OK : result;
+    sqlite3_finalize(statement);
+    return result == SQLITE_DONE;
 }

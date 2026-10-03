@@ -1,0 +1,43 @@
+--- a/gfx/gl_batch.cpp
++++ b/gfx/gl_batch.cpp
+@@ -356,6 +356,27 @@
+     return texture;
+ }
+ 
++void GlBatch::sync_font_texture(std::uint32_t handle, const Font &font)
++{
++    int first = 0;
++    int last = 0;
++    if (handle == 0 || !font.take_changed_rows(&first, &last))
++        return;
++    GLuint texture = handle;
++    if (is_font_handle(handle))
++    {
++        const std::uint32_t slot = (handle & 0xfu) - 1u;
++        if (slot >= font_count_)
++            return;
++        texture = font_textures_[slot];
++    }
++    glBindTexture(GL_TEXTURE_2D, texture);
++    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
++    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, first, font.atlas_width(), last - first, GL_RED,
++                    GL_UNSIGNED_BYTE,
++                    font.atlas().data() + static_cast<std::size_t>(first) * font.atlas_width());
++}
++
+ std::uint32_t GlBatch::create_texture(int width, int height, const std::uint8_t *rgba)
+ {
+     GLuint texture = 0;
+--- a/gfx/gl_batch.hpp
++++ b/gfx/gl_batch.hpp
+@@ -34,6 +34,10 @@
+     // slot taken it returns a plain texture name, which also works but starts
+     // a new draw call wherever that font is used.
+     std::uint32_t create_font_texture(const Font &font);
++    // Uploads the atlas rows the font drew since the last call (glyphs of other
++    // scripts, from the console's fonts). Call it after a frame's text is laid
++    // out, before draw(). Takes what create_font_texture returned.
++    void sync_font_texture(std::uint32_t handle, const Font &font);
+     // Uploads RGBA8 pixels as a single-level texture; returns its name.
+     std::uint32_t create_texture(int width, int height, const std::uint8_t *rgba);
+ 
