@@ -1,0 +1,12 @@
+# The offer, Update now, then Circle while it downloads: the app goes on as it
+# was (run with dev/update-offer.txt naming a newer release).
+until catalog 420
+wait 6
+press cross
+wait 1
+shot 01-downloading
+press circle
+wait 4
+shot 02-cancelled
+status
+quit

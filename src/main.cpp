@@ -347,6 +347,8 @@ int main()
             sys::log("[RADIO] closing: %s", asked_from_pc         ? "asked for by a test"
                                             : script.wants_quit() ? "the test script ended"
                                                                   : "asked from the menu");
+            if (app.wants_quit())
+                script.app_closing("asked by the app");
             if (ime_ready)
                 radio_ime_shutdown();
             radio_service_shutdown();

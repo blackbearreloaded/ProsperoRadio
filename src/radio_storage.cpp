@@ -23,6 +23,9 @@ constexpr const char *kTitleId = "PPSA99001";
 constexpr const char *kDataParent = "/data";
 constexpr const char *kDataDir = "/data/prosperoradio";
 constexpr const char *kInstallDir = "/data/homebrew/PPSA99001";
+// Where the PS5 mounts the app it runs, whatever ShadowMountPlus mounted it
+// from: a folder on /data, on an extended or USB drive, or an image.
+constexpr const char *kMountedApp = "/system_ex/app/PPSA99001";
 // A title's sandbox, seen from the console's own root.
 constexpr const char *kSandboxApp = "/mnt/sandbox/PPSA99001_000/app0";
 constexpr const char *kSandboxData = "/mnt/sandbox/PPSA99001_000/download0";
@@ -40,6 +43,7 @@ constexpr Entry kFiles[RADIO_FILE_COUNT] = {
     {"catalog", "radio-browser-cache.bin"},
     {"logs", "prosperoradio.log"},
     {"config", "settings.txt"},
+    {"config", "self-update-sequence"},
 };
 
 int g_status = -1;
@@ -123,15 +127,14 @@ void radio_storage_init(void)
     // app uses come first.
     int modules[4] = {};
     const int modules_loaded = radio_preload_modules(modules, 4);
-    // A test can ask for a start that stays in the sandbox, or bring a helper
-    // of its own.
-    const char *helper =
-        is_file("/app0/dev/helper.elf") ? "/app0/dev/helper.elf" : "/app0/sandbox-elevator.elf";
-    g_status =
-        is_file("/app0/dev/no-elevation.txt")
-            ? -2
-            : static_cast<int>(elevation::request(elevation::Capability::filesystem, helper));
-    // Granted, and the console's own root is what the process now sees.
+    // A resident upstream Lapy service gets the first opportunity; otherwise
+    // the packaged exact-title upstream helper is sent to the local ELF
+    // loader. The app holds no kernel code of its own. A test can ask for a
+    // start that stays in the sandbox.
+    g_status = is_file("/app0/dev/no-elevation.txt")
+                   ? -2
+                   : static_cast<int>(elevation::request(elevation::Capability::filesystem));
+    // Only a request that ended with a verified write to /data counts.
     struct stat root_probe
     {
     };
@@ -142,12 +145,21 @@ void radio_storage_init(void)
 
     if (granted)
     {
-        // The console's root has no /app0: the sandbox mounts it from the
-        // install folder (or from the image the app was installed as).
-        char probe[160];
-        std::snprintf(probe, sizeof(probe), "%s/eboot.bin", kInstallDir);
-        std::snprintf(g_app_dir, sizeof(g_app_dir), "%s",
-                      is_file(probe) ? kInstallDir : kSandboxApp);
+        // The app's own files: /app0 while it is still there (some kinds of
+        // filesystem access keep it), else the PS5's mount of the running
+        // app, else the usual install folder, else the sandbox's view.
+        const char *found = kInstallDir;
+        for (const char *candidate : {"/app0", kMountedApp, kInstallDir, kSandboxApp})
+        {
+            char probe[160];
+            std::snprintf(probe, sizeof(probe), "%s/eboot.bin", candidate);
+            if (is_file(probe))
+            {
+                found = candidate;
+                break;
+            }
+        }
+        std::snprintf(g_app_dir, sizeof(g_app_dir), "%s", found);
         std::snprintf(g_data_dir, sizeof(g_data_dir), "%s", kDataDir);
         mkdir(kDataDir, 0777);
         for (const char *folder : {"catalog", "config", "logs"})
@@ -169,11 +181,11 @@ void radio_storage_init(void)
 
     char line[320];
     std::snprintf(line, sizeof(line),
-                  "[RADIO] storage title=%s status=%d app=%s data=%s uid=%d/%d gid=%d/%d "
-                  "group_matched=%d\n",
-                  kTitleId, g_status, g_app_dir, g_data_dir, static_cast<int>(getuid()),
-                  static_cast<int>(geteuid()), static_cast<int>(getgid()),
-                  static_cast<int>(getegid()), group_matched ? 1 : 0);
+                  "[RADIO] storage title=%s status=%d elevation=%s app=%s data=%s uid=%d/%d "
+                  "gid=%d/%d group_matched=%d\n",
+                  kTitleId, g_status, g_status == -2 ? "skipped" : elevation::path(), g_app_dir,
+                  g_data_dir, static_cast<int>(getuid()), static_cast<int>(geteuid()),
+                  static_cast<int>(getgid()), static_cast<int>(getegid()), group_matched ? 1 : 0);
     say(line);
     std::snprintf(line, sizeof(line), "[RADIO] system modules kept: %d/4 (0x%x 0x%x 0x%x 0x%x)\n",
                   modules_loaded, static_cast<unsigned>(modules[0]),

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# ps5-native-app-boilerplate - Check ELF/socket framing before packaging.
+# ps5-native-app-boilerplate - Check that a program sent to the payload loader ends at its section table.
 # Copyright (C) 2026 BlackBearReloaded
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -25,4 +25,4 @@ def validate(data):
 
 if __name__ == "__main__":
     validate(Path(sys.argv[1]).read_bytes())
-    print("Helper ELF/socket framing validated.")
+    print("Loader ELF framing validated.")

@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "app/update_dialog.hpp"
 #include "app/control_room.hpp"
 #include "app/home_screen.hpp"
 #include "app/letter_screen.hpp"
@@ -82,6 +83,7 @@ class App
     ControlRoom room_;
     ui::Dialog about_;
     ui::Dialog closing_;
+    UpdateDialog update_;
     ui::Banner offline_;
     ui::LoadingScreen loader_;
 

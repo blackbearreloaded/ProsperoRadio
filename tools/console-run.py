@@ -22,7 +22,7 @@ it stops and says what it saw.
 Environment:
   FTP_PORT / KLOG_PORT / ELF_PORT   default 2121 / 3232 / 9021
   PS5_PROTOCOL      path of ps5-homebrew-dev-protocol (default ~/ps5-homebrew-dev-protocol)
-  PS5_PAYLOAD_SDK   default ~/prosperoradio-ui-build/.deps/native/ps5-payload-sdk
+  PS5_PAYLOAD_SDK   default <this repository>/.deps/native/ps5-payload-sdk
   RUN_TIMEOUT       seconds to wait for the report (default 600)
   DEV_SWITCHES      comma-separated files to put beside the request for this run,
                     e.g. no-elevation.txt (the app stays in its sandbox)
@@ -180,7 +180,7 @@ def main():
     home = Path.home()
     protocol = Path(os.environ.get("PS5_PROTOCOL", home / "ps5-homebrew-dev-protocol"))
     sdk = os.environ.get("PS5_PAYLOAD_SDK",
-                         str(home / "prosperoradio-ui-build/.deps/native/ps5-payload-sdk"))
+                         str(Path(__file__).resolve().parents[1] / ".deps/native/ps5-payload-sdk"))
     sender = protocol / "scripts/send-controller.sh"
     if not (package / "eboot.bin").is_file():
         stop(f"{package} is not a built app folder")

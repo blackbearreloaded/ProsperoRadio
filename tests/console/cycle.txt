@@ -1,0 +1,11 @@
+# One launch / filesystem access / play / close cycle, for repeating: the
+# second station of the list plays for a few seconds, then the app closes.
+until catalog 420
+wait 3
+press right
+press cross
+until playing 40
+wait 6
+status
+shot 01-cycle
+quit

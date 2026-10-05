@@ -41,9 +41,10 @@ if (( ${#test_sources[@]} )); then
         -isystem "$gtest/googletest/include"
 fi
 
-# The update-check kit is analysed with its own profile in its repository.
+# The self-update kit (src/update_kit includes it) is analysed with its own
+# profile in its repository.
 mapfile -d '' app_c_sources < <(find "$root/src" -type f -name '*.c' \
-    ! -name radio_update_kit.c -print0)
+    ! -path "$root/src/update_kit/*" -print0)
 if (( ${#app_c_sources[@]} )); then
     "$tidy" "${app_c_sources[@]}" --quiet --warnings-as-errors='*' -- \
         -std=c11 --target=x86_64-sie-ps5 "${app_includes[@]}" \

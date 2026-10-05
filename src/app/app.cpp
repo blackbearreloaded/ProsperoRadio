@@ -41,7 +41,8 @@ constexpr const char *kCredits =
 
 App::App(const ui::Fonts &fonts, std::uint32_t glass_texture, std::string version)
     : session_(fonts), home_(session_), letters_(session_), search_(session_), player_(session_),
-      room_(session_, version), glass_texture_(glass_texture), version_(std::move(version))
+      room_(session_, version), update_(session_), glass_texture_(glass_texture),
+      version_(std::move(version))
 {
     const ui::Theme &theme = session_.theme;
 
@@ -362,6 +363,10 @@ void App::update(const InputFrame &input, float dt, ui::Feedback &feedback)
     {
         loader_.handle(input, feedback);
     }
+    else if (update_.is_open())
+    {
+        update_.handle(input, feedback);
+    }
     else if (closing_.is_open())
     {
         if (closing_.handle(input, feedback) == ui::Event::activated && closing_.choice() == 1)
@@ -430,10 +435,22 @@ void App::update(const InputFrame &input, float dt, ui::Feedback &feedback)
     loader_.update(dt);
     // A newer release: said once, when there is something to look at behind it.
     radio_update_t newer;
-    if (!loader_.is_open() && radio_update_take(&newer))
-        session_.toasts.push(ui::StatusKind::info, "Update available",
-                             "Version " + newer.version + " is on homebrew.page",
-                             kUpdateNoticeSeconds);
+    if (!loader_.is_open() && !closing_.is_open() && radio_update_take(&newer))
+    {
+        // The app installs it itself when it can; otherwise it only says so.
+        if (newer.installable)
+            update_.offer(newer, feedback);
+        else
+            session_.toasts.push(ui::StatusKind::info, "Update available",
+                                 "Version " + newer.version + " is on homebrew.page",
+                                 kUpdateNoticeSeconds);
+    }
+    update_.update(dt, feedback);
+    if (update_.wants_quit() && !quit_)
+    {
+        session_.stop();
+        quit_ = true;
+    }
     session_.toasts.update(dt, feedback);
 
     // The radio is what the player came to hear.
@@ -650,6 +667,7 @@ void App::draw(Frame &frame) const
     menu_.draw(canvas);
     about_.draw(canvas);
     closing_.draw(canvas);
+    update_.draw(canvas);
     loader_.draw(canvas);
 }
 

@@ -22,6 +22,7 @@ run_check() {
 }
 
 run_check aac-timing tools/aac_timing_check.cpp
+run_check elevation-client tools/elevation_client_check.cpp
 run_check mp3-header tools/mp3_header_check.cpp
 run_check icy-metadata tools/icy_metadata_check.cpp src/icy_metadata.cpp
 run_check pcm-queue tools/pcm_queue_check.cpp

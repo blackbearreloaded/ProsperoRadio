@@ -4,13 +4,14 @@
 
 #pragma once
 
-// With filesystem access (the elevation helper, asked for first thing in main)
+// With filesystem access (upstream Lapy, asked for first thing in main)
 // everything ProsperoRadio writes lives under /data/prosperoradio:
 //   catalog/   the station catalogue and its staging copy
 //   config/    favourites (and settings)
 //   logs/      prosperoradio.log and the previous session's
-// and the app's own files are read from its install folder. Without it (no
-// elfldr on the console, or the request failed) the sandbox paths stay:
+// and the app's own files are read from where the PS5 mounted it. Without it
+// (no resident Lapy service and no ELF loader on the console, or the request
+// failed) the sandbox paths stay:
 // /app0 and /download0, as in every earlier version.
 
 enum radio_file_t
@@ -22,6 +23,7 @@ enum radio_file_t
     RADIO_FILE_LEGACY_CACHE,
     RADIO_FILE_LOG,
     RADIO_FILE_SETTINGS,
+    RADIO_FILE_UPDATE_SEQUENCE,
     RADIO_FILE_COUNT
 };
 

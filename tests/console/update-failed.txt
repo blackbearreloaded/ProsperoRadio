@@ -1,0 +1,14 @@
+# A release whose SHA-256 is not the offer's: the dialog says the update could
+# not finish, and Close leaves the app as it was.
+until catalog 420
+wait 6
+press cross
+wait 25
+shot 01-could-not-finish
+press right
+wait 1
+press cross
+wait 2
+shot 02-closed
+status
+quit

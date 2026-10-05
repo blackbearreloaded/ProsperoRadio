@@ -12,6 +12,18 @@ the application possible:
   (GPL-3.0), from which the ELF converter and FSELF writer in `tooling/native/`
   are derived, [MkPFS](https://github.com/PSBrew/MkPFS), and
   [UFS2Tool](https://github.com/SvenGDK/UFS2Tool).
+- **Filesystem access:** [PS5-Lapy-JB-Daemon](https://github.com/ArkSama/PS5-Lapy-JB-Daemon)
+  (MIT), created by ArkSama, in the cooperative owned-root form of
+  [mpereiraesaa's fork](https://github.com/mpereiraesaa/PS5-Lapy-JB-Daemon) and its
+  [contributors](https://github.com/mpereiraesaa/PS5-Lapy-JB-Daemon/graphs/contributors).
+  The package carries the helper upstream's own build produces for this title
+  (`lapy.elf`, `lapy-manifest.json`) and Lapy's licence (`licenses/Lapy-MIT.txt`);
+  ProsperoRadio's client of it (`src/elevation/`) comes from ProsperoEden.
+- **Self-update:** the update check, the self-update engine and its helper
+  (`third_party/update_check/`, `third_party/self_update_helper/`) are the
+  PS5 Native App Boilerplate's, with ProsperoEden's changes to the helper; the
+  helper unpacks releases with [miniz 3.0.2](https://github.com/richgel999/miniz)
+  (MIT, `third_party/miniz/`, licence in the package as `licenses/miniz-MIT.txt`).
 - **Application stack:** [Radio Browser](https://www.radio-browser.info/),
   [ps5-homebrew-ui](https://github.com/blackbearreloaded/ps5-homebrew-ui)
   (GPL-3.0-or-later) on the [ps5-opengl](https://github.com/blackbearreloaded/ps5-opengl) SDK,
@@ -39,7 +51,7 @@ OpenGL runtime, HarfBuzz, libcurl, OpenSSL, SQLite, and zlib are linked into
 the release package. Checked-in SDL2, stb, and dr_flac files retain their
 upstream licence texts below `vendor/`. The update check under
 `third_party/update_check/` comes from the PS5 Native App Boilerplate. The
-text engine under `ui-kit/overrides/` and the filesystem access under
+text engine under `ui-kit/overrides/` and the Lapy client under
 `src/elevation/` come from ProsperoEden (GPL-3.0-or-later, same author). The
 licences of the interface's baked fonts ship beside them in `assets/fonts/`
 of the package.

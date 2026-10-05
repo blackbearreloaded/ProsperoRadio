@@ -289,7 +289,7 @@ fi
 # The launch picture stays until the first frame, and the system modules
 # loaded before the app leaves its sandbox stay loaded
 # (src/runtime/runtime_shims.c).
-wrap_options=(--wrap=sceSystemServiceHideSplashScreen)
+wrap_options=(--wrap=sceSystemServiceHideSplashScreen --wrap=fcntl)
 for symbol in sceSysmoduleLoadModule sceSysmoduleUnloadModule \
     sceSysmoduleLoadModuleInternal sceSysmoduleUnloadModuleInternal; do
     wrap_options+=("--wrap=$symbol")
@@ -324,11 +324,22 @@ mkdir -p "$app/sce_sys" "$app/sce_module"
     --magic "$fself_magic"
 
 cp "$param" "$app/sce_sys/param.json"
-# Filesystem access (tooling/elevation): elfldr runs this helper at startup.
-make -s -C "$root/tooling/elevation/helper" PS5_PAYLOAD_SDK="$sdk_root" \
-    OUTPUT="$build/elevation/sandbox-elevator.elf"
-python3 "$root/tooling/elevation/validate-helper.py" "$build/elevation/sandbox-elevator.elf"
-cp "$build/elevation/sandbox-elevator.elf" "$app/sandbox-elevator.elf"
+# Filesystem access (src/elevation): the exact-title upstream Lapy helper,
+# verified against its build manifest before it reaches the package. The app
+# sends it to the local ELF loader when no resident Lapy service answers.
+python3 -B "$root/tools/build-lapy-helper.py"
+mkdir -p "$app/licenses"
+cp "$root/build/lapy-owned-helper/lapy.elf" "$app/lapy.elf"
+cp "$root/build/lapy-owned-helper/lapy-manifest.json" "$app/lapy-manifest.json"
+cp "$root/build/lapy-owned-helper/LICENSE.Lapy" "$app/licenses/Lapy-MIT.txt"
+# The self-update helper (third_party/self_update_helper, the boilerplate's)
+# is an ordinary payload: the app sends it to the payload loader when the
+# listener accepts an update.
+make -s -C "$root/third_party/self_update_helper" PS5_PAYLOAD_SDK="$sdk_root" \
+    OUTPUT="$build/self-update/self-updater.elf"
+python3 "$root/tools/validate-loader-elf.py" "$build/self-update/self-updater.elf"
+cp "$build/self-update/self-updater.elf" "$app/self-updater.elf"
+cp "$root/third_party/miniz/LICENSE" "$app/licenses/miniz-MIT.txt"
 for asset in icon0.png pic0.dds pic1.dds snd0.at9; do
     [[ -f $root/sce_sys/$asset ]] && cp "$root/sce_sys/$asset" "$app/sce_sys/$asset"
 done

@@ -44,6 +44,9 @@ class Script
         return capture_;
     }
     void capture_done(bool ok);
+    // The app is closing by itself (an update it installed): the report is
+    // written now, with what the script did so far.
+    void app_closing(const char *why);
 
     bool wants_quit() const
     {

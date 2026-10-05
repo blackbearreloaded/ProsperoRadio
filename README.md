@@ -46,6 +46,16 @@
 > reproducible runtime, FSELF tooling, tests, deployment flow, and release
 > automation.
 
+> [!WARNING]
+> **Filesystem access comes from [PS5-Lapy-JB-Daemon](https://github.com/mpereiraesaa/PS5-Lapy-JB-Daemon).**
+> The PS5 jailbreak environment must provide a local ELF loader on TCP port
+> 9021. If a resident Lapy service is running it is used; otherwise
+> ProsperoRadio sends its own packaged, title-specific upstream Lapy helper over
+> that local connection. No separate Lapy payload is required for normal use,
+> and ProsperoRadio contains no kernel code of its own. Without either, the app
+> still runs, with its data in its sandbox (`/download0`). See
+> [`src/elevation/README.md`](src/elevation/README.md).
+
 > [!IMPORTANT]
 > **The interface is built on [ps5-homebrew-ui](https://github.com/blackbearreloaded/ps5-homebrew-ui).**
 > The kit is a build dependency, not part of this repository: the build
@@ -81,8 +91,12 @@
 - Draw station names in every script (Arabic, Cyrillic, Chinese, Persian and
   more) with the console's own fonts, HarfBuzz shaping and right-to-left
   ordering.
-- Say once per launch when [homebrew.page](https://homebrew.page) lists a
-  newer release.
+- Update from inside the app: when [homebrew.page](https://homebrew.page)
+  lists a newer release, ProsperoRadio offers to install it each time it
+  opens; **Skip** keeps the current version. See [Updating](#updating).
+- Keep everything it writes in one place outside the app folder,
+  `/data/prosperoradio`, so an update never touches it. See
+  [Where ProsperoRadio keeps its files](#where-prosperoradio-keeps-its-files).
 - Play AAC/AAC+ and MP3 through native PS5 decoding; play Opus through the
   native Opus/CELT decoder route; play Vorbis and FLAC/Ogg-FLAC with bounded
   CPU decoders.
@@ -107,7 +121,9 @@ sudo apt install curl git make pkg-config python3 python3-venv tar unzip wget zi
 
 The production `.ffpfsc` target uses the pinned MkPFS bootstrapper. The
 repository downloads, verifies, and caches the public PS5 Payload SDK, zlib,
-PacBrew's SQLite port, GoogleTest, and packaging tools below ignored `.deps/`.
+PacBrew's SQLite and libcurl ports, the interface kit, the ps5-opengl SDK,
+HarfBuzz, the pinned upstream Lapy helper sources, GoogleTest, and packaging
+tools below ignored `.deps/`.
 No proprietary SDK, system module, key, or game asset is included or fetched.
 
 Run a read-only prerequisite check before building:
@@ -159,7 +175,49 @@ make deploy PS5_HOST=192.168.4.30 DEPLOY_FORMAT=folder
 > caches the Radio Browser catalogue. Keep the console online and leave the app
 > open until the database finishes loading; later launches use the local cache.
 
+## Where ProsperoRadio keeps its files
+
+The app itself stays in `/data/homebrew/PPSA99001` (or wherever ShadowMountPlus
+mounts it from). Everything it writes is in `/data/prosperoradio`:
+
+```text
+/data/prosperoradio/
+├── config/     settings.txt, the favourites, the update check's sequence number
+├── catalog/    the station catalogue (rebuilt by a refresh)
+└── logs/       prosperoradio.log and the previous session's
+```
+
+Favourites and the catalogue an earlier version kept in its sandbox are copied
+over on the first start. Without filesystem access (no resident Lapy service
+and no ELF loader on port 9021) the same files stay in the title's sandbox,
+`/download0`, as in release 01.000.005.
+
 ## Updating
+
+### From the app
+
+When a newer release is listed on [homebrew.page](https://homebrew.page),
+ProsperoRadio says so each time it opens:
+
+- **Update now** downloads the release ZIP from its GitHub release, checks it
+  against the SHA-256 in the catalog's signed list, and unpacks it beside the
+  app. A ring shows how far it is and the time left; Circle cancels, and nothing
+  has changed until the end. Then ProsperoRadio closes, the update helper
+  (`self-updater.elf`, sent to the console's payload loader on port 9021)
+  replaces the app's files, and the console shows a notification. Open
+  ProsperoRadio again to use the new version.
+- **Skip** keeps the current version until the next time the app opens.
+
+Your favourites, settings and catalogue are in `/data/prosperoradio`, outside
+the app, so an update keeps them; files you put in the app folder yourself stay
+too. If the download or the unpacking fails, the dialog says why and offers
+**Try again**; the app stays as it was. Without a network, or without an
+answer, nothing is shown. When ProsperoRadio cannot install the release itself
+(for example an app installed as an `.ffpfsc` image, which the helper does not
+rewrite), a notice at the top right says **Update available** for ten seconds
+instead, and the manual steps below still work.
+
+### By hand
 
 1. Fully close ProsperoRadio.
 2. From the
@@ -180,9 +238,9 @@ make deploy PS5_HOST=192.168.4.30 DEPLOY_FORMAT=folder
    shown below the app name.
 
 Do not relaunch immediately after replacing the app: ShadowMountPlus may
-still have the previous folder or `.ffpfsc` mounted. Keeping title ID `PPSA99001`
-preserves the catalogue and favourites under `/download0`; `/app0` comes from
-the replacement app, and Shell presentation metadata may remain cached.
+still have the previous folder or `.ffpfsc` mounted. The catalogue, favourites
+and settings are in `/data/prosperoradio`, outside the app, so they are kept;
+Shell presentation metadata may remain cached.
 
 The deployer writes only title-scoped paths below `/data/homebrew`. It uploads
 each file through a temporary name, then publishes `eboot.bin` and
@@ -216,13 +274,15 @@ release files, and publishes the `.ffpfsc`, folder `.zip`, and their shared
 src/main.cpp                  Application lifetime, renderer, fonts, and the frame loop
 src/app/                      The interface: screens, session state, platform seam
 src/radio_http_curl.cpp       The service's HTTP calls on libcurl
-src/elevation/                Filesystem access outside the sandbox
+src/elevation/                Filesystem access: the client of upstream Lapy
+src/update_kit/               The self-update kit's sources, compiled as the app's
 ui-kit/                       What the app takes from ps5-homebrew-ui and lays over it
 src/radio_text.cpp            C++20 UTF-8 visual-order helper
 src/*.hpp                     Private C++ application interfaces
 include/*.hpp                 Public codec, catalogue, input, and service interfaces
 vendor/                       Checked-in SDL2, decoder, stb, and PS5 SDK inputs
-third_party/update_check/     The update check of the PS5 Native App Boilerplate
+third_party/update_check/     The update check and self-update of the PS5 Native App Boilerplate
+third_party/self_update_helper/  The payload that replaces the app's files (self-updater.elf)
 tests/console/                Scripted console runs for tools/console-run.py
 tools/build.sh                Template-native compile/link/FSELF/folder assembler
 tooling/native/               Template-owned native ELF and FSELF tooling

@@ -6,6 +6,7 @@
 
 #include "radio_service.hpp"
 
+#include <cstdint>
 #include <string>
 
 // The sound of the station, shaped on its way out: the console applies it in
@@ -38,12 +39,44 @@ bool radio_catalog_letter_starts(const radio_catalog_query_t *query, radio_catal
 // thread; a failed check says nothing.
 struct radio_update_t
 {
-    std::string version; // the release's name
-    std::string page;    // where it is listed
+    bool installable = false; // the app can install it itself
+    std::string version;      // the release's name
+    std::string available;    // its content version
+    std::uint64_t size = 0;   // the download in bytes; 0 when the catalog doesn't say
+    std::string page;         // where it is listed
 };
 void radio_update_check_start(const char *installed_version);
 // True once, when a newer release was found.
 bool radio_update_take(radio_update_t *update);
+
+// Installing the offered release. Nothing of the app changes before
+// radio_update_apply() has returned true; after it the app must close.
+enum class radio_update_phase_t
+{
+    idle,
+    starting,
+    downloading, // done/total are bytes of the download
+    unpacking,   // done/total are bytes unpacked
+    ready,       // staged beside the app: apply or cancel
+    applying,
+    cancelled,
+    failed,
+};
+struct radio_update_progress_t
+{
+    radio_update_phase_t phase = radio_update_phase_t::idle;
+    std::uint64_t done = 0;
+    std::uint64_t total = 0; // 0 while it isn't known
+    std::string time_left;   // "about 20 s left"; empty until it can be said
+    std::string error;       // why it failed
+};
+bool radio_update_begin();
+radio_update_progress_t radio_update_poll();
+void radio_update_cancel();
+// True: the helper waits for the app to close; close it now.
+bool radio_update_apply();
+// After a cancel or a failure, before beginning again.
+void radio_update_finish();
 
 // The settings file: text the app writes and reads back, nothing more.
 bool radio_settings_load(std::string *text);

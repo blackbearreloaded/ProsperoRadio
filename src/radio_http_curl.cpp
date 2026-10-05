@@ -8,6 +8,8 @@
 
 #include "radio_http.hpp"
 
+#include "../third_party/update_check/console_curl.h"
+
 #include <curl/curl.h>
 
 #include <atomic>
@@ -550,4 +552,24 @@ int radio_http_abort(int id)
     if (request->connection != nullptr && request->connection->multi != nullptr)
         curl_multi_wakeup(request->connection->multi);
     return 0;
+}
+
+// ---- what the self-update kit asks of the console's libcurl (console_curl.h) ----
+
+const char *console_curl_ca_file(void)
+{
+    return certificate_list();
+}
+
+int console_curl_nonblocking(int socket)
+{
+    const int on = 1;
+    return setsockopt(socket, SOL_SOCKET, 0x1200 /* SO_NBIO */, &on, sizeof(on));
+}
+
+void console_curl_setup(CURL *easy)
+{
+    curl_easy_setopt(easy, CURLOPT_NOSIGNAL, 1L);
+    curl_easy_setopt(easy, CURLOPT_CAINFO, certificate_list());
+    curl_easy_setopt(easy, CURLOPT_SOCKOPTFUNCTION, on_socket);
 }

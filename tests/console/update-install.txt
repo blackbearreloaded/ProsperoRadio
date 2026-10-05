@@ -1,0 +1,18 @@
+# A real update from the dialog (run with dev/update-offer.txt naming a newer
+# release): the offer, the download, the close that lets the helper replace
+# the app's files. The app closes itself at the end.
+until catalog 420
+wait 6
+shot 01-offer
+press cross
+wait 2
+shot 02-working
+wait 3
+shot 03-working
+wait 4
+shot 04-working
+wait 6
+shot 05-later
+wait 120
+status
+quit

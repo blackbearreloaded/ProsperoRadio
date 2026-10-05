@@ -194,6 +194,15 @@ void Script::finish()
     reported_ = true;
 }
 
+void Script::app_closing(const char *why)
+{
+    if (!active_ || reported_)
+        return;
+    note("the app closes: %s", why);
+    finish();
+    active_ = false;
+}
+
 void Script::capture_done(bool ok)
 {
     note("shot %s %s", capture_.substr(capture_.rfind('/') + 1).c_str(), ok ? "saved" : "FAILED");
