@@ -44,6 +44,11 @@ struct radio_update_t
     std::string available;    // its content version
     std::uint64_t size = 0;   // the download in bytes; 0 when the catalog doesn't say
     std::string page;         // where it is listed
+    // What the developer wrote on the release, as the catalog gives it: plain
+    // text, lines split by '\n', list items starting "- "; empty when there
+    // are none. notes_truncated: the catalog cut them short.
+    std::string notes;
+    bool notes_truncated = false;
 };
 void radio_update_check_start(const char *installed_version);
 // True once, when a newer release was found.

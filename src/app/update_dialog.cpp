@@ -1,4 +1,4 @@
-// ProsperoRadio - The update dialog: a newer release, its download, and the close that ends it.
+// ProsperoRadio - The update dialog: a newer release, its notes, its download.
 // Copyright (C) 2026 BlackBearReloaded
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -13,6 +13,7 @@
 #include <cctype>
 #include <cmath>
 #include <cstdio>
+#include <string_view>
 #include <utility>
 
 namespace radio
@@ -21,17 +22,28 @@ namespace radio
 namespace
 {
 
+// The panel with buttons; while the update works it is shorter, and with the
+// notes taller. It stays centred on the screen.
 constexpr Rect kPanel{560.0f, 196.0f, 800.0f, 688.0f};
 constexpr float kWorkingHeight = 604.0f;
+constexpr float kNotesHeight = 864.0f;
 constexpr float kCenterX = 960.0f;
 constexpr float kRingY = 384.0f;
 constexpr float kRingRadius = 96.0f;
 constexpr float kRingWidth = 10.0f;
 constexpr float kButtonsTop = 704.0f;
-constexpr float kButtonWidth = 340.0f;
 constexpr float kButtonHeight = 76.0f;
-constexpr float kButtonLeft = 612.0f;
-constexpr float kButtonGap = 356.0f;
+constexpr float kButtonsLeft = 612.0f;
+constexpr float kButtonsWidth = 696.0f;
+constexpr float kButtonGap = 16.0f;
+// The notes view: the text's window, under the title and above the buttons.
+constexpr float kNotesLeft = kPanel.x + 64.0f;
+constexpr float kNotesWidth = kPanel.w - 128.0f - 18.0f; // room for the scrollbar
+constexpr float kNotesTop = kPanel.y + 132.0f;
+constexpr float kNotesBottomRoom = 214.0f; // buttons and hints under the window
+constexpr float kNotesWindow = kNotesHeight - (kNotesTop - kPanel.y) - kNotesBottomRoom;
+constexpr float kNoteSize = 21.0f;
+constexpr float kNoteHeadingSize = 25.0f;
 constexpr float kClosingSeconds = 3.0f;
 constexpr float kPi = 3.14159265f;
 constexpr float kTop = -kPi * 0.5f; // twelve o'clock
@@ -51,6 +63,19 @@ void arc(gfx::DrawList &list, float start, float sweep, Color color)
     if (sweep > 0.001f)
         list.arc(kCenterX, kRingY, kRingRadius + kRingWidth * 0.5f, kRingWidth, start, sweep,
                  color);
+}
+
+// One of `count` buttons in a row; `index` may lie between two of them.
+Rect button_rect(int count, float index, float top)
+{
+    const float width =
+        (kButtonsWidth - kButtonGap * static_cast<float>(count - 1)) / static_cast<float>(count);
+    return {kButtonsLeft + (width + kButtonGap) * index, top, width, kButtonHeight};
+}
+
+bool starts_with(std::string_view text, std::string_view prefix)
+{
+    return text.substr(0, prefix.size()) == prefix;
 }
 
 } // namespace
@@ -75,6 +100,7 @@ void UpdateDialog::offer(const radio_update_t &update, ui::Feedback &feedback)
     choice_x_.snap(0.0f);
     height_.snap(kPanel.h);
     fraction_.snap(0.0f);
+    layout_notes();
     open_ = true;
     shown_.target = 1.0f;
     feedback.play(audio::Cue::modal_open);
@@ -113,16 +139,185 @@ void UpdateDialog::begin(ui::Feedback &feedback)
     fail("The update helper could not start", feedback);
 }
 
+// ---- the notes ----
+
+// The notes are plain text as the catalog gives them: lines split by '\n',
+// list items starting "- ", callouts starting "Warning:" or "Note:", and short
+// lines without closing punctuation that read as headings.
+void UpdateDialog::layout_notes()
+{
+    notes_lines_.clear();
+    notes_boxes_.clear();
+    notes_height_ = 0.0f;
+    const ui::Fonts &fonts = session_.fonts;
+    float y = 0.0f;
+    bool gap_before = false;
+    const std::string &all = update_.notes;
+    std::size_t at = 0;
+    while (at < all.size())
+    {
+        const std::size_t end = std::min(all.find('\n', at), all.size());
+        std::string_view line = std::string_view{all}.substr(at, end - at);
+        at = end + 1;
+        while (!line.empty() && (line.back() == ' ' || line.back() == '\r'))
+            line.remove_suffix(1);
+        if (line.empty())
+        {
+            gap_before = !notes_lines_.empty();
+            continue;
+        }
+        const bool bullet = starts_with(line, "- ");
+        if (bullet)
+            line.remove_prefix(2);
+        const bool warning =
+            !bullet && (starts_with(line, "Warning:") || starts_with(line, "Caution:") ||
+                        starts_with(line, "Important:"));
+        const bool note = !bullet && (starts_with(line, "Note:") || starts_with(line, "Tip:"));
+        const char last = line.back();
+        const bool heading = !bullet && !warning && !note && line.size() <= 48 && last != '.' &&
+                             last != ':' && last != '!' && last != '?' && last != ',' &&
+                             last != ';' && last != ')';
+
+        const float size = heading ? kNoteHeadingSize : kNoteSize;
+        const float pitch = std::round(size * (heading ? 1.45f : 1.6f));
+        const bool boxed = warning || note;
+        const float indent = bullet ? 30.0f : boxed ? 26.0f : 0.0f;
+        const float width = kNotesWidth - indent - (boxed ? 22.0f : 0.0f);
+        const ui::FontRef &font = heading ? fonts.semibold : fonts.regular;
+
+        if (!notes_lines_.empty())
+            y += heading ? 22.0f : boxed ? 18.0f : gap_before ? 14.0f : bullet ? 4.0f : 8.0f;
+        gap_before = false;
+        const float block_top = y;
+        if (boxed)
+            y += 14.0f;
+        bool first = true;
+        for (std::string &piece : font.font->wrap(line, size, width))
+        {
+            NoteLine out;
+            out.text = std::move(piece);
+            out.y = y;
+            out.height = pitch;
+            out.size = size;
+            out.indent = indent;
+            out.heading = heading;
+            out.bullet = bullet && first;
+            notes_lines_.push_back(std::move(out));
+            y += pitch;
+            first = false;
+        }
+        if (boxed)
+        {
+            y += 14.0f;
+            notes_boxes_.push_back({block_top, y, warning});
+        }
+    }
+    if (update_.notes_truncated && !notes_lines_.empty())
+    {
+        y += 20.0f;
+        NoteLine out;
+        out.text = "The rest is on the app's page on homebrew.page.";
+        out.y = y;
+        out.height = std::round(kNoteSize * 1.6f);
+        out.size = kNoteSize;
+        out.muted = true;
+        notes_lines_.push_back(std::move(out));
+        y += std::round(kNoteSize * 1.6f);
+    }
+    notes_height_ = y;
+}
+
+float UpdateDialog::notes_max_scroll() const
+{
+    return std::max(0.0f, notes_height_ - kNotesWindow);
+}
+
+void UpdateDialog::scroll_notes(float by, ui::Feedback &feedback)
+{
+    const float target = std::clamp(notes_target_ + by, 0.0f, notes_max_scroll());
+    if (target == notes_target_)
+    {
+        // Already at that end: the text gives a little and comes back.
+        notes_bounce_.value = by > 0.0f ? 18.0f : -18.0f;
+        notes_bounce_.velocity = 0.0f;
+        return;
+    }
+    notes_target_ = target;
+    feedback.play(audio::Cue::focus);
+}
+
+void UpdateDialog::open_notes(ui::Feedback &feedback)
+{
+    stage_ = Stage::notes;
+    stage_time_ = 0.0f;
+    notes_target_ = 0.0f;
+    notes_scroll_.snap(0.0f);
+    notes_bounce_.snap(0.0f);
+    choice_ = 0;
+    choice_x_.snap(0.0f);
+    feedback.play(audio::Cue::open);
+}
+
+void UpdateDialog::close_notes(ui::Feedback &feedback)
+{
+    stage_ = Stage::offer;
+    // Back on the offer, with the ring already nearly full and the highlight
+    // on What's new.
+    stage_time_ = 0.6f;
+    choice_ = 1;
+    choice_x_.snap(1.0f);
+    feedback.play(audio::Cue::back);
+}
+
+// ---- input ----
+
 void UpdateDialog::handle(const InputFrame &input, ui::Feedback &feedback)
 {
     if (!open_)
         return;
     const bool confirm = input.is_pressed(Action::confirm);
     const bool back = input.is_pressed(Action::back);
+    if (confirm)
+        press_ = 1.0f;
     switch (stage_)
     {
     case Stage::offer:
     case Stage::failed:
+    {
+        // The offer has What's new between its buttons when the release has notes.
+        const bool notes_button = stage_ == Stage::offer && has_notes();
+        const int count = notes_button ? 3 : 2;
+        if (input.nav == Direction::left || input.nav == Direction::right)
+        {
+            const int choice =
+                std::clamp(choice_ + (input.nav == Direction::right ? 1 : -1), 0, count - 1);
+            if (choice != choice_)
+            {
+                choice_ = choice;
+                feedback.play(audio::Cue::focus);
+            }
+            return;
+        }
+        if (notes_button && input.is_pressed(Action::north))
+            return open_notes(feedback);
+        if (confirm && choice_ == 0)
+            return begin(feedback);
+        if (confirm && notes_button && choice_ == 1)
+            return open_notes(feedback);
+        // Skipped: asked again the next time the app opens.
+        if (confirm || back)
+            dismiss(feedback);
+        return;
+    }
+    case Stage::notes:
+    {
+        const float line = std::round(kNoteSize * 1.6f);
+        if (input.nav == Direction::up || input.nav == Direction::down)
+            return scroll_notes((input.nav == Direction::down ? 3.0f : -3.0f) * line, feedback);
+        if (input.is_pressed(Action::page_next) || input.is_pressed(Action::page_prev))
+            return scroll_notes((input.is_pressed(Action::page_next) ? 1.0f : -1.0f) *
+                                    (kNotesWindow - 2.0f * line),
+                                feedback);
         if (input.nav == Direction::left || input.nav == Direction::right)
         {
             const int choice = input.nav == Direction::right ? 1 : 0;
@@ -134,12 +329,11 @@ void UpdateDialog::handle(const InputFrame &input, ui::Feedback &feedback)
             return;
         }
         if (confirm)
-            press_ = 1.0f;
-        if (confirm && choice_ == 0)
-            return begin(feedback);
-        if (confirm || back)
-            dismiss(feedback);
+            return choice_ == 0 ? begin(feedback) : close_notes(feedback);
+        if (back)
+            close_notes(feedback);
         return;
+    }
     case Stage::working:
         if (back)
         {
@@ -164,8 +358,12 @@ void UpdateDialog::update(float dt, ui::Feedback &feedback)
     if (!open_)
         return;
     const bool buttons = stage_ == Stage::offer || stage_ == Stage::failed;
-    height_.target = buttons ? kPanel.h : kWorkingHeight;
+    height_.target = stage_ == Stage::notes ? kNotesHeight : buttons ? kPanel.h : kWorkingHeight;
     height_.update(dt, 13.0f);
+    notes_scroll_.target = notes_target_;
+    notes_scroll_.update(dt, session_.settings.reduced_motion ? 60.0f : 15.0f);
+    notes_bounce_.target = 0.0f;
+    notes_bounce_.update(dt, 16.0f);
     stage_time_ += dt;
     spin_ += dt;
 
@@ -214,6 +412,139 @@ void UpdateDialog::update(float dt, ui::Feedback &feedback)
         quit_ = true;
 }
 
+// ---- drawing ----
+
+void UpdateDialog::draw_buttons(ui::Canvas &canvas, const char *const *labels, int count, float top,
+                                Color accent) const
+{
+    gfx::DrawList &list = canvas.list;
+    const ui::Fonts &fonts = canvas.fonts;
+    for (int i = 0; i < count; ++i)
+        list.bordered_rect(button_rect(count, static_cast<float>(i), top), kButtonHeight * 0.5f,
+                           kWhite.with_alpha(0.08f), 1.5f, kWhite.with_alpha(0.16f));
+    const Rect focus = button_rect(count, choice_x_.value, top);
+    list.push_transform(1.0f - 0.04f * press_, focus.cx(), focus.cy(), 0.0f, 0.0f);
+    list.glow(focus, kButtonHeight * 0.5f, 26.0f, accent.with_alpha(0.30f));
+    list.rounded_rect(focus, kButtonHeight * 0.5f, kWhite);
+    list.pop_transform();
+    for (int i = 0; i < count; ++i)
+    {
+        const Rect r = button_rect(count, static_cast<float>(i), top);
+        const float near = 1.0f - std::min(1.0f, std::abs(choice_x_.value - static_cast<float>(i)));
+        const float size = count > 2 ? 24.0f : 26.0f;
+        ui::text(list, fonts.semibold, fonts.semibold.font->fit(labels[i], size, r.w - 32.0f),
+                 r.cx(), baseline_for(r.cy(), size), size,
+                 near > 0.5f ? tone::ink : session_.theme.text, gfx::Align::center);
+    }
+}
+
+void UpdateDialog::draw_notes(ui::Canvas &canvas, float height) const
+{
+    gfx::DrawList &list = canvas.list;
+    const ui::Fonts &fonts = canvas.fonts;
+    const ui::Theme &theme = session_.theme;
+    const Color accent = tone::teal;
+    const float t = stage_time_;
+    const float arrive = tween::cubic_out(t / 0.35f);
+
+    // The title, with a small mark: a page with lines on it.
+    list.push_opacity(arrive);
+    list.push_transform(1.0f, 0.0f, 0.0f, 0.0f, (1.0f - arrive) * 10.0f * motion());
+    const float mark_x = kNotesLeft + 22.0f;
+    const float mark_y = kPanel.y + 66.0f;
+    list.circle(mark_x, mark_y, 24.0f, accent.with_alpha(0.16f));
+    list.ring(mark_x, mark_y, 24.0f, 2.0f, accent.with_alpha(0.55f));
+    for (int i = 0; i < 3; ++i)
+    {
+        const float ly = mark_y - 8.0f + 8.0f * static_cast<float>(i);
+        list.line(mark_x - 9.0f, ly, mark_x + (i == 2 ? 3.0f : 9.0f), ly, 2.6f, accent);
+    }
+    const std::string title = "What's new in version " + update_.version;
+    ui::text(list, fonts.display, fonts.display.font->fit(title, 34.0f, kPanel.w - 128.0f - 64.0f),
+             kNotesLeft + 64.0f, baseline_for(mark_y, 34.0f), 34.0f, theme.text);
+    list.rounded_rect({kNotesLeft, kPanel.y + 112.0f, kPanel.w - 128.0f, 1.0f}, 0.0f,
+                      kWhite.with_alpha(0.14f));
+    list.pop_transform();
+    list.pop_opacity();
+
+    // The text, in its window, moved by the scroll (and a little more at the ends).
+    const Rect area{kNotesLeft - 6.0f, kNotesTop, kNotesWidth + 12.0f, kNotesWindow};
+    const float scroll = notes_scroll_.value + notes_bounce_.value * 0.6f;
+    list.push_clip(area);
+    for (const NoteBox &box : notes_boxes_)
+    {
+        const float top = kNotesTop + box.top - scroll;
+        const float bottom = kNotesTop + box.bottom - scroll;
+        if (bottom < area.y || top > area.y + area.h)
+            continue;
+        const Color tint = box.warning ? kAmber : accent;
+        list.push_opacity(arrive);
+        list.rounded_rect({kNotesLeft, top, kNotesWidth, bottom - top}, 14.0f,
+                          tint.with_alpha(0.09f));
+        list.rounded_rect({kNotesLeft, top + 10.0f, 4.0f, bottom - top - 20.0f}, 2.0f,
+                          tint.with_alpha(0.85f));
+        list.pop_opacity();
+    }
+    int shown = 0;
+    for (const NoteLine &line : notes_lines_)
+    {
+        const float top = kNotesTop + line.y - scroll;
+        if (top + line.height < area.y || top > area.y + area.h)
+            continue;
+        // The lines first shown come in one after another.
+        const float delay = 0.10f + 0.03f * static_cast<float>(std::min(shown++, 14));
+        const float in = t > 1.2f ? 1.0f : tween::cubic_out((t - delay) / 0.32f);
+        if (in <= 0.0f)
+            continue;
+        list.push_opacity(in);
+        list.push_transform(1.0f, 0.0f, 0.0f, 0.0f, (1.0f - in) * 14.0f * motion());
+        if (line.bullet)
+            list.circle(kNotesLeft + 11.0f, top + line.height * 0.5f, 3.6f,
+                        accent.with_alpha(0.9f));
+        ui::text(list, line.heading ? fonts.semibold : fonts.regular, line.text,
+                 kNotesLeft + line.indent, baseline_for(top + line.height * 0.5f, line.size),
+                 line.size,
+                 line.heading ? theme.text
+                 : line.muted ? theme.text_muted
+                              : theme.text.with_alpha(0.86f));
+        list.pop_transform();
+        list.pop_opacity();
+    }
+    list.pop_clip();
+
+    // The scrollbar: a track and a thumb that follows the scroll.
+    const float max_scroll = notes_max_scroll();
+    if (max_scroll > 0.0f)
+    {
+        const float track_x = kNotesLeft + kNotesWidth + 14.0f;
+        const float thumb = std::max(48.0f, kNotesWindow * kNotesWindow / notes_height_);
+        const float place = tween::clamp01(scroll / max_scroll);
+        list.push_opacity(arrive);
+        list.rounded_rect({track_x, area.y, 4.0f, kNotesWindow}, 2.0f, kWhite.with_alpha(0.12f));
+        list.rounded_rect({track_x - 1.0f, area.y + (kNotesWindow - thumb) * place, 6.0f, thumb},
+                          3.0f, accent.with_alpha(0.85f));
+        list.pop_opacity();
+    }
+
+    // The buttons and the hints under the window.
+    list.push_opacity(arrive);
+    static constexpr const char *kLabels[] = {"Update now", "Back"};
+    draw_buttons(canvas, kLabels, 2, kPanel.y + height - 178.0f, accent);
+    static constexpr ui::Hint kHints[] = {{ui::Button::dpad, "Scroll"},
+                                          {ui::Button::l1, "Page", ui::Button::r1},
+                                          {ui::Button::cross, "Select"},
+                                          {ui::Button::circle, "Back"}};
+    ui::HintLayout layout;
+    layout.size = 32.0f;
+    layout.text_size = 22.0f;
+    layout.cy = kPanel.y + height - 44.0f;
+    layout.item_gap = 36.0f;
+    const float width = ui::measure_hints(fonts, kHints, 4, layout);
+    ui::draw_hints(list, fonts, ui::GlyphStyle::dark(), kHints, 4, kCenterX - width * 0.5f, false,
+                   layout);
+    list.pop_opacity();
+}
+
 void UpdateDialog::draw(ui::Canvas &canvas) const
 {
     const float open = tween::clamp01(shown_.value);
@@ -230,12 +561,20 @@ void UpdateDialog::draw(ui::Canvas &canvas) const
     list.push_opacity(open);
     list.push_transform(1.0f - 0.04f * (1.0f - open) * motion(), kCenterX, 540.0f, 0.0f,
                         (1.0f - open) * 30.0f * motion());
-    const float height = std::clamp(height_.value, kWorkingHeight - 20.0f, kPanel.h + 20.0f);
+    const float height = std::clamp(height_.value, kWorkingHeight - 20.0f, kNotesHeight + 20.0f);
     list.push_transform(1.0f, 0.0f, 0.0f, 0.0f, (kPanel.h - height) * 0.5f);
     const Rect panel{kPanel.x, kPanel.y, kPanel.w, height};
     list.shadow({panel.x, panel.y + 24.0f, panel.w, panel.h}, 28.0f, 70.0f,
                 Color::rgb(0x000000, 0.5f));
     draw_glass(canvas, theme, panel, 28.0f);
+    if (stage_ == Stage::notes)
+    {
+        draw_notes(canvas, height);
+        list.pop_transform();
+        list.pop_transform();
+        list.pop_opacity();
+        return;
+    }
     const float hints_cy = kPanel.y + height - 44.0f;
 
     const float t = stage_time_;
@@ -258,34 +597,6 @@ void UpdateDialog::draw(ui::Canvas &canvas) const
         ui::text(list, font, font.font->fit(value, size, kPanel.w - 96.0f), kCenterX,
                  baseline_for(cy, size), size, color, gfx::Align::center);
     };
-    const auto buttons = [&](const char *first, const char *second)
-    {
-        for (int i = 0; i < 2; ++i)
-        {
-            const Rect r{kButtonLeft + kButtonGap * static_cast<float>(i), kButtonsTop,
-                         kButtonWidth, kButtonHeight};
-            list.bordered_rect(r, kButtonHeight * 0.5f, kWhite.with_alpha(0.08f), 1.5f,
-                               kWhite.with_alpha(0.16f));
-        }
-        const float x = kButtonLeft + kButtonGap * choice_x_.value;
-        const float squeeze = 1.0f - 0.04f * press_;
-        list.push_transform(squeeze, x + kButtonWidth * 0.5f, kButtonsTop + kButtonHeight * 0.5f,
-                            0.0f, 0.0f);
-        list.glow({x, kButtonsTop, kButtonWidth, kButtonHeight}, kButtonHeight * 0.5f, 26.0f,
-                  accent.with_alpha(0.30f));
-        list.rounded_rect({x, kButtonsTop, kButtonWidth, kButtonHeight}, kButtonHeight * 0.5f,
-                          kWhite);
-        list.pop_transform();
-        for (int i = 0; i < 2; ++i)
-        {
-            const float left = kButtonLeft + kButtonGap * static_cast<float>(i);
-            const float near =
-                1.0f - std::min(1.0f, std::abs(choice_x_.value - static_cast<float>(i)));
-            ui::text(list, fonts.semibold, i == 0 ? first : second, left + kButtonWidth * 0.5f,
-                     baseline_for(kButtonsTop + kButtonHeight * 0.5f, 26.0f), 26.0f,
-                     near > 0.5f ? tone::ink : title, gfx::Align::center);
-        }
-    };
     const auto hints = [&](const ui::Hint *items, int count)
     {
         ui::HintLayout layout;
@@ -300,6 +611,8 @@ void UpdateDialog::draw(ui::Canvas &canvas) const
 
     switch (stage_)
     {
+    case Stage::notes:
+        break;
     case Stage::offer:
     {
         arc(list, kTop, 2.0f * kPi * tween::cubic_out(t / 0.9f), accent);
@@ -322,11 +635,25 @@ void UpdateDialog::draw(ui::Canvas &canvas) const
         centred(fonts.regular, "Your favorites, settings and catalogue are kept.", 651.0f, 20.0f,
                 copy);
         centred(fonts.regular, "ProsperoRadio closes to finish the update.", 679.0f, 20.0f, copy);
-        buttons("Update now", "Skip");
-        static constexpr ui::Hint kOffer[] = {{ui::Button::dpad, "Navigate"},
-                                              {ui::Button::cross, "Select"},
-                                              {ui::Button::circle, "Skip"}};
-        hints(kOffer, 3);
+        if (has_notes())
+        {
+            static constexpr const char *kLabels[] = {"Update now", "What's new", "Skip"};
+            draw_buttons(canvas, kLabels, 3, kButtonsTop, accent);
+            static constexpr ui::Hint kOffer[] = {{ui::Button::dpad, "Navigate"},
+                                                  {ui::Button::cross, "Select"},
+                                                  {ui::Button::triangle, "What's new"},
+                                                  {ui::Button::circle, "Skip"}};
+            hints(kOffer, 4);
+        }
+        else
+        {
+            static constexpr const char *kLabels[] = {"Update now", "Skip"};
+            draw_buttons(canvas, kLabels, 2, kButtonsTop, accent);
+            static constexpr ui::Hint kOffer[] = {{ui::Button::dpad, "Navigate"},
+                                                  {ui::Button::cross, "Select"},
+                                                  {ui::Button::circle, "Skip"}};
+            hints(kOffer, 3);
+        }
         break;
     }
     case Stage::working:
@@ -453,7 +780,8 @@ void UpdateDialog::draw(ui::Canvas &canvas) const
                 title.with_alpha(0.86f));
         if (!progress_.error.empty())
             centred(fonts.regular, progress_.error, 627.0f, 20.0f, copy);
-        buttons("Try again", "Close");
+        static constexpr const char *kLabels[] = {"Try again", "Close"};
+        draw_buttons(canvas, kLabels, 2, kButtonsTop, accent);
         static constexpr ui::Hint kFailed[] = {{ui::Button::dpad, "Navigate"},
                                                {ui::Button::cross, "Select"},
                                                {ui::Button::circle, "Close"}};

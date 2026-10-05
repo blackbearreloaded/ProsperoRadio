@@ -1,0 +1,24 @@
+# The offer of a release with notes: What's new opens them, they scroll, Back
+# returns to the offer, Skip leaves the app as it was (run with
+# dev/update-offer.txt naming a newer release, its notes after the five lines).
+until catalog 420
+wait 6
+shot 01-offer-with-notes
+press triangle
+wait 2
+shot 02-whats-new
+press down 4
+wait 1
+shot 03-scrolled
+press r1
+wait 1
+shot 04-paged
+press circle
+wait 1
+shot 05-back-on-offer
+press right
+press cross
+wait 2
+shot 06-skipped
+status
+quit

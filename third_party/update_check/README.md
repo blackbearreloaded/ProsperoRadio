@@ -22,3 +22,7 @@ source folders; `swap_entries` in `updater.cpp`, which moves aside only the
 entries the release replaces, so files a listener put in the app folder stay;
 and `mounted_source`, which takes the installed folder from ShadowMountPlus's
 `/user/app/<TITLEID>/mount.lnk` and refuses an image install).
+
+In the kit itself (ProsperoEden's change), `self_update_check` also copies the
+catalog entry's `release_notes` and `release_notes_truncated` into the offer
+(`notes`, `notes_truncated`), for the update dialog's What's new view.

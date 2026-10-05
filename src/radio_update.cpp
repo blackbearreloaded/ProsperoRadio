@@ -103,7 +103,8 @@ bool next_line(const std::string &text, std::size_t *at, std::string *line)
 // catalog's answer (and so skips the catalog's signature), so an update can be
 // tried before the catalog lists a newer release. Five lines, as the
 // boilerplate's example takes them: the new content version, the release's
-// name, its ZIP on GitHub, its SHA-256, its size in bytes.
+// name, its ZIP on GitHub, its SHA-256, its size in bytes; any further lines
+// are the release notes.
 bool development_offer(self_update_offer *out)
 {
     std::string text;
@@ -128,6 +129,11 @@ bool development_offer(self_update_offer *out)
     std::snprintf(filled.artifact, sizeof(filled.artifact), "%s", artifact.c_str());
     std::snprintf(filled.sha256, sizeof(filled.sha256), "%s", sha256.c_str());
     filled.size = std::strtoull(size.c_str(), nullptr, 10);
+    // The notes keep their blank lines: the rest of the file as it is.
+    std::string notes = at < text.size() ? text.substr(at) : std::string();
+    while (!notes.empty() && (notes.back() == '\n' || notes.back() == '\r'))
+        notes.pop_back();
+    std::snprintf(filled.notes, sizeof(filled.notes), "%s", notes.c_str());
     // Like the catalog, only a newer version is offered (content versions
     // compare as text).
     if (std::strcmp(filled.available, filled.installed) <= 0)
@@ -235,6 +241,8 @@ bool radio_update_take(radio_update_t *update)
     update->available = g_offer.available;
     update->size = g_offer.size;
     update->page = g_offer.page;
+    update->notes = g_offer.notes;
+    update->notes_truncated = g_offer.notes_truncated != 0;
     return true;
 }
 
