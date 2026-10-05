@@ -16,6 +16,10 @@
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg" alt="GPL-3.0-or-later"></a>
 </p>
 
+![ProsperoRadio's home screen with a station playing: the Now Playing header, the Popular list and the letter rail](docs/images/prosperoradio.png)
+
+The picture shows ProsperoRadio running on a PlayStation 5 with a station on air.
+
 ## Highlights
 
 - Browse more than 56,000 supported stations in a validated Radio Browser
@@ -33,10 +37,6 @@
   a Now Playing view with a visualizer, a letter rail on every station list,
   sound controls (volume, bass, treble, balance), PS5 text input, and station
   names in every script.
-
-<p align="center">
-  <img src="sce_sys/background-source.png" alt="ProsperoRadio artwork">
-</p>
 
 ## Project foundations
 
