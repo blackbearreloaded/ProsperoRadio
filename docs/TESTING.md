@@ -20,8 +20,6 @@ Browser server.
 | make test-integration | Run tool/UI Python tests and every host codec/catalogue regression. |
 | make test | Run the complete host suite. |
 | make check | Run linting, all host tests, and a full title-folder build. |
-| make ffpfsc | Build the production folder and compressed FFPFSC image. |
-| make ffpkg | Build the optional local UFS2 image; CI does not publish it. |
 
 The host suite requires clang-18, clang++-18, and libsqlite3-dev.
 GoogleTest is fetched into ignored .deps/test/ and is never included in a PS5
@@ -74,8 +72,7 @@ For a release candidate:
    contentVersion.
 2. Follow the repository's current console coordination protocol before
    connecting to shared hardware.
-3. Deploy the whole dist/PPSA99001/ folder for a development test, or the
-   matching FFPFSC for package installation.
+3. Deploy the whole dist/PPSA99001/ folder.
 4. Launch the Media-category title, verify browsing, search, favourites,
    playback/stop/switch, one non-ASCII station name, and a cached restart.
 5. Capture the result and relevant logs; close the title and any Remote Play
@@ -100,8 +97,8 @@ Run:
 
     make lint
     make test
-    make ffpfsc
+    make
 
 A release tag must exactly equal contentVersion in sce_sys/param.json, for
 example 01.000.005. GitHub Actions repeats the same host gates and publishes
-the verified FFPFSC image, app-folder ZIP, and their SHA-256 checksums.
+the verified app-folder ZIP and its SHA-256 checksum.

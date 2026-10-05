@@ -74,9 +74,8 @@ The picture shows ProsperoRadio running on a PlayStation 5 with a station on air
 | Shell title | `ProsperoRadio` |
 | Title ID | `PPSA99001` |
 | Category | Media |
-| Current release version | `01.000.005` |
+| Current release version | `01.000.010` |
 | Release-version source | [`sce_sys/param.json`](sce_sys/param.json) |
-| Development version on `main` | `01.000.010` (not released) |
 | Writable data | `/data/prosperoradio` |
 
 ## Features
@@ -119,7 +118,7 @@ sudo apt install curl git make pkg-config python3 python3-venv tar unzip wget zi
   clang-18 clang-format-18 clang-tidy-18 lld-18 libsqlite3-dev
 ```
 
-The production `.ffpfsc` target uses the pinned MkPFS bootstrapper. The
+The
 repository downloads, verifies, and caches the public PS5 Payload SDK, zlib,
 PacBrew's SQLite and libcurl ports, the interface kit, the ps5-opengl SDK,
 HarfBuzz, the pinned upstream Lapy helper sources, GoogleTest, and packaging
@@ -142,22 +141,18 @@ change `PPSA99001` when updating ProsperoRadio: changing it produces a separate 
 title rather than an update.
 
 ```bash
-# Production release image (also assembles the complete title folder).
-make ffpfsc
-
-# Faster folder-only build for development deployment.
 make
 ```
 
-Outputs are written to:
+The output is the complete title folder:
 
 ```text
-dist/PPSA99001/           complete title folder
-dist/PPSA99001.ffpfsc     compressed package
+dist/PPSA99001/
 ```
 
-GitHub Releases also provide `PPSA99001.zip`, a ZIP of the complete
-`PPSA99001/` folder for direct directory deployment.
+Releases are that folder as one file, `PPSA99001.zip`, with its `SHA256SUMS`.
+No `.ffpfsc` image is built or published: the app updates itself in place, and
+that needs a folder install.
 
 An optional local UFS2 `.ffpkg` target remains available for development; it
 is intentionally excluded from CI and GitHub Releases. See
@@ -206,6 +201,8 @@ ProsperoRadio says so each time it opens:
   (`self-updater.elf`, sent to the console's payload loader on port 9021)
   replaces the app's files, and the console shows a notification. Open
   ProsperoRadio again to use the new version.
+- **What's new** (or Triangle) shows the release's notes, when it has any,
+  in a view that scrolls; **Update now** is there too.
 - **Skip** keeps the current version until the next time the app opens.
 
 Your favourites, settings and catalogue are in `/data/prosperoradio`, outside
@@ -213,8 +210,8 @@ the app, so an update keeps them; files you put in the app folder yourself stay
 too. If the download or the unpacking fails, the dialog says why and offers
 **Try again**; the app stays as it was. Without a network, or without an
 answer, nothing is shown. When ProsperoRadio cannot install the release itself
-(for example an app installed as an `.ffpfsc` image, which the helper does not
-rewrite), a notice at the top right says **Update available** for ten seconds
+(for example a copy installed as an image, which the helper does not rewrite),
+a notice at the top right says **Update available** for ten seconds
 instead, and the manual steps below still work.
 
 ### By hand
@@ -222,23 +219,19 @@ instead, and the manual steps below still work.
 1. Fully close ProsperoRadio.
 2. From the
    [latest release](https://github.com/blackbearreloaded/ProsperoRadio/releases/latest),
-   download either `PPSA99001.ffpfsc` or `PPSA99001.zip`.
-3. Deploy one format over FTP and wait for the transfer to finish:
-
-   - **FFPFSC:** replace `/data/homebrew/PPSA99001.ffpfsc` with the downloaded
-     image.
-   - **ZIP:** extract it locally, then upload the entire `PPSA99001/` folder
-     so its destination is `/data/homebrew/PPSA99001/`. Do not upload the ZIP
-     file itself.
-
-4. Do not keep the folder and FFPFSC image under `/data/homebrew` at the same
-   time. Restart ShadowMountPlus cleanly or restart the PS5.
+   download `PPSA99001.zip`.
+3. Extract it locally, then upload the entire `PPSA99001/` folder over FTP so
+   its destination is `/data/homebrew/PPSA99001/`, and wait for the transfer to
+   finish. Do not upload the ZIP file itself.
+4. If an earlier release was installed as `/data/homebrew/PPSA99001.ffpfsc`,
+   remove that image: do not keep it beside the folder. Restart ShadowMountPlus
+   cleanly or restart the PS5.
 5. Start the approved services normally, wait for ShadowMountPlus to
    rediscover `PPSA99001`, then launch ProsperoRadio and confirm the version
    shown below the app name.
 
 Do not relaunch immediately after replacing the app: ShadowMountPlus may
-still have the previous folder or `.ffpfsc` mounted. The catalogue, favourites
+still have the previous folder mounted. The catalogue, favourites
 and settings are in `/data/prosperoradio`, outside the app, so they are kept;
 Shell presentation metadata may remain cached.
 
@@ -253,7 +246,6 @@ each file through a temporary name, then publishes `eboot.bin` and
 make test            # C++ unit tests, UI/metadata tests, 16 codec/catalogue checks
 make lint            # formatting, static analysis, metadata, and shell checks
 make check           # lint + all host tests + complete folder build
-make ffpfsc          # production folder + FFPFSC image
 ```
 
 The test suite runs entirely on the host and never contacts a console. It
@@ -263,10 +255,9 @@ Vorbis, FLAC, HLS/MPEG-TS, controller input, and Arabic/RTL text ordering.
 The PS5-only boundary is documented in [Testing](docs/TESTING.md).
 
 GitHub Actions runs linting, every host test, deterministic runtime
-reproduction, and an FFPFSC build. When an exact `contentVersion` tag is
-pushed, the workflow archives the same complete app folder, verifies both
-release files, and publishes the `.ffpfsc`, folder `.zip`, and their shared
-`SHA256SUMS` file.
+reproduction, and the app-folder build. When an exact `contentVersion` tag is
+pushed, the workflow archives that folder, verifies the archive, and publishes
+`PPSA99001.zip` with its `SHA256SUMS` file.
 
 ## Source layout
 

@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   build:
-    name: Lint, test, and build release artifacts
+    name: Lint, test, and build the release ZIP
     runs-on: ubuntu-24.04
     timeout-minutes: 45
 
@@ -69,8 +69,8 @@ jobs:
       - name: Verify generated runtime is unchanged
         run: cd runtime && sha256sum -c libc.prx.sha256
 
-      - name: Build compressed release image
-        run: make ffpfsc
+      - name: Build the app folder
+        run: make app
 
       - name: Archive app folder
         run: cd dist && zip -qr "$TITLE_ID.zip" "$TITLE_ID"
@@ -85,14 +85,13 @@ jobs:
           unzip -Z1 "$TITLE_ID.zip" | grep -Fx "$TITLE_ID/sce_sys/param.json"
 
       - name: Write release checksums
-        run: cd dist && sha256sum "$TITLE_ID.ffpfsc" "$TITLE_ID.zip" > SHA256SUMS
+        run: cd dist && sha256sum "$TITLE_ID.zip" > SHA256SUMS
 
       - name: Upload build
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: prospero-radio-${{ github.sha }}-release
           path: |
-            dist/${{ env.TITLE_ID }}.ffpfsc
             dist/${{ env.TITLE_ID }}.zip
             dist/SHA256SUMS
           if-no-files-found: error
@@ -126,36 +125,30 @@ jobs:
           cd release
           mapfile -d '' files < <(find . -type f -print0)
           shopt -s nullglob
-          images=(PPSA*.ffpfsc)
           archives=(PPSA*.zip)
-          if (( ${#files[@]} != 3 || ${#images[@]} != 1 || ${#archives[@]} != 1 )) || [[ ! -f SHA256SUMS ]]; then
-            echo "Expected one FFPFSC image, one app-folder ZIP, and SHA256SUMS at the artifact root." >&2
+          if (( ${#files[@]} != 2 || ${#archives[@]} != 1 )) || [[ ! -f SHA256SUMS ]]; then
+            echo "Expected one app-folder ZIP and SHA256SUMS at the artifact root." >&2
             exit 1
           fi
-          title_id=${images[0]%.ffpfsc}
-          [[ ${archives[0]} == "$title_id.zip" ]]
           sha256sum -c SHA256SUMS
           unzip -t "${archives[0]}"
-          echo "image=${images[0]}" >> "$GITHUB_OUTPUT"
           echo "archive=${archives[0]}" >> "$GITHUB_OUTPUT"
           echo "checksum=SHA256SUMS" >> "$GITHUB_OUTPUT"
 
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-          IMAGE: ${{ steps.package.outputs.image }}
           ARCHIVE: ${{ steps.package.outputs.archive }}
           CHECKSUM: ${{ steps.package.outputs.checksum }}
         shell: bash
         run: |
           set -euo pipefail
-          assets=("release/$IMAGE" "release/$ARCHIVE" "release/$CHECKSUM")
-          image_name="${IMAGE##*/}"
+          assets=("release/$ARCHIVE" "release/$CHECKSUM")
           archive_name="${ARCHIVE##*/}"
           checksum_name="${CHECKSUM##*/}"
           if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             while IFS= read -r old_asset; do
-              if [[ $old_asset != "$image_name" && $old_asset != "$archive_name" && $old_asset != "$checksum_name" ]]; then
+              if [[ $old_asset != "$archive_name" && $old_asset != "$checksum_name" ]]; then
                 gh release delete-asset "$GITHUB_REF_NAME" "$old_asset" --yes --repo "$GITHUB_REPOSITORY"
               fi
             done < <(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')

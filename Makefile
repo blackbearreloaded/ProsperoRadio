@@ -201,7 +201,7 @@ help:
 	  'make lint            Run format, tidy, metadata, and shell checks' \
 	  'make check           Run lint and build the skeleton app' \
 	  'make ffpkg           Build the folder and UFS2 .ffpkg image' \
-	  'make ffpfsc          Build the folder and compressed .ffpfsc image' \
+	  'make ffpfsc          Local only: a compressed .ffpfsc image (releases are the folder ZIP)' \
 	  'make packages        Build folder, .ffpkg, and .ffpfsc outputs' \
 	  'make deploy PS5_HOST=<address>  Build and FTP-deploy the app folder' \
 	  'make undeploy PS5_HOST=<address>  Remove this title from /data/homebrew' \

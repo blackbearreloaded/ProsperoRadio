@@ -12,7 +12,7 @@ On Ubuntu, Debian, or WSL:
     sudo apt install curl git make pkg-config python3 python3-venv tar unzip wget \
       clang-18 clang-format-18 clang-tidy-18 lld-18 libsqlite3-dev
 
-The production FFPFSC target uses the pinned MkPFS bootstrapper. .NET SDK 8 or
+.NET SDK 8 or
 newer is needed only for the optional local FFPKG target.
 
 ## 2. Clone and inspect
@@ -52,17 +52,15 @@ metadata, shell deployment dry runs, formatting, and static analysis.
 
 ## 5. Build release forms
 
-    make ffpfsc
+    make
 
-This produces:
+This produces the complete title folder:
 
-    dist/PPSA99001/           development title folder
-    dist/PPSA99001.ffpfsc     compressed package
+    dist/PPSA99001/
 
-The full title folder is the preferred development artifact. Never deploy only
-eboot.bin. `make ffpkg` remains available for optional local UFS2 packaging.
-GitHub Releases contain the FFPFSC plus `PPSA99001.zip`, which wraps the same
-complete folder for direct directory deployment.
+Never deploy only eboot.bin. GitHub Releases contain `PPSA99001.zip`, which
+wraps that folder for direct directory deployment, and its SHA256SUMS; no
+FFPFSC image is built or published.
 
 ## 6. Deploy a development folder
 
@@ -77,7 +75,7 @@ screenshots, Remote Play cleanup, and any shared-console coordination.
 
 For the release ZIP, extract it locally and send the entire `PPSA99001/`
 folder to `/data/homebrew/PPSA99001/`. Do not send the ZIP file itself, and do
-not leave a same-title FFPFSC image beside the folder.
+not leave a same-title FFPFSC image from an earlier release beside the folder.
 
 ## Version and title identity
 
@@ -92,7 +90,7 @@ creating a release tag:
     git push origin main 01.000.005
 
 GitHub Actions rejects a tag that does not exactly match contentVersion and
-publishes the verified FFPFSC image, app-folder ZIP, and their SHA-256 checksums.
+publishes the verified app-folder ZIP and its SHA-256 checksum.
 
 For source architecture, dependencies, and PS5-only validation, continue with
 [Architecture](ARCHITECTURE.md), [Template port notes](TEMPLATE_PORT.md),
