@@ -5,9 +5,11 @@ launcher formats supported by this template. Conversion changes only the
 repository's `sce_sys` files; it does not connect to or configure a console.
 
 The checked-in ProsperoRadio artwork was created with OpenAI ImageGen in a shared
-ink-and-watercolor style. `icon0.png` depicts birds flowing into an audio
-waveform, `background-source.png` is the light app-selection landscape, and
-`launch-background-source.png` is the dark launch-transition composition.
+ink-and-watercolor style. `icon0.png` is a dark green table radio on Night Signal's teal-black,
+`background-source.png` is the app-selection background (a metal music note
+set to the right, clear of the home screen's text), and
+`launch-background-source.png` is the launch-transition background (the same
+note, centred).
 The two background sources are retained at 3840x2160; `pic0.dds` and
 `pic1.dds` are their deployment-ready BC7 derivatives.
 
