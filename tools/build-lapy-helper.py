@@ -23,9 +23,9 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 TITLE = json.loads((ROOT / "sce_sys/param.json").read_text())["titleId"]
-LAPY = ROOT / ".deps/PS5-Lapy-JB-Daemon-54a095c"
+LAPY = ROOT / ".deps/PS5-Lapy-JB-Daemon-c3bdfe3"
 PS5LOG = ROOT / ".deps/lapy-ps5log-1ae1f918"
-SDK = ROOT / ".deps/lapy-ps5-payload-sdk-v0.40"
+SDK = ROOT / ".deps/lapy-ps5-payload-sdk-v0.42"
 SOURCE = LAPY / f"build/owned_root_helper-{TITLE}"
 OUTPUT = ROOT / "build/lapy-owned-helper"
 

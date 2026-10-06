@@ -47,7 +47,7 @@ The picture shows ProsperoRadio running on a PlayStation 5 with a station on air
 > automation.
 
 > [!WARNING]
-> **Filesystem access comes from [PS5-Lapy-JB-Daemon](https://github.com/mpereiraesaa/PS5-Lapy-JB-Daemon).**
+> **Filesystem access comes from [PS5-Lapy-JB-Daemon](https://github.com/blackbearreloaded/PS5-Lapy-JB-Daemon).**
 > The PS5 jailbreak environment must provide a local ELF loader on TCP port
 > 9021. If a resident Lapy service is running it is used; otherwise
 > ProsperoRadio sends its own packaged, title-specific upstream Lapy helper over

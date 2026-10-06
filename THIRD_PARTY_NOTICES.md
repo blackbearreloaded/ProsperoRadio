@@ -14,7 +14,8 @@ the application possible:
   [UFS2Tool](https://github.com/SvenGDK/UFS2Tool).
 - **Filesystem access:** [PS5-Lapy-JB-Daemon](https://github.com/ArkSama/PS5-Lapy-JB-Daemon)
   (MIT), created by ArkSama, in the cooperative owned-root form of
-  [mpereiraesaa's fork](https://github.com/mpereiraesaa/PS5-Lapy-JB-Daemon) and its
+  [ProsperoRadio's compatibility fork](https://github.com/blackbearreloaded/PS5-Lapy-JB-Daemon), based on
+  [mpereiraesaa's fork](https://github.com/mpereiraesaa/PS5-Lapy-JB-Daemon), and its
   [contributors](https://github.com/mpereiraesaa/PS5-Lapy-JB-Daemon/graphs/contributors).
   The package carries the helper upstream's own build produces for this title
   (`lapy.elf`, `lapy-manifest.json`) and Lapy's licence (`licenses/Lapy-MIT.txt`);
