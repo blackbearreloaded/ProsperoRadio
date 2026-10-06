@@ -14,8 +14,8 @@ root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 deps="$root/.deps"
 mkdir -p "$deps"
 
-lapy_commit=54a095c0f19161825e845daa760a03b446e654fa
-lapy_url=https://github.com/mpereiraesaa/PS5-Lapy-JB-Daemon.git
+lapy_commit=c3bdfe3a399366d8eacfc580f20b19fd03b16ca3
+lapy_url=https://github.com/blackbearreloaded/PS5-Lapy-JB-Daemon.git
 lapy="$deps/PS5-Lapy-JB-Daemon-${lapy_commit:0:7}"
 if [[ $(git -C "$lapy" rev-parse HEAD 2>/dev/null || true) != "$lapy_commit" ]]; then
     printf '==> [lapy] Fetching PS5-Lapy-JB-Daemon %s\n' "${lapy_commit:0:7}" >&2
@@ -30,17 +30,17 @@ fi
     exit 2
 }
 
-# v0.41 changed the ucred attribute API the pinned helper uses.
-sdk_sha256=617fb702df3551f709b2db0a014e618cf39334c9348395a9b005e6504d076a42
-sdk_url=https://github.com/ps5-payload-dev/sdk/releases/download/v0.40/ps5-payload-sdk.zip
-sdk="$deps/lapy-ps5-payload-sdk-v0.40"
+# The pinned helper uses v0.42's 32-byte credential attributes and firmware layouts.
+sdk_sha256=8cfbc7cd5811e719eb4f0c47eea668d3dc7b40bc8ab11c4a5031d40c23ec02da
+sdk_url=https://github.com/ps5-payload-dev/sdk/releases/download/v0.42/ps5-payload-sdk.zip
+sdk="$deps/lapy-ps5-payload-sdk-v0.42"
 if [[ ! -x $sdk/bin/prospero-clang ]]; then
-    printf '==> [lapy] Downloading PS5 Payload SDK v0.40\n' >&2
-    archive="$deps/lapy-ps5-payload-sdk-v0.40.zip"
+    printf '==> [lapy] Downloading PS5 Payload SDK v0.42\n' >&2
+    archive="$deps/lapy-ps5-payload-sdk-v0.42.zip"
     curl -fL --retry 3 -o "$archive.part" "$sdk_url"
     mv -- "$archive.part" "$archive"
     sha256sum --check --status <<<"$sdk_sha256  $archive" || {
-        echo "PS5 Payload SDK v0.40 archive checksum mismatch" >&2
+        echo "PS5 Payload SDK v0.42 archive checksum mismatch" >&2
         exit 2
     }
     rm -rf -- "$sdk" "$sdk.tmp"
@@ -51,7 +51,7 @@ if [[ ! -x $sdk/bin/prospero-clang ]]; then
     rm -rf -- "$sdk.tmp" "$archive"
     chmod +x "$sdk"/bin/* 2>/dev/null || true
 fi
-[[ -x $sdk/bin/prospero-clang ]] || { echo "PS5 Payload SDK v0.40 is incomplete" >&2; exit 2; }
+[[ -x $sdk/bin/prospero-clang ]] || { echo "PS5 Payload SDK v0.42 is incomplete" >&2; exit 2; }
 
 log_sha256=394af67d0f8b60b3335deb53396e52855ea2daa50ca914a456ea7663f48900c6
 log_url=https://raw.githubusercontent.com/mpereiraesaa/ps5-agc-gears/1ae1f9182abd2770c131b97419034fb85173c2dc/native/ps5log/ps5log.h
