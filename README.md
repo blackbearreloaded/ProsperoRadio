@@ -257,7 +257,9 @@ The PS5-only boundary is documented in [Testing](docs/TESTING.md).
 GitHub Actions runs linting, every host test, deterministic runtime
 reproduction, and the app-folder build. When an exact `contentVersion` tag is
 pushed, the workflow archives that folder, verifies the archive, and publishes
-`PPSA99001.zip` with its `SHA256SUMS` file.
+`PPSA99001.zip` with its `SHA256SUMS` file. Every pull request gets an
+installable build named by its number and commit: see
+[Pull-request builds](docs/PULL_REQUEST_BUILDS.md).
 
 ## Source layout
 

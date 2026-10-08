@@ -101,4 +101,6 @@ Run:
 
 A release tag must exactly equal contentVersion in sce_sys/param.json, for
 example 01.000.005. GitHub Actions repeats the same host gates and publishes
-the verified app-folder ZIP and its SHA-256 checksum.
+the verified app-folder ZIP and its SHA-256 checksum. A pull request's run
+also packages an installable build of it
+([Pull-request builds](PULL_REQUEST_BUILDS.md)).

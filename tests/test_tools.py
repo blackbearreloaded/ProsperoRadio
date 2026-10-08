@@ -176,6 +176,61 @@ class ToolTests(unittest.TestCase):
         self.assertIn('assets=("release/$ARCHIVE" "release/$CHECKSUM")', workflow)
         self.assertIn("gh release delete-asset", workflow)
 
+    def test_pull_request_builds_are_named_and_labelled(self):
+        workflow = (ROOT / ".github/workflows/tooling.yml").read_text(encoding="utf-8")
+        self.assertIn(
+            'echo "artifact=${GITHUB_REPOSITORY##*/}-PR$PR_NUMBER-$short" >> "$GITHUB_OUTPUT"',
+            workflow,
+        )
+        self.assertIn('echo "BUILD_LABEL=PR $PR_NUMBER, $short" >> "$GITHUB_ENV"', workflow)
+        self.assertIn("PR_HEAD: ${{ github.event.pull_request.head.sha }}", workflow)
+        self.assertIn("name: ${{ steps.label.outputs.artifact }}", workflow)
+        # The release job still finds a tag's build under its commit.
+        self.assertIn('--name "prospero-radio-$GITHUB_SHA-release"', workflow)
+        self.assertIn(
+            'echo "artifact=prospero-radio-$GITHUB_SHA-release" >> "$GITHUB_OUTPUT"', workflow
+        )
+        # The label is in the environment before the folder is built and archived.
+        self.assertLess(workflow.index("- name: Name this build"), workflow.index("run: make app"))
+        self.assertLess(workflow.index("run: make app"), workflow.index("- name: Archive app folder"))
+        # A contributor's code is never built with write access or secrets.
+        self.assertNotIn("pull_request_target:", workflow)
+        build = (ROOT / "tools/build.sh").read_text(encoding="utf-8")
+        self.assertIn('> "$app/build-label.txt"', build)
+        self.assertIn("{1,40}$", build)
+        self.assertLess(build.index("BUILD_LABEL must be"), build.index("setup-native-dependencies.sh"))
+        self.assertLess(build.index('rm -rf -- "$app"'), build.index('> "$app/build-label.txt"'))
+
+    def test_build_label_is_checked_before_anything_is_built(self):
+        build = (ROOT / "tools/build.sh").read_text(encoding="utf-8")
+        start = build.index("if [[ -n ${BUILD_LABEL:-} ]]; then")
+        check = build[start : build.index("\nfi\n", start) + 4]
+        cases = {
+            "PR 12, 1a2b3c4": 0,
+            "pacing test 2": 0,
+            "a_b.c#d-e": 0,
+            "x" * 40: 0,
+            "x" * 41: 2,
+            "PR 12; rm -rf /": 2,
+            "$(id)": 2,
+            "two\nlines": 2,
+            "caf\u00e9": 2,
+            "a/b": 2,
+        }
+        for label, expected in cases.items():
+            result = subprocess.run(
+                ["bash", "-c", "set -euo pipefail\n" + check],
+                env={**os.environ, "BUILD_LABEL": label, "LC_ALL": "C.UTF-8"},
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(result.returncode, expected, repr(label))
+        unset = {key: value for key, value in os.environ.items() if key != "BUILD_LABEL"}
+        result = subprocess.run(
+            ["bash", "-c", "set -euo pipefail\n" + check], env=unset, capture_output=True
+        )
+        self.assertEqual(result.returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
