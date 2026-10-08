@@ -176,6 +176,29 @@ class ToolTests(unittest.TestCase):
         self.assertIn('assets=("release/$ARCHIVE" "release/$CHECKSUM")', workflow)
         self.assertIn("gh release delete-asset", workflow)
 
+    def test_release_zip_is_attested_before_upload(self):
+        workflow = (ROOT / ".github/workflows/tooling.yml").read_text(encoding="utf-8")
+        # The finished ZIP, and only the ZIP, is attested before it is uploaded: pinned action,
+        # never for a pull request or in a private repository.
+        attest = workflow.index("- name: Attest the release ZIP")
+        upload = workflow.index("- name: Upload build")
+        self.assertLess(workflow.index("- name: Verify app-folder archive"), attest)
+        self.assertLess(workflow.index("zip-open-modes.py"), attest)
+        self.assertLess(attest, upload)
+        step = workflow[attest:upload]
+        self.assertIn(
+            "uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2", step
+        )
+        self.assertIn(
+            "if: github.event_name != 'pull_request' && !github.event.repository.private", step
+        )
+        self.assertIn("subject-path: dist/${{ env.TITLE_ID }}.zip\n", step)
+        self.assertNotIn("SHA256SUMS", step)
+        build_job = workflow[workflow.index("\n  build:") : workflow.index("\n  release:")]
+        for permission in ("contents: read", "id-token: write", "attestations: write"):
+            self.assertIn(f"      {permission}\n", build_job)
+        self.assertNotIn("id-token", workflow.replace(build_job, ""))
+
     def test_pull_request_builds_are_named_and_labelled(self):
         workflow = (ROOT / ".github/workflows/tooling.yml").read_text(encoding="utf-8")
         self.assertIn(
