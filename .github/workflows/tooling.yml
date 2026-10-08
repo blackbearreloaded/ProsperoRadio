@@ -54,8 +54,9 @@ jobs:
           echo "TITLE_ID=$title_id" >> "$GITHUB_ENV"
           echo "CONTENT_VERSION=$content_version" >> "$GITHUB_ENV"
 
+      # clang-tidy stays a local check (make lint / make tidy); it does not run here.
       - name: Lint source and metadata
-        run: make lint
+        run: LINT_SKIP_TIDY=1 make lint
 
       - name: Run host GoogleTest suite
         run: make test-unit
@@ -73,7 +74,10 @@ jobs:
         run: make app
 
       - name: Archive app folder
-        run: cd dist && zip -qr "$TITLE_ID.zip" "$TITLE_ID"
+        run: |
+          cd dist && zip -qr "$TITLE_ID.zip" "$TITLE_ID"
+          # Every entry stored as 0777: the console only starts an app whose files are open to all.
+          python3 ../tools/zip-open-modes.py "$TITLE_ID.zip"
 
       - name: Verify app-folder archive
         shell: bash
@@ -83,6 +87,13 @@ jobs:
           unzip -t "$TITLE_ID.zip"
           unzip -Z1 "$TITLE_ID.zip" | grep -Fx "$TITLE_ID/eboot.bin"
           unzip -Z1 "$TITLE_ID.zip" | grep -Fx "$TITLE_ID/sce_sys/param.json"
+          python3 - "$TITLE_ID.zip" <<'PY'
+          import sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as z:
+              wrong = [i.filename for i in z.infolist() if (i.external_attr >> 16) & 0o777 != 0o777]
+              assert not wrong, f"entries not stored as 0777: {wrong[:3]}"
+              print(f"{sys.argv[1]}: {len(z.infolist())} entries, all 0777")
+          PY
 
       - name: Write release checksums
         run: cd dist && sha256sum "$TITLE_ID.zip" > SHA256SUMS
