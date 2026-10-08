@@ -1,8 +1,8 @@
 # Deployment
 
 This project creates a directory-style homebrew application and optional
-filesystem images. GitHub Releases include both an FFPFSC image and a ZIP of
-the complete application directory. The Makefile can update the directory or
+filesystem images. GitHub Releases include a ZIP of the complete application
+directory and its `SHA256SUMS`, with no FFPFSC image. The Makefile can update the directory or
 upload an image below `/data/homebrew` over FTP. It does not configure the
 console, start payloads, register titles, launch applications, or create a
 signed retail package.

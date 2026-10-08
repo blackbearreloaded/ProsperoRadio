@@ -8,10 +8,10 @@ console before merging.
 
 ## What a pull request produces
 
-| | Pull request | Push to `main`, tag, manual run |
+| | Pull request | Tag, or a run started by hand |
 | --- | --- | --- |
 | Artifact name | `ProsperoRadio-PR<number>-<commit>` | `prospero-radio-<commit>-release` |
-| `<commit>` | First seven characters of the pull request's own head commit | The full pushed commit |
+| `<commit>` | First seven characters of the pull request's own head commit | The full commit that was built |
 | Label file in the app folder | `build-label.txt` holding `PR <number>, <commit>` | None |
 | `contentVersion` | Unchanged | Unchanged |
 
@@ -73,7 +73,7 @@ BUILD_LABEL="pacing test 2" make
 ## Names and safety
 
 The pull-request name follows the repository's name by itself. The name used
-for pushes and tags, `prospero-radio-<commit>-release`, appears twice in the
+for tags and runs started by hand, `prospero-radio-<commit>-release`, appears twice in the
 workflow (the upload, and the release job's download); rename both together. A
 tag never takes the pull-request branch, so the release job always finds its
 build under that name.
