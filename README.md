@@ -63,12 +63,6 @@ The picture shows ProsperoRadio running on a PlayStation 5 with a station on air
 > [ps5-opengl](https://github.com/blackbearreloaded/ps5-opengl) SDK and the
 > pinned HarfBuzz source into `.deps/`. See [`ui-kit/README.md`](ui-kit/README.md).
 
-> [!IMPORTANT]
-> **Audio work is documented in [PS5 Audio Decoding Research](https://github.com/blackbearreloaded/ps5-audio-decoding-research).**
-> The companion repository records the hardware-first decoder investigation,
-> reverse-engineering notes, native API probes, codec boundaries, and device
-> validation that informed ProsperoRadio's audio implementation.
-
 | Identity | Value |
 | --- | --- |
 | Shell title | `ProsperoRadio` |
@@ -105,8 +99,7 @@ The picture shows ProsperoRadio running on a PlayStation 5 with a station on air
 App-specific codec limits and validation are documented in
 [Architecture](docs/ARCHITECTURE.md),
 [Codec investigation](docs/CODEC_INVESTIGATION.md), and
-[Roadmap](ROADMAP.md). The complete reusable research record lives in
-[PS5 Audio Decoding Research](https://github.com/blackbearreloaded/ps5-audio-decoding-research).
+[Roadmap](ROADMAP.md).
 
 ## Requirements
 
