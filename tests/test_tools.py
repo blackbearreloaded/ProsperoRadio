@@ -134,7 +134,10 @@ class ToolTests(unittest.TestCase):
             mock_make.write_text(
                 "#!/usr/bin/env bash\n"
                 "mkdir -p \"$MOCK_ROOT/dist\"\n"
-                "printf package > \"$MOCK_ROOT/dist/PPSA12345.ffpkg\"\n",
+                "printf '%s\\n' \"$*\" > \"$MOCK_ROOT/make-arguments\"\n"
+                "mkdir -p \"$MOCK_ROOT/dist/PPSA12345/sce_sys\"\n"
+                "printf app > \"$MOCK_ROOT/dist/PPSA12345/eboot.bin\"\n"
+                "printf '{}' > \"$MOCK_ROOT/dist/PPSA12345/sce_sys/param.json\"\n",
                 encoding="utf-8",
             )
             mock_make.chmod(0o755)
@@ -143,7 +146,6 @@ class ToolTests(unittest.TestCase):
             environment.update(
                 PS5_HOST="192.0.2.1",
                 DEPLOY_DRY_RUN="1",
-                DEPLOY_FORMAT="ffpkg",
                 MOCK_ROOT=str(sandbox),
                 PATH=f"{mock_bin}{os.pathsep}{environment['PATH']}",
             )
@@ -156,8 +158,27 @@ class ToolTests(unittest.TestCase):
                 text=True,
             )
             self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertIn("/data/homebrew/PPSA12345.ffpkg", result.stdout)
+            self.assertIn("/data/homebrew/PPSA12345/\n", result.stdout)
+            self.assertIn("Would publish 2 files", result.stdout)
             self.assertIn("no network request was sent", result.stdout)
+            # The build asked for is the app folder, never an image.
+            arguments = sandbox / "make-arguments"
+            self.assertEqual(arguments.read_text(encoding="utf-8").split()[-1], "app")
+
+            # An image format is refused before anything is built.
+            arguments.unlink()
+            environment["DEPLOY_FORMAT"] = "ffpkg"
+            refused = subprocess.run(
+                ["bash", str(sandbox / "tools/deploy.sh")],
+                cwd=sandbox,
+                env=environment,
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            self.assertEqual(refused.returncode, 2, refused.stdout)
+            self.assertIn("DEPLOY_FORMAT is no longer used", refused.stderr)
+            self.assertFalse(arguments.exists())
 
     def test_release_workflow_builds_only_the_folder_zip(self):
         workflow = (ROOT / ".github/workflows/tooling.yml").read_text(encoding="utf-8")
@@ -165,21 +186,25 @@ class ToolTests(unittest.TestCase):
         # The app updates itself in place, which needs a folder install: no
         # image of any kind is built or published.
         self.assertNotIn("make packages", workflow)
-        # The compressed image is gone: nothing that builds may name it or its tool again.
+        # The image formats are gone: nothing that builds may name them or their tools again.
         build_files = (
             ".github/workflows/tooling.yml",
             "Makefile",
             "build.ps1",
             "tools/build.sh",
-            "tools/setup-packaging-dependencies.sh",
         )
         for name in build_files:
             text = (ROOT / name).read_text(encoding="utf-8").lower()
-            self.assertNotIn("ffpfsc", text, name)
-            self.assertNotIn("mkpfs", text, name)
-        self.assertFalse((ROOT / "tools/setup-mkpfs-tooling.ps1").exists())
+            for gone in ("ffpfsc", "mkpfs", "ffpkg", "ufs2"):
+                self.assertNotIn(gone, text, name)
+        for name in (
+            "setup-mkpfs-tooling.ps1",
+            "setup-ffpkg-tooling.ps1",
+            "setup-packaging-dependencies.sh",
+        ):
+            self.assertFalse((ROOT / "tools" / name).exists(), name)
         # Asked for by name, the removed formats are refused before anything is built.
-        for removed in ("Ffpfsc", "All"):
+        for removed in ("Ffpkg", "Ffpfsc", "All"):
             result = subprocess.run(
                 ["bash", str(ROOT / "tools/build.sh"), removed],
                 capture_output=True,
@@ -187,7 +212,7 @@ class ToolTests(unittest.TestCase):
                 check=False,
             )
             self.assertEqual(result.returncode, 2, removed)
-            self.assertIn("usage: tools/build.sh [Folder|Ffpkg]", result.stderr)
+            self.assertIn("usage: tools/build.sh [Folder]", result.stderr)
         self.assertNotIn(".ffpkg", workflow)
         self.assertIn('zip -qr "$TITLE_ID.zip" "$TITLE_ID"', workflow)
         self.assertIn('sha256sum "$TITLE_ID.zip" > SHA256SUMS', workflow)

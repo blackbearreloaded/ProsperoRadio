@@ -12,9 +12,6 @@ On Ubuntu, Debian, or WSL:
     sudo apt install curl git make pkg-config python3 python3-venv tar unzip wget \
       clang-18 clang-format-18 clang-tidy-18 lld-18 libsqlite3-dev
 
-.NET SDK 8 or
-newer is needed only for the optional local FFPKG target.
-
 ## 2. Clone and inspect
 
     git clone git@github.com:blackbearreloaded/ProsperoRadio.git
@@ -65,7 +62,7 @@ wraps that folder for direct directory deployment, and its SHA256SUMS.
 
 With an already-running console FTP service:
 
-    make deploy PS5_HOST=192.168.4.30 DEPLOY_FORMAT=folder
+    make deploy PS5_HOST=192.168.4.30
 
 The deployment tool sends only this title's files below /data/homebrew and
 publishes critical files last. It does not launch the title or modify Shell

@@ -121,8 +121,8 @@ sudo apt install curl git make pkg-config python3 python3-venv tar unzip wget zi
 The
 repository downloads, verifies, and caches the public PS5 Payload SDK, zlib,
 PacBrew's SQLite and libcurl ports, the interface kit, the ps5-opengl SDK,
-HarfBuzz, the pinned upstream Lapy helper sources, GoogleTest, and packaging
-tools below ignored `.deps/`.
+HarfBuzz, the pinned upstream Lapy helper sources, and GoogleTest
+below ignored `.deps/`.
 No proprietary SDK, system module, key, or game asset is included or fetched.
 
 Run a read-only prerequisite check before building:
@@ -157,19 +157,15 @@ releases built by GitHub Actions from now on, not earlier ones.
 A release is made by pushing the version tag: the workflow builds, attests and publishes both
 files, and nothing is attached by hand. It creates the release, or adds the files to one that
 has no ZIP yet (notes written in advance, or a draft); a release that already has a ZIP is
-never changed, and the run says so ([Package formats](docs/FFPKG.md)).
+never changed, and the run says so ([Build output and release ZIP](docs/RELEASE_ZIP.md)).
 The ZIP is the only release file: the app updates itself in place, and
 that needs a folder install.
-
-An optional local UFS2 `.ffpkg` target remains available for development; it
-is intentionally excluded from CI and GitHub Releases. See
-[Package formats](docs/FFPKG.md).
 
 The app is a **Media** category title. Stage the whole folder, not `eboot.bin`
 alone. For a local development loop against an already-running FTP service:
 
 ```bash
-make deploy PS5_HOST=192.168.4.30 DEPLOY_FORMAT=folder
+make deploy PS5_HOST=192.168.4.30
 ```
 
 > [!NOTE]

@@ -7,11 +7,10 @@ the application possible:
 
 - **Platform and packaging:** [PS5 Native App Boilerplate](https://github.com/blackbearreloaded/ps5-native-app-boilerplate)
   (GPL-3.0-or-later), [PS5 Payload SDK](https://github.com/ps5-payload-dev/sdk)
-  v0.42, [PacBrew](https://github.com/ps5-payload-dev/pacbrew-repo) v0.40.2,
+  v0.42, [PacBrew](https://github.com/ps5-payload-dev/pacbrew-repo) v0.40.2, and
   [SharpProspero](https://github.com/SvenGDK/SharpProspero) by SvenGDK
   (GPL-3.0), from which the ELF converter and FSELF writer in `tooling/native/`
-  are derived, and
-  [UFS2Tool](https://github.com/SvenGDK/UFS2Tool).
+  are derived.
 - **Filesystem access:** [PS5-Lapy-JB-Daemon](https://github.com/ArkSama/PS5-Lapy-JB-Daemon)
   (MIT), created by ArkSama, in the cooperative owned-root form of
   [ProsperoRadio's compatibility fork](https://github.com/blackbearreloaded/PS5-Lapy-JB-Daemon), based on
@@ -45,7 +44,7 @@ the application possible:
   [DejaVu fonts](https://dejavu-fonts.github.io/).
 
 Radio Browser supplies station metadata and URLs but does not host individual
-station streams. The SDK, zlib, GoogleTest, UFS2Tool, the interface
+station streams. The SDK, zlib, GoogleTest, the interface
 kit, the ps5-opengl SDK, HarfBuzz, libcurl, OpenSSL, and SQLite are verified
 build inputs fetched below ignored `.deps/`; of these the interface kit, the
 OpenGL runtime, HarfBuzz, libcurl, OpenSSL, SQLite, and zlib are linked into
