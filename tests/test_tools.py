@@ -196,7 +196,18 @@ class ToolTests(unittest.TestCase):
         self.assertIn("Expected one app-folder ZIP and SHA256SUMS", workflow)
         self.assertIn("sha256sum -c SHA256SUMS", workflow)
         self.assertIn('assets=("release/$ARCHIVE" "release/$CHECKSUM")', workflow)
-        self.assertIn("gh release delete-asset", workflow)
+        # The release job creates a release, or fills one that has no ZIP; it never replaces,
+        # deletes or rewrites anything on a release that exists.
+        for forbidden in ("--clobber", "delete-asset", "gh release edit"):
+            self.assertNotIn(forbidden, workflow)
+        publish = workflow[workflow.index("- name: Publish GitHub release") :]
+        self.assertIn('gh release create "$TAG" ', publish)
+        self.assertIn('gh release upload "$TAG" ', publish)
+        self.assertIn("--json assets --jq '.assets[].name'", publish)
+        self.assertIn("if [[ $name == *.zip ]]; then", publish)
+        self.assertIn("::warning title=Release files not from this run::", publish)
+        self.assertLess(publish.index("gh release create"), publish.index("::warning"))
+        self.assertLess(publish.index("::warning"), publish.index("gh release upload"))
 
     def test_release_zip_is_attested_before_upload(self):
         workflow = (ROOT / ".github/workflows/tooling.yml").read_text(encoding="utf-8")

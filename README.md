@@ -154,6 +154,10 @@ Releases are that folder as one file, `PPSA99001.zip`, with its `SHA256SUMS`.
 A release ZIP built by the workflow can be checked with
 `gh attestation verify PPSA99001.zip -R blackbearreloaded/ProsperoRadio` (GitHub CLI); this covers
 releases built by GitHub Actions from now on, not earlier ones.
+A release is made by pushing the version tag: the workflow builds, attests and publishes both
+files, and nothing is attached by hand. It creates the release, or adds the files to one that
+has no ZIP yet (notes written in advance, or a draft); a release that already has a ZIP is
+never changed, and the run says so ([Package formats](docs/FFPKG.md)).
 The ZIP is the only release file: the app updates itself in place, and
 that needs a folder install.
 

@@ -187,19 +187,23 @@ jobs:
         run: |
           set -euo pipefail
           assets=("release/$ARCHIVE" "release/$CHECKSUM")
-          archive_name="${ARCHIVE##*/}"
-          checksum_name="${CHECKSUM##*/}"
-          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            while IFS= read -r old_asset; do
-              if [[ $old_asset != "$archive_name" && $old_asset != "$checksum_name" ]]; then
-                gh release delete-asset "$GITHUB_REF_NAME" "$old_asset" --yes --repo "$GITHUB_REPOSITORY"
-              fi
-            done < <(gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
-            gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber --repo "$GITHUB_REPOSITORY"
-          else
-            gh release create "$GITHUB_REF_NAME" "${assets[@]}" \
+          TAG=$GITHUB_REF_NAME
+          # CI is the source of truth for release files: create the release, or fill one that
+          # has no ZIP yet, and never replace a ZIP that is already published.
+          if ! gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$TAG" "${assets[@]}" \
               --repo "$GITHUB_REPOSITORY" \
               --verify-tag \
               --generate-notes \
-              --title "ProsperoRadio $GITHUB_REF_NAME"
+              --title "ProsperoRadio $TAG"
+            exit 0
           fi
+          existing=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '.assets[].name')
+          while IFS= read -r name; do
+            if [[ $name == *.zip ]]; then
+              echo "::warning title=Release files not from this run::A release for $TAG already has a ZIP; it was not replaced. Its files were not published by this run and may have no attestation."
+              exit 0
+            fi
+          done <<< "$existing"
+          # Notes written in advance, or a draft: add the two files, leave title and notes alone.
+          gh release upload "$TAG" "${assets[@]}" --repo "$GITHUB_REPOSITORY"
