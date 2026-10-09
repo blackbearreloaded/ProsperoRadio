@@ -59,8 +59,7 @@ This produces the complete title folder:
     dist/PPSA99001/
 
 Never deploy only eboot.bin. GitHub Releases contain `PPSA99001.zip`, which
-wraps that folder for direct directory deployment, and its SHA256SUMS; no
-FFPFSC image is built or published.
+wraps that folder for direct directory deployment, and its SHA256SUMS.
 
 ## 6. Deploy a development folder
 

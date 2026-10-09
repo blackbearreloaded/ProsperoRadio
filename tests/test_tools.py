@@ -164,8 +164,30 @@ class ToolTests(unittest.TestCase):
         self.assertIn("run: make app", workflow)
         # The app updates itself in place, which needs a folder install: no
         # image of any kind is built or published.
-        self.assertNotIn("ffpfsc", workflow.lower())
         self.assertNotIn("make packages", workflow)
+        # The compressed image is gone: nothing that builds may name it or its tool again.
+        build_files = (
+            ".github/workflows/tooling.yml",
+            "Makefile",
+            "build.ps1",
+            "tools/build.sh",
+            "tools/setup-packaging-dependencies.sh",
+        )
+        for name in build_files:
+            text = (ROOT / name).read_text(encoding="utf-8").lower()
+            self.assertNotIn("ffpfsc", text, name)
+            self.assertNotIn("mkpfs", text, name)
+        self.assertFalse((ROOT / "tools/setup-mkpfs-tooling.ps1").exists())
+        # Asked for by name, the removed formats are refused before anything is built.
+        for removed in ("Ffpfsc", "All"):
+            result = subprocess.run(
+                ["bash", str(ROOT / "tools/build.sh"), removed],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 2, removed)
+            self.assertIn("usage: tools/build.sh [Folder|Ffpkg]", result.stderr)
         self.assertNotIn(".ffpkg", workflow)
         self.assertIn('zip -qr "$TITLE_ID.zip" "$TITLE_ID"', workflow)
         self.assertIn('sha256sum "$TITLE_ID.zip" > SHA256SUMS', workflow)

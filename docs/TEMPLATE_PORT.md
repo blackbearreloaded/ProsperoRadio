@@ -86,14 +86,12 @@ Run the complete host gate from a clean checkout:
 
 ```bash
 make check
-make ffpfsc
 ```
 
 `make test` includes GoogleTest checks for C++ text/import parsing, Python
 checks for tools and UI metadata, and the 16 retained C codec/catalogue
 regressions. `make app` compiles and validates the native FSELF before
-assembling `dist/PPSA99001/`. `make ffpfsc` additionally creates a local
-filesystem image, `dist/PPSA99001.ffpfsc`; CI publishes only the complete app
+assembling `dist/PPSA99001/`. CI publishes only the complete app
 folder as `PPSA99001.zip`.
 
 The port's final hardware evidence is intentionally separate from these

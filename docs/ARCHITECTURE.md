@@ -267,10 +267,9 @@ The project is built directly from a clone of
 [`ps5-native-app-boilerplate`](https://github.com/blackbearreloaded/ps5-native-app-boilerplate).
 Clang 18 and lld build the C++20 application; the template-owned native C++
 toolchain then validates PS5 imports and writes the development FSELF. `make`,
-`make test`, `make lint`, `make ffpfsc`, and `make deploy` are the primary
+`make test`, `make lint`, and `make deploy` are the primary
 entry points. `.NET` is needed only for the optional local UFS2 `.ffpkg` tool;
-CI archives the validated app folder as a standard ZIP for GitHub Releases;
-it builds no FFPFSC image.
+CI archives the validated app folder as a standard ZIP for GitHub Releases.
 
 RmlUi requires RTTI in its static library, so ProsperoRadio adds `-frtti` after the
 template's conservative C++ flags. Exceptions remain disabled. The template

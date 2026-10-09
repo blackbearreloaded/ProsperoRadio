@@ -57,7 +57,7 @@ PACBREW_PACKAGES += libcurl
 
 HOST_UNIT_TEST := build/tests/radio_text_tests
 
-.PHONY: all app build init doctor test test-deps test-unit test-integration libc deps pacbrew pacbrew-list assets-check format format-check tidy lint check ffpkg ffpfsc packages deploy undeploy clean distclean help
+.PHONY: all app build init doctor test test-deps test-unit test-integration libc deps pacbrew pacbrew-list assets-check format format-check tidy lint check ffpkg deploy undeploy clean distclean help
 
 all: app
 build: app
@@ -138,14 +138,6 @@ ffpkg: $(RUNTIME)
 	@printf '%s\n' '==> [ffpkg] Building the app folder and UFS2 image'
 	@bash tools/build.sh Ffpkg
 
-ffpfsc: $(RUNTIME)
-	@printf '%s\n' '==> [ffpfsc] Building the app folder and compressed image'
-	@bash tools/build.sh Ffpfsc
-
-packages: $(RUNTIME)
-	@printf '%s\n' '==> [packages] Building the app folder and both package formats'
-	@bash tools/build.sh All
-
 deploy:
 	@printf '%s\n' '==> [deploy] Building and publishing the selected app output over FTP'
 	@bash tools/deploy.sh
@@ -201,13 +193,11 @@ help:
 	  'make lint            Run format, tidy, metadata, and shell checks' \
 	  'make check           Run lint and build the skeleton app' \
 	  'make ffpkg           Build the folder and UFS2 .ffpkg image' \
-	  'make ffpfsc          Local only: a compressed .ffpfsc image (releases are the folder ZIP)' \
-	  'make packages        Build folder, .ffpkg, and .ffpfsc outputs' \
 	  'make deploy PS5_HOST=<address>  Build and FTP-deploy the app folder' \
 	  'make undeploy PS5_HOST=<address>  Remove this title from /data/homebrew' \
 	  'Build variables:     APP_DEFINITIONS, APP_CXXFLAGS, APP_INCLUDE_PATHS, APP_STATIC_ARCHIVES, APP_IMPORT_STUBS, APP_RUNTIME_MODULES' \
 	  'PacBrew variables:   PACBREW_PACKAGES, PACBREW_INCLUDE_PATHS, PACBREW_STATIC_ARCHIVES' \
-	  'Deploy variables:    FTP_PORT=2121, DEPLOY_FORMAT=folder|ffpfsc|ffpkg, DEPLOY_DRY_RUN=0|1' \
+	  'Deploy variables:    FTP_PORT=2121, DEPLOY_FORMAT=folder|ffpkg, DEPLOY_DRY_RUN=0|1' \
 	  'Local defaults:      Copy .env.example to the ignored .env file' \
 	  'make clean           Remove build/, dist/, and generated libc.prx' \
 	  'make distclean       Also remove the ignored .deps/ cache'
