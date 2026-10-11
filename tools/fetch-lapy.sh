@@ -14,7 +14,7 @@ root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 deps="$root/.deps"
 mkdir -p "$deps"
 
-lapy_commit=c3bdfe3a399366d8eacfc580f20b19fd03b16ca3
+lapy_commit=57fcc19b7f57e46c823d6f2a6c6233ebf3288079
 lapy_url=https://github.com/blackbearreloaded/PS5-Lapy-JB-Daemon.git
 lapy="$deps/PS5-Lapy-JB-Daemon-${lapy_commit:0:7}"
 if [[ $(git -C "$lapy" rev-parse HEAD 2>/dev/null || true) != "$lapy_commit" ]]; then
